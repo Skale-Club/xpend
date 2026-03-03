@@ -4,10 +4,7 @@ import { FormEvent, ReactNode, useEffect, useState } from 'react';
 import { CircleDollarSign, LogOut, ShieldCheck } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Button, Card, CardContent, Input } from '@/components/ui';
-
-const AUTH_STORAGE_KEY = 'xpend-authenticated';
-const ALLOWED_EMAIL = 'skale.club@gmail.com';
-const ALLOWED_PASSWORD = 'Ching#12';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 interface AuthGateProps {
   children: ReactNode;
@@ -16,31 +13,70 @@ interface AuthGateProps {
 export function AuthGate({ children }: AuthGateProps) {
   const [isReady, setIsReady] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [email, setEmail] = useState(ALLOWED_EMAIL);
-  const [password, setPassword] = useState(ALLOWED_PASSWORD);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const storedValue = window.localStorage.getItem(AUTH_STORAGE_KEY);
-    setIsAuthenticated(storedValue === 'true');
-    setIsReady(true);
+    let isMounted = true;
+
+    const initializeSession = async () => {
+      const { data, error: sessionError } = await supabaseBrowser.auth.getSession();
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (sessionError) {
+        setError(sessionError.message);
+      }
+
+      setIsAuthenticated(!!data.session);
+      setIsReady(true);
+    };
+
+    initializeSession();
+
+    const {
+      data: { subscription },
+    } = supabaseBrowser.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) {
+        return;
+      }
+
+      setIsAuthenticated(!!session);
+      setIsReady(true);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setError('');
+    setIsSubmitting(true);
 
-    if (email.trim().toLowerCase() === ALLOWED_EMAIL && password === ALLOWED_PASSWORD) {
-      window.localStorage.setItem(AUTH_STORAGE_KEY, 'true');
-      setIsAuthenticated(true);
-      setError('');
+    const { error: signInError } = await supabaseBrowser.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+
+    if (signInError) {
+      setError(signInError.message);
+      setIsSubmitting(false);
       return;
     }
 
-    setError('Invalid email or password.');
+    setPassword('');
+    setIsSubmitting(false);
   };
 
-  const handleLogout = () => {
-    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  const handleLogout = async () => {
+    await supabaseBrowser.auth.signOut();
     setIsAuthenticated(false);
   };
 
@@ -70,7 +106,7 @@ export function AuthGate({ children }: AuthGateProps) {
             <div className="mb-6 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
               <div className="flex items-center gap-2 font-medium">
                 <ShieldCheck className="h-4 w-4" />
-                Demo credentials prefilled
+                Supabase Auth sign-in
               </div>
             </div>
 
@@ -92,7 +128,7 @@ export function AuthGate({ children }: AuthGateProps) {
                 error={error || undefined}
                 required
               />
-              <Button className="w-full" size="lg" type="submit">
+              <Button className="w-full" size="lg" type="submit" isLoading={isSubmitting}>
                 Sign In
               </Button>
             </form>
