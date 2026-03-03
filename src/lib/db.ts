@@ -1,16 +1,17 @@
 import { PrismaClient } from '../generated/prisma/client';
-import { PrismaLibSql } from '@prisma/adapter-libsql';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-// Use absolute path for the database
-const dbPath = process.cwd() + '/prisma/dev.db';
+const connectionString = process.env.DATABASE_URL;
 
-const adapter = new PrismaLibSql({
-  url: `file:${dbPath}`,
-});
+if (!connectionString) {
+  throw new Error('DATABASE_URL is not configured');
+}
+
+const adapter = new PrismaPg({ connectionString });
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
 
