@@ -76,7 +76,9 @@ export default function StatementsPage() {
       throw new Error('Upload failed');
     }
 
-    fetchStatements();
+    // Wait for upload response, then fetch updated statements
+    await res.json();
+    await fetchStatements();
   };
 
   const handleDelete = async (statementId: string) => {

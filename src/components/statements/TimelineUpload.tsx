@@ -68,13 +68,20 @@ export function TimelineUpload({ accountId, year, existingStatements, onUpload, 
 
         // Don't override uploading status when data updates
         const currentStatus = prevStatuses[month]?.status;
+        const prevStatement = prevStatuses[month]?.statement;
+
         if (currentStatus === 'uploading') {
+          // Keep uploading status during upload
           status = 'uploading';
         } else if (statement) {
-          // If statement exists but has no transactions, it's incomplete
+          // Statement exists - check if it has transactions
           status = statement.hasTransactions === false ? 'incomplete' : 'success';
-        } else if (isPast) {
-          // Past months without upload are incomplete
+        } else if (currentStatus === 'success' && prevStatement && !statement) {
+          // Keep success status briefly if statement was just uploaded but not yet in existingStatements
+          // This prevents red flash during data refresh
+          status = 'success';
+        } else if (isPast && !statement) {
+          // Only mark as incomplete if it's a past month AND no statement exists
           status = 'incomplete';
         }
 
