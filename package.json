@@ -13,7 +13,9 @@
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset",
     "db:seed": "prisma db seed",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "storage:create": "node scripts/create-bucket-via-api.js",
+    "storage:check": "node scripts/check-bucket-status.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
