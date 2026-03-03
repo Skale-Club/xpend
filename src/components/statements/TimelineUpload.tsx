@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Upload, Check, Clock, AlertCircle, Calendar, FileText, Trash2, AlertTriangle } from 'lucide-react';
+import { Upload, Check, Clock, AlertCircle, Calendar, Trash2, AlertTriangle, Sparkles } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui';
 
 interface ExistingStatement {
@@ -47,6 +47,7 @@ export function TimelineUpload({ accountId, year, existingStatements, onUpload, 
   const [uploadingMonth, setUploadingMonth] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [isCategorizing, setIsCategorizing] = useState(false);
 
   // Calculate current month and year
   const now = new Date();
@@ -162,6 +163,33 @@ export function TimelineUpload({ accountId, year, existingStatements, onUpload, 
       alert('Failed to delete statement');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleAutoCategorize = async () => {
+    const statement = monthStatuses[selectedMonth!]?.statement;
+    if (!statement?.id) return;
+
+    if (!confirm('Auto-categorize all uncategorized transactions in this statement using AI?')) return;
+
+    setIsCategorizing(true);
+    try {
+      const res = await fetch(`/api/statements/${statement.id}/categorize`, {
+        method: 'POST',
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to categorize');
+      }
+
+      alert(data.message || `Categorized ${data.categorizedCount} transactions`);
+    } catch (error) {
+      console.error('Failed to auto-categorize:', error);
+      alert('Failed to auto-categorize transactions');
+    } finally {
+      setIsCategorizing(false);
     }
   };
 
@@ -323,20 +351,37 @@ export function TimelineUpload({ accountId, year, existingStatements, onUpload, 
             </div>
 
             {monthStatuses[selectedMonth].statement?.fileName && (
-              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
-                <p className="text-sm text-green-700">
-                  <strong>File:</strong> {monthStatuses[selectedMonth].statement?.fileName}
+              <div className="mb-4 space-y-3">
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
+                  <p className="text-sm text-green-700">
+                    <strong>File:</strong> {monthStatuses[selectedMonth].statement?.fileName}
+                  </p>
+                  {onDelete && (
+                    <button
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                      className="flex items-center gap-1 px-3 py-1 text-sm text-red-600 hover:text-red-700 hover:bg-red-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      {isDeleting ? 'Removing...' : 'Remove'}
+                    </button>
+                  )}
+                </div>
+
+                {/* Auto-categorize button */}
+                <button
+                  onClick={handleAutoCategorize}
+                  disabled={isCategorizing}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg hover:from-purple-600 hover:to-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span className="font-medium">
+                    {isCategorizing ? 'Categorizing with AI...' : 'Auto-categorize with AI'}
+                  </span>
+                </button>
+                <p className="text-xs text-gray-500 text-center">
+                  Automatically categorize uncategorized transactions using AI
                 </p>
-                {onDelete && (
-                  <button
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                    className="flex items-center gap-1 px-3 py-1 text-sm text-red-600 hover:text-red-700 hover:bg-red-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    {isDeleting ? 'Removing...' : 'Remove'}
-                  </button>
-                )}
               </div>
             )}
 

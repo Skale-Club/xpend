@@ -4,6 +4,7 @@ import { parseCSV } from '@/lib/csvParser';
 import { parsePDF } from '@/lib/pdfParser';
 import { validateStatementUpload, ValidationError } from '@/lib/validation';
 import { createClient } from '@supabase/supabase-js';
+import { batchCategorize } from '@/lib/autoCategorize';
 
 export async function POST(request: Request) {
   try {
@@ -152,16 +153,30 @@ export async function POST(request: Request) {
       const duplicateCount = transactions.length - uniqueTransactions.length;
 
       if (uniqueTransactions.length > 0) {
-        await prisma.transaction.createMany({
-          data: uniqueTransactions.map((t) => ({
+        // Auto-categorize transactions using rules and AI
+        const categorizationResults = await batchCategorize(
+          uniqueTransactions.map(t => ({
+            description: t.description,
+            amount: t.amount,
+          }))
+        );
+
+        // Apply categorization results
+        const transactionsWithCategories = uniqueTransactions.map((t, index) => {
+          const result = categorizationResults.get(index);
+          return {
             accountId,
             statementId: statement.id,
             date: t.date,
             description: t.description,
             amount: t.amount,
             type: t.type,
-            categoryId: t.categoryId || null,
-          })),
+            categoryId: result?.categoryId || t.categoryId || null,
+          };
+        });
+
+        await prisma.transaction.createMany({
+          data: transactionsWithCategories,
         });
       }
 
