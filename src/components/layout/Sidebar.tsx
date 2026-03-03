@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   Tags,
+  LogOut,
 } from 'lucide-react';
 
 const navItems = [
@@ -24,46 +25,48 @@ const navItems = [
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  onLogout?: () => void | Promise<void>;
+}
+
+export function Sidebar({ onLogout }: SidebarProps) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
     <>
-      {/* Mobile menu button */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white border border-gray-200 rounded-lg shadow-sm"
+        className="fixed top-4 left-4 z-50 rounded-lg border border-gray-200 bg-white p-2 shadow-sm lg:hidden"
         aria-label="Toggle menu"
       >
         {isMobileMenuOpen ? (
-          <X className="w-6 h-6 text-gray-600" />
+          <X className="h-6 w-6 text-gray-600" />
         ) : (
-          <Menu className="w-6 h-6 text-gray-600" />
+          <Menu className="h-6 w-6 text-gray-600" />
         )}
       </button>
 
-      {/* Overlay for mobile */}
       {isMobileMenuOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col z-40 transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-          }`}
+        className={`fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-gray-200 bg-white transition-transform duration-300 ${
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
       >
-        <div className="p-6 border-b border-gray-100">
+        <div className="border-b border-gray-100 p-6">
           <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
-              <CircleDollarSign className="w-6 h-6 text-white" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600">
+              <CircleDollarSign className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-gray-900">Spending</h1>
-              <p className="text-xs text-gray-500">Tracker</p>
+              <h1 className="font-bold text-gray-900">Xpend</h1>
+              <p className="text-xs text-gray-500">Personal finance</p>
             </div>
           </Link>
         </div>
@@ -72,17 +75,17 @@ export function Sidebar() {
           <ul className="space-y-1">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
+
               return (
                 <li key={item.href}>
                   <Link
                     href={item.href}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive
-                        ? 'bg-blue-50 text-blue-600'
-                        : 'text-gray-600 hover:bg-gray-50'
-                      }`}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
+                      isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'
+                    }`}
                   >
-                    <item.icon className="w-5 h-5" />
+                    <item.icon className="h-5 w-5" />
                     <span className="font-medium">{item.label}</span>
                   </Link>
                 </li>
@@ -91,9 +94,23 @@ export function Sidebar() {
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-gray-100">
-          <p className="text-xs text-gray-400 text-center">
-            © {new Date().getFullYear()} Spending Tracker
+        <div className="border-t border-gray-100 p-4">
+          {onLogout ? (
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                void onLogout();
+              }}
+              className="mb-3 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-gray-600 transition-colors hover:bg-gray-50"
+            >
+              <LogOut className="h-5 w-5" />
+              <span className="font-medium">Logout</span>
+            </button>
+          ) : null}
+
+          <p className="text-center text-xs text-gray-400">
+            Copyright {new Date().getFullYear()} Xpend
           </p>
         </div>
       </aside>

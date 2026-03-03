@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Spending Tracker",
+  title: "Xpend",
   description: "Track your spending across multiple accounts",
 };
 

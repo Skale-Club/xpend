@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
-import { CircleDollarSign, LogOut, ShieldCheck } from 'lucide-react';
+import { CircleDollarSign, ShieldCheck } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Button, Card, CardContent, Input } from '@/components/ui';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
@@ -140,15 +140,7 @@ export function AuthGate({ children }: AuthGateProps) {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <button
-        type="button"
-        onClick={handleLogout}
-        className="fixed right-4 top-4 z-50 inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-50"
-      >
-        <LogOut className="h-4 w-4" />
-        Logout
-      </button>
+      <Sidebar onLogout={handleLogout} />
       <main className="flex-1 bg-gray-50 p-6 pt-20 lg:ml-64 lg:pt-6">
         {children}
       </main>
