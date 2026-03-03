@@ -46,6 +46,7 @@ export function TimelineUpload({ accountId, year, existingStatements, onUpload, 
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [uploadingMonth, setUploadingMonth] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // Calculate current month and year
   const now = new Date();
@@ -92,22 +93,40 @@ export function TimelineUpload({ accountId, year, existingStatements, onUpload, 
   const handleFileSelect = useCallback(
     async (month: number, file: File) => {
       setUploadingMonth(month);
+      setUploadProgress(0);
       setMonthStatuses((prev) => ({
         ...prev,
         [month]: { ...prev[month], status: 'uploading' },
       }));
 
+      // Simulate progress with intervals
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 90) return prev; // Cap at 90% until complete
+          return prev + Math.random() * 15; // Random increment
+        });
+      }, 500);
+
       try {
         await onUpload(month, year, file);
+        // Set to 100% when complete
+        setUploadProgress(100);
+        clearInterval(progressInterval);
         // Don't manually set success - let useEffect handle it when existingStatements updates
       } catch (error) {
+        clearInterval(progressInterval);
+        setUploadProgress(0);
         setMonthStatuses((prev) => ({
           ...prev,
           [month]: { ...prev[month], status: 'error' },
         }));
         console.error('Upload failed:', error);
       } finally {
-        setUploadingMonth(null);
+        // Clear after a short delay to show 100%
+        setTimeout(() => {
+          setUploadingMonth(null);
+          setUploadProgress(0);
+        }, 500);
       }
     },
     [year, onUpload]
@@ -355,34 +374,63 @@ export function TimelineUpload({ accountId, year, existingStatements, onUpload, 
                 {/* Progress steps */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
-                      <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${uploadProgress < 30 ? 'bg-blue-500' : 'bg-green-500'}`}>
+                      {uploadProgress < 30 ? (
+                        <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                      ) : (
+                        <Check className="w-4 h-4 text-white" />
+                      )}
                     </div>
-                    <span className="text-sm font-medium text-blue-700">Uploading file...</span>
+                    <span className={`text-sm ${uploadProgress < 30 ? 'font-medium text-blue-700' : 'text-green-700'}`}>
+                      {uploadProgress < 30 ? 'Uploading file...' : 'File uploaded'}
+                    </span>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${uploadProgress < 30 ? 'bg-gray-200' : uploadProgress < 70 ? 'bg-blue-500' : 'bg-green-500'}`}>
+                      {uploadProgress < 30 ? (
+                        <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                      ) : uploadProgress < 70 ? (
+                        <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                      ) : (
+                        <Check className="w-4 h-4 text-white" />
+                      )}
                     </div>
-                    <span className="text-sm text-gray-500">Parsing with AI...</span>
+                    <span className={`text-sm ${uploadProgress < 30 ? 'text-gray-500' : uploadProgress < 70 ? 'font-medium text-blue-700' : 'text-green-700'}`}>
+                      {uploadProgress < 70 ? 'Parsing with AI...' : 'Parsing complete'}
+                    </span>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${uploadProgress < 70 ? 'bg-gray-200' : uploadProgress < 100 ? 'bg-blue-500' : 'bg-green-500'}`}>
+                      {uploadProgress < 70 ? (
+                        <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                      ) : uploadProgress < 100 ? (
+                        <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                      ) : (
+                        <Check className="w-4 h-4 text-white" />
+                      )}
                     </div>
-                    <span className="text-sm text-gray-500">Saving transactions...</span>
+                    <span className={`text-sm ${uploadProgress < 70 ? 'text-gray-500' : uploadProgress < 100 ? 'font-medium text-blue-700' : 'text-green-700'}`}>
+                      {uploadProgress < 100 ? 'Saving transactions...' : 'Transactions saved'}
+                    </span>
                   </div>
                 </div>
 
-                {/* Animated progress bar */}
+                {/* Real progress bar */}
                 <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                  <div className="h-full bg-blue-500 rounded-full animate-pulse" style={{ width: '60%' }} />
+                  <div
+                    className="h-full bg-blue-500 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${Math.min(uploadProgress, 100)}%` }}
+                  />
                 </div>
 
                 <p className="text-xs text-gray-500 text-center">
-                  This may take 30-120 seconds depending on file size
+                  {uploadProgress < 100 ? (
+                    <>Processing... {Math.round(uploadProgress)}% complete (this may take 30-120 seconds)</>
+                  ) : (
+                    <>Upload complete! Finalizing...</>
+                  )}
                 </p>
               </div>
             )}
