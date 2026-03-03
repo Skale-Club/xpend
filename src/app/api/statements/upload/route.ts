@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { parseCSV } from '@/lib/csvParser';
 import { parsePDF } from '@/lib/pdfParser';
 import { validateStatementUpload, ValidationError } from '@/lib/validation';
+import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request: Request) {
   try {
@@ -24,6 +25,46 @@ export async function POST(request: Request) {
       return NextResponse.json({
         error: 'Unsupported file type. Please upload a CSV or PDF file.'
       }, { status: 400 });
+    }
+
+    // Upload file to Supabase Storage
+    let fileUrl: string | null = null;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (supabaseUrl && supabaseServiceKey) {
+      try {
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+        // Create a unique file path: statements/{accountId}/{year}-{month}/{timestamp}_{filename}
+        const timestamp = Date.now();
+        const filePath = `${accountId}/${year}-${month.toString().padStart(2, '0')}/${timestamp}_${file.name}`;
+
+        // Convert File to ArrayBuffer then to Buffer for upload
+        const fileBuffer = await file.arrayBuffer();
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('statements')
+          .upload(filePath, fileBuffer, {
+            contentType: file.type || (isCSV ? 'text/csv' : 'application/pdf'),
+            upsert: false,
+          });
+
+        if (uploadError) {
+          console.error('Supabase storage upload error:', uploadError);
+          // Continue without file URL if upload fails
+        } else if (uploadData) {
+          // Get public URL
+          const { data: urlData } = supabase.storage
+            .from('statements')
+            .getPublicUrl(filePath);
+
+          fileUrl = urlData.publicUrl;
+        }
+      } catch (storageError) {
+        console.error('Storage error:', storageError);
+        // Continue without file URL if storage fails
+      }
     }
 
     const existingStatement = await prisma.statement.findUnique({
@@ -69,9 +110,11 @@ export async function POST(request: Request) {
         month,
         year,
         fileName: file.name,
+        fileUrl: fileUrl,
       },
       update: {
         fileName: file.name,
+        fileUrl: fileUrl,
       },
     });
 

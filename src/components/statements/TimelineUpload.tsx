@@ -53,33 +53,40 @@ export function TimelineUpload({ accountId, year, existingStatements, onUpload, 
   const currentYear = now.getFullYear();
 
   useEffect(() => {
-    const initial: Record<number, MonthStatus> = {};
-    for (let month = 1; month <= 12; month++) {
-      const statement = existingStatements.find(
-        (s) => s.month === month && s.year === year
-      );
+    setMonthStatuses((prevStatuses) => {
+      const updated: Record<number, MonthStatus> = {};
+      for (let month = 1; month <= 12; month++) {
+        const statement = existingStatements.find(
+          (s) => s.month === month && s.year === year
+        );
 
-      const isCurrentMonth = month === currentMonth && year === currentYear;
-      const isPast = year < currentYear || (year === currentYear && month < currentMonth);
+        const isCurrentMonth = month === currentMonth && year === currentYear;
+        const isPast = year < currentYear || (year === currentYear && month < currentMonth);
 
-      let status: UploadStatus = 'idle';
-      if (statement) {
-        // If statement exists but has no transactions, it's incomplete
-        status = statement.hasTransactions === false ? 'incomplete' : 'success';
-      } else if (isPast) {
-        // Past months without upload are incomplete
-        status = 'incomplete';
+        let status: UploadStatus = 'idle';
+
+        // Don't override uploading status when data updates
+        const currentStatus = prevStatuses[month]?.status;
+        if (currentStatus === 'uploading') {
+          status = 'uploading';
+        } else if (statement) {
+          // If statement exists but has no transactions, it's incomplete
+          status = statement.hasTransactions === false ? 'incomplete' : 'success';
+        } else if (isPast) {
+          // Past months without upload are incomplete
+          status = 'incomplete';
+        }
+
+        updated[month] = {
+          month,
+          status,
+          statement,
+          isCurrentMonth,
+          isPast,
+        };
       }
-
-      initial[month] = {
-        month,
-        status: statement ? (statement.hasTransactions === false ? 'incomplete' : 'success') : (isPast ? 'incomplete' : 'idle'),
-        statement,
-        isCurrentMonth,
-        isPast,
-      };
-    }
-    setMonthStatuses(initial);
+      return updated;
+    });
   }, [existingStatements, year, currentMonth, currentYear]);
 
   const handleFileSelect = useCallback(
@@ -92,15 +99,13 @@ export function TimelineUpload({ accountId, year, existingStatements, onUpload, 
 
       try {
         await onUpload(month, year, file);
-        setMonthStatuses((prev) => ({
-          ...prev,
-          [month]: { ...prev[month], status: 'success' },
-        }));
-      } catch {
+        // Don't manually set success - let useEffect handle it when existingStatements updates
+      } catch (error) {
         setMonthStatuses((prev) => ({
           ...prev,
           [month]: { ...prev[month], status: 'error' },
         }));
+        console.error('Upload failed:', error);
       } finally {
         setUploadingMonth(null);
       }
