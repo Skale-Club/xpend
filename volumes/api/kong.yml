@@ -1,0 +1,59 @@
+_format_version: '2.1'
+_transform: true
+
+services:
+  auth:
+    url: http://auth:9999/verify
+    name: gotrue
+    routes:
+      - name: auth-v1
+        strip_path: true
+        paths:
+          - /auth/v1
+    plugins:
+      - name: cors
+  rest:
+    url: http://rest:3000/
+    name: postgrest
+    routes:
+      - name: rest-v1
+        strip_path: true
+        paths:
+          - /rest/v1
+    plugins:
+      - name: cors
+  realtime:
+    url: http://realtime:4000/socket/
+    name: realtime
+    routes:
+      - name: realtime-v1
+        strip_path: true
+        paths:
+          - /realtime/v1
+    plugins:
+      - name: cors
+  storage:
+    url: http://storage:5000/
+    name: storage
+    routes:
+      - name: storage-v1
+        strip_path: true
+        paths:
+          - /storage/v1
+    plugins:
+      - name: cors
+  meta:
+    url: http://meta:8080/
+    name: meta
+    routes:
+      - name: meta-v1
+        strip_path: true
+        paths:
+          - /meta/v1
+    plugins:
+      - name: cors
+
+plugins:
+  - name: key-auth
+    config:
+      hide_credentials: true

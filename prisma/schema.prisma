@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum AccountType {
+  CHECKING
+  SAVINGS
+  CREDIT_CARD
+  DEBIT_CARD
+  CASH
+  OTHER
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+model Account {
+  id          String   @id @default(cuid())
+  name        String
+  type        AccountType
+  bank        String?
+  color       String   @default("#3B82F6")
+  icon        String?
+  initialBalance Float @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  statements  Statement[]
+  transactions Transaction[]
+}
+
+model Statement {
+  id          String   @id @default(cuid())
+  accountId   String
+  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  month       Int
+  year        Int
+  fileName    String
+  fileUrl     String?
+  uploadedAt  DateTime @default(now())
+  transactions Transaction[]
+  
+  @@unique([accountId, month, year])
+}
+
+model Category {
+  id           String   @id @default(cuid())
+  name         String
+  color        String   @default("#6B7280")
+  icon         String?
+  parentId     String?
+  parent       Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children     Category[] @relation("CategoryHierarchy")
+  transactions Transaction[]
+  rules        CategorizationRule[]
+  isSystem     Boolean  @default(false)
+  budget       Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@unique([name])
+}
+
+model CategorizationRule {
+  id          String   @id @default(cuid())
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  keywords    String
+  matchType   String   @default("contains")
+  priority    Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([categoryId])
+}
+
+model Transaction {
+  id            String          @id @default(cuid())
+  accountId     String
+  account       Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  statementId   String?
+  statement     Statement?      @relation(fields: [statementId], references: [id], onDelete: SetNull)
+  categoryId    String?
+  category      Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  type          TransactionType @default(EXPENSE)
+  amount        Float
+  description   String
+  date          DateTime
+  isRecurring   Boolean         @default(false)
+  notes         String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  @@index([accountId, date])
+  @@index([categoryId])
+  @@index([date])
+}
+
+model Settings {
+  id          String   @id @default("default")
+  geminiApiKey String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
