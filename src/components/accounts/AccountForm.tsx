@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Button, Input, Select, Modal } from '@/components/ui';
 import { Account, AccountType, ACCOUNT_TYPE_LABELS } from '@/types';
 
@@ -29,40 +29,55 @@ const ACCOUNT_TYPES = Object.entries(ACCOUNT_TYPE_LABELS).map(([value, label]) =
   label,
 }));
 
-const initialFormData: AccountFormData = {
-  name: '',
-  type: 'CHECKING',
-  bank: '',
-  color: COLORS[0],
-  initialBalance: 0,
-};
+function getInitialFormData(account?: Account | null): AccountFormData {
+  if (account) {
+    return {
+      name: account.name,
+      type: account.type,
+      bank: account.bank || '',
+      color: account.color,
+      initialBalance: account.initialBalance,
+    };
+  }
+  return {
+    name: '',
+    type: 'CHECKING',
+    bank: '',
+    color: COLORS[0],
+    initialBalance: 0,
+  };
+}
 
 export function AccountForm({ isOpen, onClose, onSubmit, account }: AccountFormProps) {
-  const [formData, setFormData] = useState<AccountFormData>(initialFormData);
+  // Memoize initial form data based on account
+  const initialData = useMemo(() => getInitialFormData(account), [account]);
+  const [formData, setFormData] = useState<AccountFormData>(initialData);
 
-  useEffect(() => {
-    if (account) {
-      setFormData({
-        name: account.name,
-        type: account.type,
-        bank: account.bank || '',
-        color: account.color,
-        initialBalance: account.initialBalance,
-      });
-    } else {
-      setFormData(initialFormData);
-    }
-  }, [account, isOpen]);
+  // Track previous account id to detect changes
+  const [prevAccountId, setPrevAccountId] = useState<string | null | undefined>(account?.id);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Sync form when account changes (edit different account)
+  if (account?.id !== prevAccountId) {
+    setPrevAccountId(account?.id);
+    setFormData(getInitialFormData(account));
+  }
+
+  const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(formData);
-  };
+  }, [formData, onSubmit]);
+
+  const handleClose = useCallback(() => {
+    // Reset form to initial state on close
+    setFormData(getInitialFormData(null));
+    setPrevAccountId(null);
+    onClose();
+  }, [onClose]);
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title={account ? 'Edit Account' : 'Add New Account'}
       size="md"
     >
@@ -104,9 +119,8 @@ export function AccountForm({ isOpen, onClose, onSubmit, account }: AccountFormP
               <button
                 key={color}
                 type="button"
-                className={`w-8 h-8 rounded-lg border-2 transition-transform ${
-                  formData.color === color ? 'border-gray-900 scale-110' : 'border-transparent'
-                }`}
+                className={`w-8 h-8 rounded-lg border-2 transition-transform ${formData.color === color ? 'border-gray-900 scale-110' : 'border-transparent'
+                  }`}
                 style={{ backgroundColor: color }}
                 onClick={() => setFormData({ ...formData, color })}
               />
@@ -115,7 +129,7 @@ export function AccountForm({ isOpen, onClose, onSubmit, account }: AccountFormP
         </div>
 
         <div className="flex gap-2 justify-end pt-4">
-          <Button type="button" variant="ghost" onClick={onClose}>
+          <Button type="button" variant="ghost" onClick={handleClose}>
             Cancel
           </Button>
           <Button type="submit">

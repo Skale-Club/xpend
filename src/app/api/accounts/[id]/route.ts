@@ -21,7 +21,7 @@ export async function GET(
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
     return NextResponse.json(account);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to fetch account' }, { status: 500 });
   }
 }
@@ -69,7 +69,7 @@ export async function DELETE(
       where: { id },
     });
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to delete account' }, { status: 500 });
   }
 }

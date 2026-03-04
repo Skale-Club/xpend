@@ -98,7 +98,6 @@ function getMonthlyData(transactions: { date: Date; type: string; amount: number
   for (const t of transactions) {
     const date = new Date(t.date);
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    const monthName = date.toLocaleString('default', { month: 'short' });
 
     if (!monthlyMap.has(key)) {
       monthlyMap.set(key, { income: 0, expenses: 0 });
@@ -150,9 +149,9 @@ function getCategoryData(
     data.count += 1;
   }
 
-  return Array.from(categoryMap.values())
-    .map((data) => ({
-      categoryId: categoryMap.keys().next().value || '',
+  return Array.from(categoryMap.entries())
+    .map(([categoryId, data]) => ({
+      categoryId,
       categoryName: data.name,
       color: data.color,
       total: data.total,

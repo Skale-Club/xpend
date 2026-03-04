@@ -38,7 +38,7 @@ export default function SettingsPage() {
       const res = await fetch('/api/categories/seed', { method: 'POST' });
       const data = await res.json();
       setSeedMessage(data.message || `Seeded ${data.count} categories`);
-    } catch (error) {
+    } catch {
       setSeedMessage('Failed to seed categories');
     } finally {
       setIsSeeding(false);
@@ -95,7 +95,7 @@ export default function SettingsPage() {
       setKeyMessage({ type: 'success', text: 'API key removed.' });
       setHasExistingKey(false);
       setKeyPreview(null);
-    } catch (error) {
+    } catch {
       setKeyMessage({ type: 'error', text: 'Failed to remove API key' });
     } finally {
       setIsSavingKey(false);

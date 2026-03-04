@@ -8,7 +8,7 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
     });
     return NextResponse.json(accounts);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to fetch accounts' }, { status: 500 });
   }
 }

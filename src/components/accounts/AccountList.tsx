@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Building2, PiggyBank, CreditCard, Smartphone, Wallet, CircleDollarSign, Plus, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import { Card as UICard, CardContent, Button, Modal } from '@/components/ui';
-import { Account, AccountType, ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_ICONS } from '@/types';
+import { Account, ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_ICONS } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {

@@ -196,16 +196,11 @@ export async function batchCategorize(
 ): Promise<Map<number, CategorizationResult>> {
     const results = new Map<number, CategorizationResult>();
 
-    // Get all rules and categories once
-    const [rules, categories] = await Promise.all([
-        getCategorizationRules(),
-        prisma.category.findMany({
-            select: { id: true, name: true },
-        }),
-    ]);
+    // Get all rules once
+    const rules = await getCategorizationRules();
 
     for (let i = 0; i < transactions.length; i++) {
-        const { description, amount } = transactions[i];
+        const { description } = transactions[i];
 
         // Try rule-based matching first
         const ruleMatch = matchByRules(description, rules);

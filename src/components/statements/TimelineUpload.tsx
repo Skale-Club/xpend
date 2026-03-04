@@ -41,7 +41,7 @@ const MONTH_ABBREV = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
 ];
 
-export function TimelineUpload({ accountId, year, existingStatements, onUpload, onDelete }: TimelineUploadProps) {
+export function TimelineUpload({ year, existingStatements, onUpload, onDelete }: TimelineUploadProps) {
   const [monthStatuses, setMonthStatuses] = useState<Record<number, MonthStatus>>({});
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [uploadingMonth, setUploadingMonth] = useState<number | null>(null);
@@ -194,7 +194,7 @@ export function TimelineUpload({ accountId, year, existingStatements, onUpload, 
   };
 
   const getStatusStyles = (monthData: MonthStatus) => {
-    const { status, isCurrentMonth, isPast } = monthData;
+    const { status, isCurrentMonth } = monthData;
 
     // Base styles
     let baseStyles = 'relative flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer min-h-[100px] ';

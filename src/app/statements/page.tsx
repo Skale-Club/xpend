@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Card, CardHeader, CardContent, Select } from '@/components/ui';
+import { Card, CardContent, Select } from '@/components/ui';
 import { TimelineUpload, TimelineYearSelector } from '@/components/statements';
 import { Account } from '@/types';
 import { getCurrentMonthYear } from '@/lib/utils';

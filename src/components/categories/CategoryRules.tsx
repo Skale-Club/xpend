@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Edit2, Trash2, Tag, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, Tag } from 'lucide-react';
 import { Card, CardContent, CardHeader, Modal, Input, Button, Select } from '@/components/ui';
 
 interface CategorizationRule {

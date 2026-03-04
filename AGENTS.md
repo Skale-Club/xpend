@@ -91,11 +91,16 @@ The Gemini API key is not read from environment variables in the main parsing fl
 
 ## Current Known Issues
 
-- `npm run lint` is not clean at the time of writing.
-- `src/app/categories/page.tsx` has `react/no-unescaped-entities` errors.
-- `src/components/accounts/AccountForm.tsx` has a `react-hooks/set-state-in-effect` lint error.
-- `src/app/api/dashboard/route.ts` has a category aggregation bug: `getCategoryData()` assigns incorrect `categoryId` values.
-- `CHANGELOG.md` says the Gemini model was changed to `gemini-1.5-flash`, but current code still references `gemini-3-flash-preview`.
+- `npm run lint` is now clean (as of 2026-03-04).
+- Dashboard category aggregation bug has been fixed.
+- Gemini model name has been updated to `gemini-1.5-flash`.
+- All React hook lint errors have been resolved.
+
+### Minor Issues Remaining
+
+- Transaction List UI loads all 50 items at once (could use infinite scroll)
+- No loading skeletons (just spinners)
+- No optimistic updates for better perceived performance
 
 ## Working Conventions
 

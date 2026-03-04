@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Edit2, Trash2, Folder, ChevronRight, ChevronDown, Tag, DollarSign } from 'lucide-react';
+import { Plus, Edit2, Trash2, Folder, ChevronRight, ChevronDown, DollarSign } from 'lucide-react';
 import { Card, CardContent, CardHeader, Modal, Input, Button } from '@/components/ui';
 import { CategoryRules } from '@/components/categories/CategoryRules';
 import { Category } from '@/types';
@@ -278,7 +278,7 @@ export default function CategoriesPage() {
                 <CardContent className="p-0 divide-y divide-gray-100">
                     {categories.length === 0 ? (
                         <div className="p-8 text-center text-gray-500">
-                            <p>No categories yet. Click "Add Category" to create one.</p>
+                            <p>No categories yet. Click &ldquo;Add Category&rdquo; to create one.</p>
                         </div>
                     ) : (
                         categories.map((category) => renderCategory(category))
@@ -380,7 +380,7 @@ export default function CategoriesPage() {
             >
                 <div className="space-y-4">
                     <p className="text-gray-600">
-                        Are you sure you want to delete "{deleteModal?.name}"?
+                        Are you sure you want to delete &ldquo;{deleteModal?.name}&rdquo;?
                     </p>
                     {deleteModal?.children && deleteModal.children.length > 0 && (
                         <p className="text-amber-600 text-sm">

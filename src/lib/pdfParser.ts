@@ -32,8 +32,8 @@ async function getGeminiClient() {
 
 export async function parsePDF(file: File): Promise<ParsedTransaction[]> {
     const genAI = await getGeminiClient();
-    // Using gemini-3-flash-preview for best multimodal understanding
-    const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
+    // Using gemini-1.5-flash for stable multimodal understanding
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     // Convert File to ArrayBuffer and then to base64
     const arrayBuffer = await file.arrayBuffer();

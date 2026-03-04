@@ -373,6 +373,100 @@ npm run db:push          # Push schema without migration
 
 ---
 
-**Last Updated**: 2026-03-02
-**Version**: 1.1.0
+## 🔧 Additional Improvements (2026-03-04)
+
+### 10. Fixed Category Aggregation Bug ⭐⭐⭐
+
+**File Updated:**
+- [src/app/api/dashboard/route.ts:153-163](src/app/api/dashboard/route.ts#L153-L163)
+
+**Issue:**
+The `getCategoryData()` function was incorrectly assigning `categoryId` values. It used `categoryMap.keys().next().value` which always returned the first key instead of the actual category ID.
+
+**Fix:**
+```diff
+- return Array.from(categoryMap.values())
+-   .map((data) => ({
+-     categoryId: categoryMap.keys().next().value || '',
++ return Array.from(categoryMap.entries())
++   .map(([categoryId, data]) => ({
++     categoryId,
+```
+
+**Benefits:**
+- ✅ Category IDs now correctly match their actual categories
+- ✅ Dashboard charts display accurate category breakdowns
+- ✅ Fixes data integrity issue in reporting
+
+---
+
+### 11. Clean Lint Report ⭐⭐
+
+**Files Updated:**
+- [src/app/api/dashboard/route.ts](src/app/api/dashboard/route.ts) - Removed unused `monthName` variable
+- [src/app/api/accounts/[id]/route.ts](src/app/api/accounts/[id]/route.ts) - Removed unused `error` variables
+- [src/app/api/accounts/route.ts](src/app/api/accounts/route.ts) - Removed unused `error` variable
+- [src/app/api/categories/route.ts](src/app/api/categories/route.ts) - Removed unused `error` variables
+- [src/app/settings/page.tsx](src/app/settings/page.tsx) - Removed unused `error` variables
+- [src/app/categories/page.tsx](src/app/categories/page.tsx) - Removed unused `Tag` import, fixed unescaped quotes
+- [src/app/statements/page.tsx](src/app/statements/page.tsx) - Removed unused `CardHeader` import
+- [src/components/accounts/AccountList.tsx](src/components/accounts/AccountList.tsx) - Removed unused `AccountType` import
+- [src/components/categories/CategoryRules.tsx](src/components/categories/CategoryRules.tsx) - Removed unused `X` import
+- [src/components/statements/TimelineUpload.tsx](src/components/statements/TimelineUpload.tsx) - Removed unused `accountId` and `isPast` variables
+- [src/lib/autoCategorize.ts](src/lib/autoCategorize.ts) - Removed unused `categories` and `amount` variables
+- [eslint.config.mjs](eslint.config.mjs) - Added `scripts/**` to ignores (CommonJS scripts)
+
+**Benefits:**
+- ✅ `npm run lint` now passes with 0 errors and 0 warnings
+- ✅ Cleaner codebase with no dead code
+- ✅ Better code maintainability
+
+---
+
+### 12. Fixed AccountForm React Hooks Issue ⭐⭐
+
+**File Updated:**
+- [src/components/accounts/AccountForm.tsx](src/components/accounts/AccountForm.tsx)
+
+**Issue:**
+The component was calling `setState` synchronously within a `useEffect`, which triggers the `react-hooks/set-state-in-effect` lint error. This pattern can cause cascading renders and performance issues.
+
+**Fix:**
+Refactored to use a render-phase sync pattern instead of useEffect:
+```tsx
+// Track previous account id to detect changes
+const [prevAccountId, setPrevAccountId] = useState<string | null | undefined>(account?.id);
+
+// Sync form when account changes (edit different account)
+if (account?.id !== prevAccountId) {
+  setPrevAccountId(account?.id);
+  setFormData(getInitialFormData(account));
+}
+```
+
+**Benefits:**
+- ✅ No more lint errors for React hooks
+- ✅ Follows React best practices
+- ✅ Maintains form state correctly when switching between accounts
+
+---
+
+### 13. Fixed Unescaped Entities ⭐
+
+**File Updated:**
+- [src/app/categories/page.tsx:281,383](src/app/categories/page.tsx#L281)
+
+**Changes:**
+- Replaced straight quotes with curly quotes using HTML entities
+- `Click "Add Category"` → `Click &ldquo;Add Category&rdquo;`
+- `delete "{name}"` → `delete &ldquo;{name}&rdquo;`
+
+**Benefits:**
+- ✅ Passes React ESLint rules
+- ✅ Better typography with curly quotes
+
+---
+
+**Last Updated**: 2026-03-04
+**Version**: 1.2.0
 **Status**: ✅ All Critical Improvements Complete
