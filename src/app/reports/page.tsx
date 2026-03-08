@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Card, CardHeader, CardContent, Modal, Button, Loader } from '@/components/ui';
 import { DashboardFiltersPanel, DistributionCarousel } from '@/components/dashboard';
 import { CategoryTreeSelector } from '@/components/categories/CategoryTreeSelector';
@@ -244,6 +244,8 @@ export default function ReportsPage() {
   const [tempMerchantName, setTempMerchantName] = useState('');
   const [trendMode, setTrendMode] = useState<TrendMode>('overall');
   const [trendCategoryId, setTrendCategoryId] = useState('');
+  const [isTrendCategoryOpen, setIsTrendCategoryOpen] = useState(false);
+  const trendCategoryFilterRef = useRef<HTMLDivElement | null>(null);
 
   const toggleExpanded = (id: string) => {
     const newExpanded = new Set(expandedCategories);
@@ -365,6 +367,31 @@ export default function ReportsPage() {
     () => categoryTrendOptions.find((option) => option.id === trendCategoryId) || null,
     [categoryTrendOptions, trendCategoryId]
   );
+
+  const trendSelectableCategories = useMemo(() => {
+    if (categoryTrendOptions.length === 0) return [];
+    const allowedIds = new Set(categoryTrendOptions.map((option) => option.id));
+    return categories.filter((category) => allowedIds.has(category.id));
+  }, [categories, categoryTrendOptions]);
+
+  useEffect(() => {
+    if (!isTrendCategoryOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!trendCategoryFilterRef.current) return;
+      if (trendCategoryFilterRef.current.contains(event.target as Node)) return;
+      setIsTrendCategoryOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, [isTrendCategoryOpen]);
+
+  useEffect(() => {
+    if (trendMode !== 'category') {
+      setIsTrendCategoryOpen(false);
+    }
+  }, [trendMode]);
 
   const openMerchantCategorize = (merchant: ReportData['merchantBreakdown'][number]) => {
     setMerchantToCategorize(merchant);
@@ -583,7 +610,7 @@ export default function ReportsPage() {
 
   if (isLoading && !data) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex min-h-[calc(100dvh-10rem)] items-center justify-center">
         <Loader size={80} />
       </div>
     );
@@ -674,22 +701,48 @@ export default function ReportsPage() {
                       ))}
                     </select>
                     {trendMode === 'category' && (
-                      <select
-                        value={trendCategoryId}
-                        onChange={(e) => setTrendCategoryId(e.target.value)}
-                        className="text-sm bg-white border border-gray-200 text-gray-700 py-1 px-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        disabled={categoryTrendOptions.length === 0}
-                      >
-                        {categoryTrendOptions.length === 0 ? (
-                          <option value="">No categories</option>
-                        ) : (
-                          categoryTrendOptions.map((option) => (
-                            <option key={option.id} value={option.id}>
-                              {option.label}
-                            </option>
-                          ))
+                      <div className="relative min-w-[220px]" ref={trendCategoryFilterRef}>
+                        <button
+                          type="button"
+                          onClick={() => setIsTrendCategoryOpen((prev) => !prev)}
+                          className="w-full h-9 px-3 border border-gray-200 rounded-lg bg-white text-sm text-left flex items-center justify-between gap-2 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          disabled={trendSelectableCategories.length === 0}
+                        >
+                          <span className="flex items-center gap-2 min-w-0">
+                            {selectedTrendCategory ? (
+                              <>
+                                <span
+                                  className="w-2 h-2 rounded-full shrink-0"
+                                  style={{ backgroundColor: selectedTrendCategory.color }}
+                                />
+                                <span className="truncate">{selectedTrendCategory.name}</span>
+                              </>
+                            ) : (
+                              <span className="truncate text-gray-500">Select category</span>
+                            )}
+                          </span>
+                          <ChevronDown
+                            className={`w-4 h-4 text-gray-500 shrink-0 transition-transform ${isTrendCategoryOpen ? 'rotate-180' : ''}`}
+                          />
+                        </button>
+
+                        {isTrendCategoryOpen && (
+                          <div className="absolute right-0 z-30 mt-2 w-[24rem] max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-xl shadow-lg p-2">
+                            <CategoryTreeSelector
+                              categories={trendSelectableCategories}
+                              value={trendCategoryId}
+                              onChange={(categoryId) => {
+                                setTrendCategoryId(categoryId);
+                                setIsTrendCategoryOpen(false);
+                              }}
+                              transactionType={filters.transactionType || null}
+                              includeUncategorized={false}
+                              allowParentSelection
+                              maxHeightClassName="max-h-72"
+                            />
+                          </div>
                         )}
-                      </select>
+                      </div>
                     )}
                   </div>
                 }
