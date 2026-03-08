@@ -150,6 +150,7 @@ export function DistributionCarousel({ items }: DistributionCarouselProps) {
               <div className="relative w-full h-[320px] max-w-[320px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
+                    {/* @ts-ignore - Pie in recharts 3.x has issues with activeIndex types but it works at runtime */}
                     <Pie
                       activeIndex={activeIndex}
                       activeShape={renderActiveShape}
