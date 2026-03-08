@@ -52,6 +52,58 @@ function collectTransactionsFromNode(node: CategoryReportNode): CategoryTransact
   return transactions;
 }
 
+function bucketToMonthKey(bucket: string) {
+  if (/^\d{4}-\d{2}$/.test(bucket)) return bucket;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(bucket)) return bucket.slice(0, 7);
+
+  const parsedDate = new Date(bucket);
+  return `${parsedDate.getFullYear()}-${String(parsedDate.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function aggregateAmountSeries(series: ReportData['timeSeries'], granularity: TimeGranularity): ReportData['timeSeries'] {
+  if (granularity === 'day') {
+    return [...series].sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  const monthMap = new Map<string, number>();
+  for (const point of series) {
+    const monthKey = bucketToMonthKey(point.date);
+    monthMap.set(monthKey, (monthMap.get(monthKey) || 0) + point.amount);
+  }
+
+  return Array.from(monthMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, amount]) => ({ date, amount }));
+}
+
+function aggregateIncomeOutcomeSeries(
+  series: ReportData['incomeVsOutcomeSeries'],
+  granularity: TimeGranularity
+): ReportData['incomeVsOutcomeSeries'] {
+  if (granularity === 'day') {
+    return [...series].sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  const monthMap = new Map<string, { income: number; outcome: number }>();
+  for (const point of series) {
+    const monthKey = bucketToMonthKey(point.date);
+    if (!monthMap.has(monthKey)) {
+      monthMap.set(monthKey, { income: 0, outcome: 0 });
+    }
+    const bucket = monthMap.get(monthKey)!;
+    bucket.income += point.income;
+    bucket.outcome += point.outcome;
+  }
+
+  return Array.from(monthMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, totals]) => ({
+      date,
+      income: totals.income,
+      outcome: totals.outcome,
+    }));
+}
+
 function CategoryRow({
   node,
   level = 0,
@@ -238,7 +290,7 @@ export default function ReportsPage() {
   const [tempMerchantName, setTempMerchantName] = useState('');
   const [trendMode, setTrendMode] = useState<TrendMode>('overall');
   const [trendCategoryId, setTrendCategoryId] = useState('');
-  const [categoryTrendGranularity, setCategoryTrendGranularity] = useState<TimeGranularity>('month');
+  const [trendGranularity, setTrendGranularity] = useState<TimeGranularity>('month');
   const [isTrendCategoryOpen, setIsTrendCategoryOpen] = useState(false);
   const trendCategoryFilterRef = useRef<HTMLDivElement | null>(null);
 
@@ -348,14 +400,24 @@ export default function ReportsPage() {
     const bucketMap = new Map<string, number>();
 
     for (const transaction of collectTransactionsFromNode(selectedNode)) {
-      const key = getBucketKey(transaction.date, categoryTrendGranularity);
+      const key = getBucketKey(transaction.date, trendGranularity);
       bucketMap.set(key, (bucketMap.get(key) || 0) + transaction.amount);
     }
 
     return Array.from(bucketMap.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, amount]) => ({ date, amount }));
-  }, [data, trendCategoryId, categoryTrendNodeMap, categoryTrendGranularity]);
+  }, [data, trendCategoryId, categoryTrendNodeMap, trendGranularity]);
+
+  const incomeTrendSeries = useMemo(
+    () => aggregateAmountSeries(data?.incomeTimeSeries || [], trendGranularity),
+    [data, trendGranularity]
+  );
+
+  const incomeVsOutcomeTrendSeries = useMemo(
+    () => aggregateIncomeOutcomeSeries(data?.incomeVsOutcomeSeries || [], trendGranularity),
+    [data, trendGranularity]
+  );
 
   const selectedTrendCategory = useMemo(
     () => categoryTrendOptions.find((option) => option.id === trendCategoryId) || null,
@@ -541,7 +603,7 @@ export default function ReportsPage() {
     { value: 'income', label: 'Income Over Time' },
     { value: 'income-vs-outcome', label: 'Income vs Outcome' },
   ];
-  const categoryTrendGranularityOptions: { value: TimeGranularity; label: string }[] = [
+  const trendGranularityOptions: { value: TimeGranularity; label: string }[] = [
     { value: 'day', label: 'Daily' },
     { value: 'month', label: 'Monthly' },
   ];
@@ -562,7 +624,7 @@ export default function ReportsPage() {
       return {
         title: 'Category Trend',
         subtitle: selectedTrendCategory
-          ? `${selectedTrendCategory.name} by ${categoryTrendGranularity === 'month' ? 'month' : 'day'}`
+          ? `${selectedTrendCategory.name} by ${trendGranularity === 'month' ? 'month' : 'day'}`
           : 'Select a category to view trend',
         chartMode: 'single' as const,
         chartData: categoryTrendSeries,
@@ -574,9 +636,9 @@ export default function ReportsPage() {
     if (trendMode === 'income') {
       return {
         title: 'Income Over Time',
-        subtitle: 'How your income changed over time',
+        subtitle: `How your income changed by ${trendGranularity === 'month' ? 'month' : 'day'}`,
         chartMode: 'single' as const,
-        chartData: data.incomeTimeSeries,
+        chartData: incomeTrendSeries,
         singleSeriesLabel: 'Income',
         singleSeriesColor: '#16A34A',
       };
@@ -585,16 +647,16 @@ export default function ReportsPage() {
     if (trendMode === 'income-vs-outcome') {
       return {
         title: 'Income vs Outcome',
-        subtitle: 'Compare inflows and outflows over time',
+        subtitle: `Compare inflows and outflows by ${trendGranularity === 'month' ? 'month' : 'day'}`,
         chartMode: 'comparison' as const,
-        chartData: data.incomeVsOutcomeSeries,
+        chartData: incomeVsOutcomeTrendSeries,
         singleSeriesLabel: 'Amount',
         singleSeriesColor: '#3B82F6',
       };
     }
 
     return defaultConfig;
-  }, [data, trendMode, typeLabel, categoryTrendSeries, selectedTrendCategory, categoryTrendGranularity]);
+  }, [data, trendMode, typeLabel, categoryTrendSeries, selectedTrendCategory, trendGranularity, incomeTrendSeries, incomeVsOutcomeTrendSeries]);
 
   const hasTrendData = useMemo(() => {
     if (trendCardConfig.chartMode === 'comparison') {
@@ -698,62 +760,62 @@ export default function ReportsPage() {
                         </option>
                       ))}
                     </select>
+                    {trendMode !== 'overall' && (
+                      <select
+                        value={trendGranularity}
+                        onChange={(e) => setTrendGranularity(e.target.value as TimeGranularity)}
+                        className="text-sm bg-white border border-gray-200 text-gray-700 py-1 px-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {trendGranularityOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
                     {trendMode === 'category' && (
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <select
-                          value={categoryTrendGranularity}
-                          onChange={(e) => setCategoryTrendGranularity(e.target.value as TimeGranularity)}
-                          className="text-sm bg-white border border-gray-200 text-gray-700 py-1 px-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      <div className="relative min-w-[220px]" ref={trendCategoryFilterRef}>
+                        <button
+                          type="button"
+                          onClick={() => setIsTrendCategoryOpen((prev) => !prev)}
+                          className="w-full h-9 px-3 border border-gray-200 rounded-lg bg-white text-sm text-left flex items-center justify-between gap-2 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          disabled={trendSelectableCategories.length === 0}
                         >
-                          {categoryTrendGranularityOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
+                          <span className="flex items-center gap-2 min-w-0">
+                            {selectedTrendCategory ? (
+                              <>
+                                <span
+                                  className="w-2 h-2 rounded-full shrink-0"
+                                  style={{ backgroundColor: selectedTrendCategory.color }}
+                                />
+                                <span className="truncate">{selectedTrendCategory.name}</span>
+                              </>
+                            ) : (
+                              <span className="truncate text-gray-500">Select category</span>
+                            )}
+                          </span>
+                          <ChevronDown
+                            className={`w-4 h-4 text-gray-500 shrink-0 transition-transform ${isTrendCategoryOpen ? 'rotate-180' : ''}`}
+                          />
+                        </button>
 
-                        <div className="relative min-w-[220px]" ref={trendCategoryFilterRef}>
-                          <button
-                            type="button"
-                            onClick={() => setIsTrendCategoryOpen((prev) => !prev)}
-                            className="w-full h-9 px-3 border border-gray-200 rounded-lg bg-white text-sm text-left flex items-center justify-between gap-2 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            disabled={trendSelectableCategories.length === 0}
-                          >
-                            <span className="flex items-center gap-2 min-w-0">
-                              {selectedTrendCategory ? (
-                                <>
-                                  <span
-                                    className="w-2 h-2 rounded-full shrink-0"
-                                    style={{ backgroundColor: selectedTrendCategory.color }}
-                                  />
-                                  <span className="truncate">{selectedTrendCategory.name}</span>
-                                </>
-                              ) : (
-                                <span className="truncate text-gray-500">Select category</span>
-                              )}
-                            </span>
-                            <ChevronDown
-                              className={`w-4 h-4 text-gray-500 shrink-0 transition-transform ${isTrendCategoryOpen ? 'rotate-180' : ''}`}
+                        {isTrendCategoryOpen && (
+                          <div className="absolute right-0 z-30 mt-2 w-[24rem] max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-xl shadow-lg p-2">
+                            <CategoryTreeSelector
+                              categories={trendSelectableCategories}
+                              value={trendCategoryId}
+                              onChange={(categoryId) => {
+                                setTrendCategoryId(categoryId);
+                                setIsTrendCategoryOpen(false);
+                              }}
+                              transactionType={filters.transactionType || null}
+                              includeUncategorized={false}
+                              allowParentSelection
+                              maxHeightClassName="max-h-72"
                             />
-                          </button>
-
-                          {isTrendCategoryOpen && (
-                            <div className="absolute right-0 z-30 mt-2 w-[24rem] max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-xl shadow-lg p-2">
-                              <CategoryTreeSelector
-                                categories={trendSelectableCategories}
-                                value={trendCategoryId}
-                                onChange={(categoryId) => {
-                                  setTrendCategoryId(categoryId);
-                                  setIsTrendCategoryOpen(false);
-                                }}
-                                transactionType={filters.transactionType || null}
-                                includeUncategorized={false}
-                                allowParentSelection
-                                maxHeightClassName="max-h-72"
-                              />
-                            </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
