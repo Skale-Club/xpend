@@ -299,6 +299,73 @@ export default function ReportsPage() {
     fetchData();
   }, [fetchData]);
 
+  const { categoryTrendOptions, categoryTrendNodeMap } = useMemo(() => {
+    const options: { id: string; name: string; color: string; label: string }[] = [];
+    const nodeMap = new Map<string, CategoryReportNode>();
+
+    if (!data) {
+      return { categoryTrendOptions: options, categoryTrendNodeMap: nodeMap };
+    }
+
+    const visitNode = (node: CategoryReportNode, depth: number) => {
+      nodeMap.set(node.id, node);
+      const prefix = depth > 0 ? `${'-- '.repeat(depth)}` : '';
+      options.push({
+        id: node.id,
+        name: node.name,
+        color: node.color,
+        label: `${prefix}${node.name}`,
+      });
+
+      for (const subcategory of node.subcategories) {
+        visitNode(subcategory, depth + 1);
+      }
+    };
+
+    for (const rootNode of data.categoryBreakdown) {
+      visitNode(rootNode, 0);
+    }
+
+    return { categoryTrendOptions: options, categoryTrendNodeMap: nodeMap };
+  }, [data]);
+
+  useEffect(() => {
+    if (trendMode !== 'category') return;
+
+    if (categoryTrendOptions.length === 0) {
+      if (trendCategoryId) setTrendCategoryId('');
+      return;
+    }
+
+    const selectedStillExists = categoryTrendNodeMap.has(trendCategoryId);
+    if (!trendCategoryId || !selectedStillExists) {
+      setTrendCategoryId(categoryTrendOptions[0].id);
+    }
+  }, [trendMode, trendCategoryId, categoryTrendOptions, categoryTrendNodeMap]);
+
+  const categoryTrendSeries = useMemo(() => {
+    if (!data || !trendCategoryId) return [];
+    const selectedNode = categoryTrendNodeMap.get(trendCategoryId);
+    if (!selectedNode) return [];
+
+    const granularity = getTimeGranularity(data.timeSeries);
+    const bucketMap = new Map<string, number>();
+
+    for (const transaction of collectTransactionsFromNode(selectedNode)) {
+      const key = getBucketKey(transaction.date, granularity);
+      bucketMap.set(key, (bucketMap.get(key) || 0) + transaction.amount);
+    }
+
+    return Array.from(bucketMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, amount]) => ({ date, amount }));
+  }, [data, trendCategoryId, categoryTrendNodeMap]);
+
+  const selectedTrendCategory = useMemo(
+    () => categoryTrendOptions.find((option) => option.id === trendCategoryId) || null,
+    [categoryTrendOptions, trendCategoryId]
+  );
+
   const openMerchantCategorize = (merchant: ReportData['merchantBreakdown'][number]) => {
     setMerchantToCategorize(merchant);
     setSelectedMerchantCategory(merchant.primaryCategory?.id || '');
@@ -438,6 +505,82 @@ export default function ReportsPage() {
     }
   };
 
+  const isIncome = filters.transactionType === 'INCOME';
+  const isTransfer = filters.transactionType === 'TRANSFER';
+  const typeLabel = isIncome ? 'Income' : isTransfer ? 'Transfer' : 'Expense';
+  const summaryToneClass = isIncome
+    ? 'bg-green-100 text-green-600'
+    : isTransfer
+      ? 'bg-blue-100 text-blue-600'
+      : 'bg-red-100 text-red-600';
+
+  const trendModeOptions: { value: TrendMode; label: string }[] = [
+    { value: 'overall', label: `${typeLabel} Over Time` },
+    { value: 'category', label: 'Category Trend' },
+    { value: 'income', label: 'Income Over Time' },
+    { value: 'income-vs-outcome', label: 'Income vs Outcome' },
+  ];
+
+  const trendCardConfig = useMemo(() => {
+    const defaultConfig = {
+      title: `${typeLabel} Over Time`,
+      subtitle: undefined as string | undefined,
+      chartMode: 'single' as const,
+      chartData: data?.timeSeries || [],
+      singleSeriesLabel: typeLabel,
+      singleSeriesColor: '#3B82F6',
+    };
+
+    if (!data) return defaultConfig;
+
+    if (trendMode === 'category') {
+      return {
+        title: 'Category Trend',
+        subtitle: selectedTrendCategory
+          ? `${selectedTrendCategory.name} over time`
+          : 'Select a category to view trend',
+        chartMode: 'single' as const,
+        chartData: categoryTrendSeries,
+        singleSeriesLabel: selectedTrendCategory?.name || 'Category',
+        singleSeriesColor: selectedTrendCategory?.color || '#3B82F6',
+      };
+    }
+
+    if (trendMode === 'income') {
+      return {
+        title: 'Income Over Time',
+        subtitle: 'How your income changed over time',
+        chartMode: 'single' as const,
+        chartData: data.incomeTimeSeries,
+        singleSeriesLabel: 'Income',
+        singleSeriesColor: '#16A34A',
+      };
+    }
+
+    if (trendMode === 'income-vs-outcome') {
+      return {
+        title: 'Income vs Outcome',
+        subtitle: 'Compare inflows and outflows over time',
+        chartMode: 'comparison' as const,
+        chartData: data.incomeVsOutcomeSeries,
+        singleSeriesLabel: 'Amount',
+        singleSeriesColor: '#3B82F6',
+      };
+    }
+
+    return defaultConfig;
+  }, [data, trendMode, typeLabel, categoryTrendSeries, selectedTrendCategory]);
+
+  const hasTrendData = useMemo(() => {
+    if (trendCardConfig.chartMode === 'comparison') {
+      return (trendCardConfig.chartData as ReportData['incomeVsOutcomeSeries']).some(
+        (point) => point.income > 0 || point.outcome > 0
+      );
+    }
+
+    return (trendCardConfig.chartData as ReportData['timeSeries']).some((point) => point.amount > 0);
+  }, [trendCardConfig]);
+
   if (isLoading && !data) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -445,9 +588,6 @@ export default function ReportsPage() {
       </div>
     );
   }
-
-  const isIncome = filters.transactionType === 'INCOME';
-  const typeLabel = isIncome ? 'Income' : 'Expense';
 
   return (
     <div className="space-y-6 pb-12">
@@ -470,7 +610,7 @@ export default function ReportsPage() {
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
-                  <div className={`p-3 rounded-xl ${isIncome ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                  <div className={`p-3 rounded-xl ${summaryToneClass}`}>
                     <DollarSign className="w-6 h-6" />
                   </div>
                   <div>
@@ -517,10 +657,51 @@ export default function ReportsPage() {
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
-              <CardHeader title={`${typeLabel} Over Time`} />
+              <CardHeader
+                title={trendCardConfig.title}
+                subtitle={trendCardConfig.subtitle}
+                action={
+                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <select
+                      value={trendMode}
+                      onChange={(e) => setTrendMode(e.target.value as TrendMode)}
+                      className="text-sm bg-white border border-gray-200 text-gray-700 py-1 px-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {trendModeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    {trendMode === 'category' && (
+                      <select
+                        value={trendCategoryId}
+                        onChange={(e) => setTrendCategoryId(e.target.value)}
+                        className="text-sm bg-white border border-gray-200 text-gray-700 py-1 px-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        disabled={categoryTrendOptions.length === 0}
+                      >
+                        {categoryTrendOptions.length === 0 ? (
+                          <option value="">No categories</option>
+                        ) : (
+                          categoryTrendOptions.map((option) => (
+                            <option key={option.id} value={option.id}>
+                              {option.label}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                    )}
+                  </div>
+                }
+              />
               <CardContent>
-                {data.timeSeries.length > 0 ? (
-                  <TimeSeriesChart data={data.timeSeries} />
+                {hasTrendData ? (
+                  <TimeSeriesChart
+                    mode={trendCardConfig.chartMode}
+                    data={trendCardConfig.chartData}
+                    singleSeriesLabel={trendCardConfig.singleSeriesLabel}
+                    singleSeriesColor={trendCardConfig.singleSeriesColor}
+                  />
                 ) : (
                   <div className="h-[300px] flex items-center justify-center text-gray-500">
                     No data available for this period
