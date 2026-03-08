@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { TransactionType } from '@/generated/prisma/client';
 import { prisma } from '@/lib/db';
 import { validateQueryParams, ValidationError } from '@/lib/validation';
-import type { TransactionType } from '@/types';
 import { amountEqualsRange, parseSearchAmount } from '@/lib/searchAmount';
 import { expandCategoryIdsWithDescendants } from '@/lib/categoryDescendants';
 
