@@ -101,7 +101,6 @@ export function DistributionCarousel({ items }: DistributionCarouselProps) {
   return (
     <Card className="overflow-hidden border-none shadow-sm bg-white">
       <CardHeader 
-        className="pb-2 border-b border-slate-50"
         title={
           <div className="flex items-center gap-2">
             <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
