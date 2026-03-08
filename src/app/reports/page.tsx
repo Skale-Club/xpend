@@ -621,9 +621,9 @@ export default function ReportsPage() {
   const trendCardConfig = useMemo(() => {
     const defaultConfig = {
       title: `${typeLabel} Over Time`,
-      subtitle: undefined as string | undefined,
+      subtitle: `How your ${typeLabel.toLowerCase()} changed by ${trendGranularity === 'month' ? 'month' : 'day'}`,
       chartMode: 'single' as const,
-      chartData: data?.timeSeries || [],
+      chartData: aggregateAmountSeries(data?.timeSeries || [], trendGranularity),
       singleSeriesLabel: typeLabel,
       singleSeriesColor: '#3B82F6',
     };
@@ -770,19 +770,17 @@ export default function ReportsPage() {
                         </option>
                       ))}
                     </select>
-                    {trendMode !== 'overall' && (
-                      <select
-                        value={trendGranularity}
-                        onChange={(e) => setTrendGranularity(e.target.value as TimeGranularity)}
-                        className="text-sm bg-white border border-gray-200 text-gray-700 py-1 px-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        {trendGranularityOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    )}
+                    <select
+                      value={trendGranularity}
+                      onChange={(e) => setTrendGranularity(e.target.value as TimeGranularity)}
+                      className="text-sm bg-white border border-gray-200 text-gray-700 py-1 px-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {trendGranularityOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
 
                     {trendMode === 'category' && (
                       <div className="relative min-w-[220px]" ref={trendCategoryFilterRef}>

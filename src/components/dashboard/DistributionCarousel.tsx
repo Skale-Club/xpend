@@ -236,28 +236,6 @@ export function DistributionCarousel({ items }: DistributionCarouselProps) {
                         />
                       ))}
                     </Pie>
-                    <Tooltip
-                      cursor={false}
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const data = payload[0].payload;
-                          const percentage = ((data.amount / totalAmount) * 100).toFixed(1);
-                          return (
-                            <div className="bg-white border-2 border-slate-300 shadow-xl rounded-lg p-3 backdrop-blur-none">
-                              <div className="flex items-center gap-2 mb-1.5">
-                                <div className="w-3 h-3 rounded-full ring-2 ring-white" style={{ backgroundColor: data.color }} />
-                                <span className="font-semibold text-slate-800 text-sm">{data.name}</span>
-                              </div>
-                              <div className="flex flex-col gap-0.5">
-                                <span className="text-lg font-bold text-slate-900">{formatCurrency(data.amount, { hideSensitiveValues })}</span>
-                                <span className="text-xs text-slate-500">{percentage}% of total</span>
-                              </div>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
                   </PieChart>
                 </ResponsiveContainer>
 
