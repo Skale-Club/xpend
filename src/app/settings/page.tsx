@@ -1,21 +1,29 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, Button, Input } from '@/components/ui';
-import { Key, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Button, Card, CardContent, Input, Select } from '@/components/ui';
+import { CheckCircle, Key, Loader2, XCircle } from 'lucide-react';
+
+const MASKED_KEY = '*'.repeat(30);
 
 export default function SettingsPage() {
   const [isSeeding, setIsSeeding] = useState(false);
   const [seedMessage, setSeedMessage] = useState<string | null>(null);
 
-  // Gemini API Key state
   const [geminiApiKey, setGeminiApiKey] = useState('');
   const [isSavingKey, setIsSavingKey] = useState(false);
   const [keyMessage, setKeyMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [hasExistingKey, setHasExistingKey] = useState(false);
   const [keyPreview, setKeyPreview] = useState<string | null>(null);
 
-  // Load existing settings on mount
+  const [geminiChatModel, setGeminiChatModel] = useState('gemini-2.5-flash');
+  const [modelOptions, setModelOptions] = useState<{ value: string; label: string }[]>([
+    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+    { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite (Preview)' },
+  ]);
+  const [isSavingModel, setIsSavingModel] = useState(false);
+  const [modelMessage, setModelMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   useEffect(() => {
     loadSettings();
   }, []);
@@ -24,10 +32,16 @@ export default function SettingsPage() {
     try {
       const res = await fetch('/api/settings');
       const data = await res.json();
-      setHasExistingKey(data.hasGeminiApiKey);
-      setKeyPreview(data.geminiApiKeyPreview);
+
+      setHasExistingKey(Boolean(data.hasGeminiApiKey));
+      setKeyPreview(data.geminiApiKeyPreview || null);
       if (data.hasGeminiApiKey) {
-        setGeminiApiKey('•'.repeat(30));
+        setGeminiApiKey(MASKED_KEY);
+      }
+
+      setGeminiChatModel(data.geminiChatModel || 'gemini-2.5-flash');
+      if (Array.isArray(data.availableGeminiChatModels) && data.availableGeminiChatModels.length > 0) {
+        setModelOptions(data.availableGeminiChatModels);
       }
     } catch (error) {
       console.error('Failed to load settings:', error);
@@ -49,9 +63,8 @@ export default function SettingsPage() {
   };
 
   const handleSaveApiKey = async () => {
-    // If the user clicks save but the value is just the dummy dots, don't do anything
-    if (geminiApiKey === '•'.repeat(30)) {
-      setKeyMessage({ type: 'success', text: 'API key is already saved!' });
+    if (geminiApiKey === MASKED_KEY) {
+      setKeyMessage({ type: 'success', text: 'API key is already saved.' });
       return;
     }
 
@@ -71,19 +84,18 @@ export default function SettingsPage() {
       });
 
       const data = await res.json();
-
       if (!res.ok) {
         throw new Error(data.error || 'Failed to save API key');
       }
 
-      setKeyMessage({ type: 'success', text: 'API key saved successfully!' });
+      setKeyMessage({ type: 'success', text: 'API key saved successfully.' });
       setHasExistingKey(true);
-      setKeyPreview(data.geminiApiKeyPreview);
-      setGeminiApiKey('•'.repeat(30));
+      setKeyPreview(data.geminiApiKeyPreview || null);
+      setGeminiApiKey(MASKED_KEY);
     } catch (error) {
       setKeyMessage({
         type: 'error',
-        text: error instanceof Error ? error.message : 'Failed to save API key'
+        text: error instanceof Error ? error.message : 'Failed to save API key',
       });
     } finally {
       setIsSavingKey(false);
@@ -112,45 +124,75 @@ export default function SettingsPage() {
     }
   };
 
-  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    // If the user starts typing and the current value is the dummy dots, clear the dots first
-    if (hasExistingKey && geminiApiKey === '•'.repeat(30) && !val.includes('•'.repeat(30))) {
-      // User pressed backspace or a key while the full dummy string was there
-      setGeminiApiKey(val.replace(/•/g, ''));
-    } else {
-      setGeminiApiKey(val);
+  const handleSaveModel = async () => {
+    if (!geminiChatModel) {
+      setModelMessage({ type: 'error', text: 'Please select a model.' });
+      return;
     }
+
+    setIsSavingModel(true);
+    setModelMessage(null);
+
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ geminiChatModel }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to save model');
+      }
+
+      setGeminiChatModel(data.geminiChatModel || geminiChatModel);
+      setModelMessage({ type: 'success', text: 'Chat model saved successfully.' });
+    } catch (error) {
+      setModelMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Failed to save model',
+      });
+    } finally {
+      setIsSavingModel(false);
+    }
+  };
+
+  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (hasExistingKey && geminiApiKey === MASKED_KEY && !value.includes(MASKED_KEY)) {
+      setGeminiApiKey(value.replace(/\*/g, ''));
+      return;
+    }
+    setGeminiApiKey(value);
   };
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-500 mt-1">Configure your spending tracker</p>
+        <p className="mt-1 text-gray-500">Configure your spending tracker</p>
       </div>
 
-      {/* Gemini API Key Configuration */}
       <Card>
         <CardContent className="py-6">
-          <div className="flex items-start gap-3 mb-4">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Key className="w-5 h-5 text-blue-600" />
+          <div className="mb-4 flex items-start gap-3">
+            <div className="rounded-lg bg-blue-100 p-2">
+              <Key className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900">Google Gemini API Key</h3>
-              <p className="text-gray-500 text-sm">
-                Configure your Google Gemini API key to process PDF bank statements.
+              <h3 className="font-semibold text-gray-900">Google Gemini</h3>
+              <p className="text-sm text-gray-500">
+                Configure API key and default chat model.
               </p>
             </div>
           </div>
 
           {hasExistingKey && keyPreview && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
+            <div className="mb-4 flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-3">
               <div className="flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-green-600" />
+                <CheckCircle className="h-5 w-5 text-green-600" />
                 <span className="text-sm text-green-700">
-                  Key configured: <code className="bg-green-100 px-1 rounded">{keyPreview}</code>
+                  Key configured: <code className="rounded bg-green-100 px-1">{keyPreview}</code>
                 </span>
               </div>
               <button
@@ -175,7 +217,7 @@ export default function SettingsPage() {
               <Button onClick={handleSaveApiKey} isLoading={isSavingKey}>
                 {isSavingKey ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Validating...
                   </>
                 ) : (
@@ -189,38 +231,59 @@ export default function SettingsPage() {
                 rel="noopener noreferrer"
                 className="text-sm text-blue-600 hover:text-blue-700"
               >
-                Get an API key →
+                Get an API key
               </a>
             </div>
           </div>
 
           {keyMessage && (
-            <div className={`mt-3 flex items-center gap-2 text-sm ${keyMessage.type === 'success' ? 'text-green-600' : 'text-red-600'
-              }`}>
-              {keyMessage.type === 'success' ? (
-                <CheckCircle className="w-4 h-4" />
-              ) : (
-                <XCircle className="w-4 h-4" />
-              )}
+            <div className={`mt-3 flex items-center gap-2 text-sm ${keyMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+              {keyMessage.type === 'success' ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
               {keyMessage.text}
             </div>
           )}
+
+          <div className="mt-5 border-t border-gray-100 pt-4">
+            <Select
+              label="Default Chat Model"
+              value={geminiChatModel}
+              onChange={(e) => setGeminiChatModel(e.target.value)}
+              options={modelOptions}
+            />
+
+            <div className="mt-3">
+              <Button onClick={handleSaveModel} isLoading={isSavingModel}>
+                {isSavingModel ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving Model...
+                  </>
+                ) : (
+                  'Save Model'
+                )}
+              </Button>
+            </div>
+
+            {modelMessage && (
+              <div className={`mt-3 flex items-center gap-2 text-sm ${modelMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                {modelMessage.type === 'success' ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                {modelMessage.text}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
-      {/* Default Categories */}
       <Card>
         <CardContent className="py-6">
-          <h3 className="font-semibold text-gray-900 mb-2">Default Categories</h3>
-          <p className="text-gray-500 text-sm mb-4">
+          <h3 className="mb-2 font-semibold text-gray-900">Default Categories</h3>
+          <p className="mb-4 text-sm text-gray-500">
             Populate the database with default expense and income categories.
           </p>
           <Button onClick={handleSeedCategories} isLoading={isSeeding}>
             Seed Default Categories
           </Button>
-          {seedMessage && (
-            <p className="mt-3 text-sm text-green-600">{seedMessage}</p>
-          )}
+          {seedMessage && <p className="mt-3 text-sm text-green-600">{seedMessage}</p>}
         </CardContent>
       </Card>
     </div>
