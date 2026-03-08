@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthGate } from "@/components/auth/AuthGate";
 import { ToastProvider } from "@/components/ui";
+import { ChatWidget } from "@/components/chat";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,6 +34,7 @@ export default function RootLayout({
       >
         <ToastProvider>
           <AuthGate>{children}</AuthGate>
+          <ChatWidget />
         </ToastProvider>
       </body>
     </html>
