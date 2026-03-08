@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { validateQueryParams, ValidationError } from '@/lib/validation';
+import type { TransactionType } from '@/types';
 import { amountEqualsRange, parseSearchAmount } from '@/lib/searchAmount';
 import { expandCategoryIdsWithDescendants } from '@/lib/categoryDescendants';
 
@@ -52,7 +53,7 @@ export async function GET(request: Request) {
       );
       where.categoryId = { in: expandedCategoryIds };
     }
-    
+
     if (search) {
       const amountFromSearch = parseSearchAmount(search);
       where.OR = [
@@ -128,11 +129,11 @@ export async function GET(request: Request) {
         type: t.type,
         category: t.category
           ? {
-              id: t.category.id,
-              name: t.category.name,
-              color: t.category.color,
-              icon: t.category.icon,
-            }
+            id: t.category.id,
+            name: t.category.name,
+            color: t.category.color,
+            icon: t.category.icon,
+          }
           : null,
       });
     }
@@ -144,12 +145,12 @@ export async function GET(request: Request) {
 
     // Second pass: build hierarchy and bubble up totals
     const rootNodes: any[] = [];
-    
+
     // Process categories (that we actually have in the nodeMap or in allCategories)
     // We need to iterate over all nodes we created and put them in their parent
     // Wait, if a parent has no direct transactions, it might not be in nodeMap yet.
     // Let's create nodes for all categories that are ancestors of our active nodes.
-    
+
     // Build set of all required category IDs
     const requiredCategoryIds = new Set<string>();
     for (const catId of nodeMap.keys()) {
@@ -205,7 +206,7 @@ export async function GET(request: Request) {
       node.amount = totalAmount;
       node.count = totalCount;
       node.percentage = totalAmount > 0 ? (node.amount / (totalAmount > 0 ? totalAmount : 1)) : 0; // Temp percentage
-      
+
       // Sort subcategories by amount
       node.subcategories.sort((a: any, b: any) => b.amount - a.amount);
     };
