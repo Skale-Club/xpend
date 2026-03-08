@@ -5,6 +5,8 @@ export const GEMINI_CHAT_MODELS = [
 
 export const DEFAULT_GEMINI_CHAT_MODEL = GEMINI_CHAT_MODELS[0].value;
 
-export const GEMINI_CHAT_MODEL_VALUES = new Set(
+export const GEMINI_CHAT_MODEL_VALUES = new Set<string>(
   GEMINI_CHAT_MODELS.map((model) => model.value)
 );
+
+export type GeminiChatModel = (typeof GEMINI_CHAT_MODELS)[number]['value'];

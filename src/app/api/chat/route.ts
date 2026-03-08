@@ -3,7 +3,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { prisma } from '@/lib/db';
 import { chatTools } from '@/lib/chat/tools';
 import { buildSystemPrompt } from '@/lib/chat/systemPrompt';
-import { DEFAULT_GEMINI_CHAT_MODEL, GEMINI_CHAT_MODEL_VALUES } from '@/lib/chat/models';
+import { DEFAULT_GEMINI_CHAT_MODEL, GEMINI_CHAT_MODEL_VALUES, GeminiChatModel } from '@/lib/chat/models';
 
 // Get Gemini API key from database settings
 async function getGeminiChatConfig(): Promise<{ apiKey: string | null; chatModel: string }> {
@@ -21,7 +21,7 @@ async function getGeminiChatConfig(): Promise<{ apiKey: string | null; chatModel
         `;
         const storedModel = rows[0]?.geminiChatModel;
         const chatModel = storedModel && GEMINI_CHAT_MODEL_VALUES.has(storedModel)
-            ? storedModel
+            ? (storedModel as GeminiChatModel)
             : DEFAULT_GEMINI_CHAT_MODEL;
 
         return {
@@ -110,7 +110,6 @@ Note: Some data may not be available if the database is not fully configured.`;
             system: systemPrompt,
             messages,
             tools: chatTools,
-            maxSteps: 5, // Allow multiple tool calls in sequence
         });
 
         // Save user message to history if sessionId provided
@@ -144,7 +143,6 @@ Note: Some data may not be available if the database is not fully configured.`;
                     model: google(chatModel),
                     system: `${systemPrompt}\n\nYou must provide a final user-facing answer based on the tool results. Do not return empty output.`,
                     prompt: `User question: ${lastUserText}\n\nTool results (JSON): ${toolResultsText}\n\nProvide a concise and clear answer for the user.`,
-                    maxSteps: 1,
                 });
 
                 assistantText = fallbackResult.text?.trim() || '';
