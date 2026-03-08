@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Card, CardHeader, CardContent, Modal, Button } from '@/components/ui';
+import { Card, CardHeader, CardContent, Modal, Button, Loader } from '@/components/ui';
 import { DashboardFiltersPanel, DistributionCarousel } from '@/components/dashboard';
 import { CategoryTreeSelector } from '@/components/categories/CategoryTreeSelector';
 import { TimeSeriesChart } from '@/components/reports';
@@ -61,7 +61,7 @@ function CategoryRow({
 
   return (
     <React.Fragment>
-      <tr 
+      <tr
         className={`hover:bg-gray-50 transition-colors ${isExpanded && level === 0 ? 'bg-blue-50/30' : ''} ${hasChildren ? 'cursor-pointer' : ''}`}
         onClick={() => hasChildren && toggleExpanded(node.id)}
       >
@@ -92,13 +92,13 @@ function CategoryRow({
           {node.percentage.toFixed(1)}%
         </td>
       </tr>
-      
+
       {isExpanded && node.subcategories?.map((sub: any) => (
-        <CategoryRow 
-          key={sub.id} 
-          node={sub} 
-          level={level + 1} 
-          expandedIds={expandedIds} 
+        <CategoryRow
+          key={sub.id}
+          node={sub}
+          level={level + 1}
+          expandedIds={expandedIds}
           toggleExpanded={toggleExpanded}
           onEditTransactionCategory={onEditTransactionCategory}
           editingDescriptionId={editingDescriptionId}
@@ -227,7 +227,7 @@ export default function ReportsPage() {
   };
 
   const [filters, setFilters] = useState<DashboardFilters>({});
-  
+
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchData = useCallback(async (options?: { silent?: boolean }) => {
@@ -409,7 +409,7 @@ export default function ReportsPage() {
   if (isLoading && !data) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <Loader size={80} />
       </div>
     );
   }
@@ -580,71 +580,71 @@ export default function ReportsPage() {
                         const merchantKey = merchant.transactionIds[0] || merchant.name || `merchant-${i}`;
 
                         return (
-                        <tr key={i} className="hover:bg-gray-50">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2 min-w-0 w-full">
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                {merchant.transactionType ? getTypeIcon(merchant.transactionType) : null}
-                                {editingMerchantKey === merchantKey ? (
-                                  <input
-                                    autoFocus
-                                    value={tempMerchantName}
-                                    onChange={(e) => setTempMerchantName(e.target.value)}
-                                    onBlur={(e) => handleMerchantNameCommit(merchant, e.target.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') {
-                                        e.preventDefault();
-                                        e.currentTarget.blur();
-                                      } else if (e.key === 'Escape') {
-                                        e.preventDefault();
-                                        cancelMerchantNameEdit();
-                                      }
+                          <tr key={i} className="hover:bg-gray-50">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2 min-w-0 w-full">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  {merchant.transactionType ? getTypeIcon(merchant.transactionType) : null}
+                                  {editingMerchantKey === merchantKey ? (
+                                    <input
+                                      autoFocus
+                                      value={tempMerchantName}
+                                      onChange={(e) => setTempMerchantName(e.target.value)}
+                                      onBlur={(e) => handleMerchantNameCommit(merchant, e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          e.preventDefault();
+                                          e.currentTarget.blur();
+                                        } else if (e.key === 'Escape') {
+                                          e.preventDefault();
+                                          cancelMerchantNameEdit();
+                                        }
+                                      }}
+                                      className="w-full bg-white border border-blue-300 rounded px-2 py-1 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => startMerchantNameEdit(merchantKey, merchant.name || 'UNKNOWN')}
+                                      className="font-medium text-gray-900 truncate min-w-0 text-left hover:text-blue-600 transition-colors cursor-text"
+                                      title="Edit merchant name"
+                                    >
+                                      {merchant.name || 'UNKNOWN'}
+                                    </button>
+                                  )}
+                                </div>
+                                {merchant.primaryCategory ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => openMerchantCategorize(merchant)}
+                                    className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs shrink-0 hover:opacity-80 cursor-pointer transition-opacity"
+                                    style={{
+                                      backgroundColor: `${merchant.primaryCategory.color}20`,
+                                      color: merchant.primaryCategory.color,
                                     }}
-                                    className="w-full bg-white border border-blue-300 rounded px-2 py-1 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  />
+                                    title="Change category"
+                                  >
+                                    <CategoryIcon className="w-3.5 h-3.5" />
+                                    {merchant.primaryCategory.name}
+                                  </button>
                                 ) : (
                                   <button
                                     type="button"
-                                    onClick={() => startMerchantNameEdit(merchantKey, merchant.name || 'UNKNOWN')}
-                                    className="font-medium text-gray-900 truncate min-w-0 text-left hover:text-blue-600 transition-colors cursor-text"
-                                    title="Edit merchant name"
+                                    onClick={() => openMerchantCategorize(merchant)}
+                                    className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs shrink-0 bg-gray-100 text-gray-500 hover:bg-gray-200 cursor-pointer transition-colors"
+                                    title="Set category"
                                   >
-                                    {merchant.name || 'UNKNOWN'}
+                                    <Tag className="w-3.5 h-3.5" />
+                                    Uncategorized
                                   </button>
                                 )}
                               </div>
-                              {merchant.primaryCategory ? (
-                                <button
-                                  type="button"
-                                  onClick={() => openMerchantCategorize(merchant)}
-                                  className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs shrink-0 hover:opacity-80 cursor-pointer transition-opacity"
-                                  style={{
-                                    backgroundColor: `${merchant.primaryCategory.color}20`,
-                                    color: merchant.primaryCategory.color,
-                                  }}
-                                  title="Change category"
-                                >
-                                  <CategoryIcon className="w-3.5 h-3.5" />
-                                  {merchant.primaryCategory.name}
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => openMerchantCategorize(merchant)}
-                                  className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs shrink-0 bg-gray-100 text-gray-500 hover:bg-gray-200 cursor-pointer transition-colors"
-                                  title="Set category"
-                                >
-                                  <Tag className="w-3.5 h-3.5" />
-                                  Uncategorized
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-right text-gray-500 whitespace-nowrap">{merchant.count}</td>
-                          <td className="px-4 py-3 text-right font-medium text-gray-900 whitespace-nowrap">
-                            {formatCurrency(merchant.amount)}
-                          </td>
-                        </tr>
+                            </td>
+                            <td className="px-4 py-3 text-right text-gray-500 whitespace-nowrap">{merchant.count}</td>
+                            <td className="px-4 py-3 text-right font-medium text-gray-900 whitespace-nowrap">
+                              {formatCurrency(merchant.amount)}
+                            </td>
+                          </tr>
                         );
                       })
                     )}

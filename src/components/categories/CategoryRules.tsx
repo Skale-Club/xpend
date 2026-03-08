@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { Plus, Edit2, Trash2, Tag, Search, ArrowUpDown, ChevronDown, ChevronRight, CornerDownRight } from 'lucide-react';
-import { Card, CardContent, CardHeader, Modal, Input, Button, Select, Pagination } from '@/components/ui';
+import { Card, CardContent, CardHeader, Modal, Input, Button, Select, Pagination, Loader } from '@/components/ui';
 import { getCategoryIcon } from '@/lib/categoryIcons';
 import { CategoryTreeSelector } from './CategoryTreeSelector';
 import React from 'react';
@@ -37,7 +37,7 @@ export function CategoryRules() {
     const [isLoading, setIsLoading] = useState(true);
     const [editModal, setEditModal] = useState<CategorizationRule | null>(null);
     const [isSaving, setIsSaving] = useState(false);
-    
+
     // New states for organization
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
@@ -88,7 +88,7 @@ export function CategoryRules() {
 
         if (searchQuery.trim()) {
             const lowerQuery = searchQuery.toLowerCase();
-            filtered = rules.filter(r => 
+            filtered = rules.filter(r =>
                 r.keywords.toLowerCase().includes(lowerQuery) ||
                 r.category.name.toLowerCase().includes(lowerQuery)
             );
@@ -96,7 +96,7 @@ export function CategoryRules() {
 
         // Group by category
         const groups = new Map<string, { category: Category, rules: CategorizationRule[] }>();
-        
+
         filtered.forEach(rule => {
             const catId = rule.category.id;
             if (!groups.has(catId)) {
@@ -212,7 +212,7 @@ export function CategoryRules() {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-32">
-                <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                <Loader size={60} />
             </div>
         );
     }
@@ -230,7 +230,7 @@ export function CategoryRules() {
                         </Button>
                     }
                 />
-                
+
                 {rules.length > 0 && (
                     <div className="p-4 border-b border-gray-100 bg-gray-50/50">
                         <div className="relative max-w-md">
@@ -270,10 +270,10 @@ export function CategoryRules() {
                                     const cat = item.category;
                                     const isExpanded = expandedCategories.has(cat.id) || !!searchQuery;
                                     const CategoryIcon = getCategoryIcon(cat.icon);
-                                    
+
                                     return (
-                                        <div 
-                                            key={`header-${cat.id}`} 
+                                        <div
+                                            key={`header-${cat.id}`}
                                             className={`flex items-center gap-3 p-3 bg-gray-50/50 cursor-pointer hover:bg-gray-100 transition-colors ${searchQuery ? 'pointer-events-none' : ''}`}
                                             onClick={() => !searchQuery && toggleCategory(cat.id)}
                                         >
@@ -336,7 +336,7 @@ export function CategoryRules() {
                             })}
                         </div>
                     )}
-                    
+
                     {totalPages > 1 && (
                         <div className="border-t border-gray-100 rounded-b-xl overflow-hidden">
                             <Pagination

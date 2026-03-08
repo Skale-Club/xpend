@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { AccountList, AccountForm, AccountFormData } from '@/components/accounts';
 import { Account } from '@/types';
-import { useToast } from '@/components/ui';
+import { useToast, Loader } from '@/components/ui';
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -64,15 +64,15 @@ export default function AccountsPage() {
     try {
       const res = editingAccount
         ? await fetch(`/api/accounts/${editingAccount.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-          })
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        })
         : await fetch('/api/accounts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-          });
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
 
       if (!res.ok) {
         const errorData = await res.json();
@@ -91,7 +91,7 @@ export default function AccountsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <Loader size={80} />
       </div>
     );
   }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Card, CardHeader, CardContent, Pagination } from '@/components/ui';
+import { Card, CardHeader, CardContent, Pagination, Loader } from '@/components/ui';
 import { StatsCards, MonthlyChart, DashboardFiltersPanel, BalanceTrendChart, DistributionCarousel } from '@/components/dashboard';
 import { TransactionList } from '@/components/transactions';
 import { Account, Category, DashboardFilters, TransactionType } from '@/types';
@@ -148,7 +148,7 @@ export default function DashboardPage() {
   if (isLoading && !data) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <Loader size={80} />
       </div>
     );
   }
@@ -210,8 +210,8 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
-          <CardHeader 
-            title="Recent Transactions" 
+          <CardHeader
+            title="Recent Transactions"
             action={
               <Pagination
                 currentPage={currentPage}

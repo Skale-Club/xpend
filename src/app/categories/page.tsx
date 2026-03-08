@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
     Plus, Edit2, Trash2, ChevronRight, ChevronDown, DollarSign,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, Modal, Input, Button } from '@/components/ui';
+import { Card, CardContent, CardHeader, Modal, Input, Button, Loader } from '@/components/ui';
 import { CategoryRules } from '@/components/categories/CategoryRules';
 import { Category } from '@/types';
 import { CATEGORY_ICONS, getCategoryIcon } from '@/lib/categoryIcons';
@@ -305,7 +305,7 @@ export default function CategoriesPage() {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                <Loader size={80} />
             </div>
         );
     }

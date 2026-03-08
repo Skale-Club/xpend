@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Card, CardContent, Select } from '@/components/ui';
+import { Card, CardContent, Select, Loader } from '@/components/ui';
 import { TimelineUpload, TimelineYearSelector } from '@/components/statements';
 import { Account } from '@/types';
 import { getCurrentMonthYear } from '@/lib/utils';
@@ -100,7 +100,7 @@ export default function StatementsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <Loader size={80} />
       </div>
     );
   }
@@ -153,7 +153,7 @@ export default function StatementsPage() {
       {selectedAccountId && (
         isStatementsLoading ? (
           <div className="flex items-center justify-center h-64">
-            <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <Loader size={80} />
           </div>
         ) : (
           <TimelineUpload

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Card, CardHeader, CardContent, Pagination } from '@/components/ui';
+import { Card, CardHeader, CardContent, Pagination, Loader } from '@/components/ui';
 import { TransactionList } from '@/components/transactions';
 import { DashboardFiltersPanel } from '@/components/dashboard';
 import { Account, Category, DashboardFilters, TransactionType } from '@/types';
@@ -147,7 +147,7 @@ export default function TransactionsPage() {
   if (isLoading && !hasLoadedOnce) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <Loader size={80} />
       </div>
     );
   }
