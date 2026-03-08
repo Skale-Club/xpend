@@ -18,8 +18,8 @@ export function Card({ children, className = '', onClick }: CardProps) {
 }
 
 interface CardHeaderProps {
-  title: string;
-  subtitle?: string;
+  title: ReactNode;
+  subtitle?: ReactNode;
   action?: ReactNode;
 }
 

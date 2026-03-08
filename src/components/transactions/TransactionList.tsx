@@ -1,24 +1,239 @@
 'use client';
 
-import { useState } from 'react';
-import { ArrowUpRight, ArrowDownRight, ArrowRight, Tag, CheckSquare, Square, X, TagIcon } from 'lucide-react';
-import { Card, CardContent, Modal, Select, Button } from '@/components/ui';
-import { Transaction, Category } from '@/types';
+import { useMemo, useState } from 'react';
+import { ArrowUpRight, ArrowDownRight, ArrowRight, Tag, CheckSquare, Square, X, TagIcon, ChevronRight, ChevronDown, Search, Plus } from 'lucide-react';
+import { Card, CardContent, Modal, Button } from '@/components/ui';
+import { Transaction, Category, TransactionType } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { getCategoryIcon } from '@/lib/categoryIcons';
+import { CategoryTreeSelector } from '@/components/categories/CategoryTreeSelector';
 
 interface TransactionListProps {
   transactions: Transaction[];
   categories: Category[];
-  onCategorize: (transactionId: string, categoryId: string | null) => void;
-  onBulkCategorize?: (transactionIds: string[], categoryId: string | null) => void;
+  onCategorize: (transactionId: string, categoryId: string | null) => Promise<void> | void;
+  onDescriptionUpdate?: (transactionId: string, description: string) => Promise<void> | void;
+  onCategorizeByKeyword?: (
+    keyword: string,
+    categoryId: string | null,
+    transactionId: string
+  ) => Promise<void> | void;
+  onCategoryCreated?: () => Promise<void> | void;
+  onBulkCategorize?: (transactionIds: string[], categoryId: string | null) => Promise<void> | void;
 }
 
-export function TransactionList({ transactions, categories, onCategorize, onBulkCategorize }: TransactionListProps) {
+interface CategoryNode extends Category {
+  children: CategoryNode[];
+}
+
+function collectExpandableCategoryIds(nodes: CategoryNode[], result: Set<string> = new Set()) {
+  for (const node of nodes) {
+    if (node.children.length > 0) {
+      result.add(node.id);
+      collectExpandableCategoryIds(node.children, result);
+    }
+  }
+  return result;
+}
+
+function filterCategoryTree(nodes: CategoryNode[], query: string): CategoryNode[] {
+  return nodes
+    .map((node) => {
+      const filteredChildren = filterCategoryTree(node.children, query);
+      const selfMatches = node.name.toLowerCase().includes(query);
+
+      if (selfMatches || filteredChildren.length > 0) {
+        return { ...node, children: filteredChildren };
+      }
+
+      return null;
+    })
+    .filter((node): node is CategoryNode => node !== null);
+}
+
+const DESCRIPTION_STOP_WORDS = new Set([
+  'purchase', 'payment', 'mobile', 'transfer', 'debit', 'credit', 'card', 'online',
+  'store', 'market', 'visa', 'mastercard', 'pos', 'ach', 'withdrawal', 'deposit',
+  'transaction', 'check', 'bill', 'subscription', 'nh', 'ma', 'inc', 'llc',
+]);
+
+function suggestKeyword(description: string): string {
+  const words = description
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length >= 3 && /[a-z]/.test(word) && !DESCRIPTION_STOP_WORDS.has(word));
+
+  return words[0] || '';
+}
+
+function classifyRootCategory(name: string): 'income' | 'expense' | 'transfer' {
+  const normalized = name.toLowerCase();
+  if (normalized.includes('income') || normalized.includes('receita') || normalized.includes('entrada')) {
+    return 'income';
+  }
+  if (normalized.includes('transfer')) {
+    return 'transfer';
+  }
+  return 'expense';
+}
+
+export function TransactionList({
+  transactions,
+  categories,
+  onCategorize,
+  onDescriptionUpdate,
+  onCategorizeByKeyword,
+  onCategoryCreated,
+  onBulkCategorize
+}: TransactionListProps) {
   const [categorizeModal, setCategorizeModal] = useState<string | null>(null);
+  const [categorizeTargetTransaction, setCategorizeTargetTransaction] = useState<Transaction | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
   const [bulkCategorizeModal, setBulkCategorizeModal] = useState(false);
   const [bulkCategory, setBulkCategory] = useState<string>('');
+  const [isSavingBulkCategorization, setIsSavingBulkCategorization] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
+  const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(new Set());
+  const [applyToSimilar, setApplyToSimilar] = useState(false);
+  const [similarKeyword, setSimilarKeyword] = useState('');
+  const [isSavingCategorization, setIsSavingCategorization] = useState(false);
+  const [isCreateCategoryOpen, setIsCreateCategoryOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryParentId, setNewCategoryParentId] = useState('');
+  const [createCategoryError, setCreateCategoryError] = useState('');
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+
+  // Description editing state
+  const [editingDescriptionId, setEditingDescriptionId] = useState<string | null>(null);
+  const [tempDescription, setTempDescription] = useState('');
+
+  const categoryTree = useMemo(() => {
+    const categoryMap = new Map<string, CategoryNode>();
+    const rootCategories: CategoryNode[] = [];
+
+    for (const category of categories) {
+      categoryMap.set(category.id, { ...category, children: [] });
+    }
+
+    for (const category of categories) {
+      const node = categoryMap.get(category.id);
+      if (!node) continue;
+
+      if (category.parentId && categoryMap.has(category.parentId)) {
+        const parent = categoryMap.get(category.parentId);
+        parent?.children.push(node);
+      } else {
+        rootCategories.push(node);
+      }
+    }
+
+    const applyInheritedColors = (nodes: CategoryNode[], parentColor?: string) => {
+      for (const node of nodes) {
+        if (parentColor) {
+          node.color = parentColor;
+        }
+
+        if (node.children.length > 0) {
+          applyInheritedColors(node.children, node.color);
+        }
+      }
+    };
+    applyInheritedColors(rootCategories);
+
+    const sortTree = (nodes: CategoryNode[]) => {
+      nodes.sort((a, b) => a.name.localeCompare(b.name));
+      for (const node of nodes) {
+        if (node.children.length > 0) {
+          sortTree(node.children);
+        }
+      }
+    };
+
+    sortTree(rootCategories);
+    return rootCategories;
+  }, [categories]);
+
+  const effectiveCategoryColors = useMemo(() => {
+    const colorMap = new Map<string, string>();
+
+    const walk = (nodes: CategoryNode[]) => {
+      for (const node of nodes) {
+        colorMap.set(node.id, node.color);
+        if (node.children.length > 0) {
+          walk(node.children);
+        }
+      }
+    };
+
+    walk(categoryTree);
+    return colorMap;
+  }, [categoryTree]);
+
+  const effectiveCategoryIcons = useMemo(() => {
+    const iconMap = new Map<string, string | null | undefined>();
+
+    const walk = (nodes: CategoryNode[]) => {
+      for (const node of nodes) {
+        iconMap.set(node.id, node.icon);
+        if (node.children.length > 0) {
+          walk(node.children);
+        }
+      }
+    };
+
+    walk(categoryTree);
+    return iconMap;
+  }, [categoryTree]);
+
+  const normalizedCategorySearch = categorySearch.trim().toLowerCase();
+
+  const transactionTypeForModal = categorizeTargetTransaction?.type || null;
+
+  const allowedRootCategoryTree = useMemo(() => {
+    if (!transactionTypeForModal) return categoryTree;
+
+    const filteredRoots = categoryTree.filter((rootCategory) => {
+      const scope = classifyRootCategory(rootCategory.name);
+      if (transactionTypeForModal === 'INCOME') return scope === 'income';
+      if (transactionTypeForModal === 'TRANSFER') return scope === 'transfer';
+      return scope === 'expense';
+    });
+
+    // Fallback: if no compatible categories are found, keep all categories visible.
+    return filteredRoots.length > 0 ? filteredRoots : categoryTree;
+  }, [categoryTree, transactionTypeForModal]);
+
+  const filteredCategoryTree = useMemo(() => {
+    if (!normalizedCategorySearch) return allowedRootCategoryTree;
+    return filterCategoryTree(allowedRootCategoryTree, normalizedCategorySearch);
+  }, [allowedRootCategoryTree, normalizedCategorySearch]);
+
+  const autoExpandedFilteredIds = useMemo(
+    () => collectExpandableCategoryIds(filteredCategoryTree),
+    [filteredCategoryTree]
+  );
+
+  const showUncategorizedOption =
+    normalizedCategorySearch === '' || 'uncategorized'.includes(normalizedCategorySearch);
+
+  const parentCategoryOptions = useMemo(() => {
+    // Only allow selecting root categories as parent in quick-create flow.
+    return allowedRootCategoryTree.map((category) => ({
+      id: category.id,
+      label: category.name,
+      color: category.color,
+      icon: category.icon,
+    }));
+  }, [allowedRootCategoryTree]);
+
+  const bulkTransactionType = useMemo<TransactionType | null>(() => {
+    const selected = transactions.filter((transaction) => selectedTransactions.has(transaction.id));
+    if (selected.length === 0) return null;
+
+    const types = new Set(selected.map((transaction) => transaction.type));
+    return types.size === 1 ? selected[0].type : null;
+  }, [transactions, selectedTransactions]);
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -33,11 +248,127 @@ export function TransactionList({ transactions, categories, onCategorize, onBulk
     }
   };
 
-  const handleCategorize = () => {
+  const closeCategorizeModal = () => {
+    setCategorizeModal(null);
+    setCategorizeTargetTransaction(null);
+    setCategorySearch('');
+    setApplyToSimilar(false);
+    setSimilarKeyword('');
+    setIsCreateCategoryOpen(false);
+    setNewCategoryName('');
+    setNewCategoryParentId('');
+    setCreateCategoryError('');
+  };
+
+  const handleDescriptionCommit = (id: string, nextValue: string) => {
+    const nextDescription = nextValue.trim();
+    const currentDescription = transactions.find((t) => t.id === id)?.description.trim() || '';
+
+    // Close edit mode immediately so the first outside click always feels responsive.
+    setEditingDescriptionId(null);
+    setTempDescription('');
+
+    if (!onDescriptionUpdate || !nextDescription || nextDescription === currentDescription) {
+      return;
+    }
+
+    void onDescriptionUpdate(id, nextDescription);
+  };
+
+  const handleDescriptionCancel = () => {
+    setEditingDescriptionId(null);
+    setTempDescription('');
+  };
+
+  const handleCategorize = async () => {
     if (categorizeModal) {
-      onCategorize(categorizeModal, selectedCategory || null);
-      setCategorizeModal(null);
-      setSelectedCategory('');
+      const categoryId = selectedCategory || null;
+      setIsSavingCategorization(true);
+      try {
+        if (applyToSimilar && similarKeyword.trim() && onCategorizeByKeyword) {
+          await onCategorizeByKeyword(similarKeyword.trim(), categoryId, categorizeModal);
+        } else {
+          await onCategorize(categorizeModal, categoryId);
+        }
+        closeCategorizeModal();
+        setSelectedCategory('');
+      } finally {
+        setIsSavingCategorization(false);
+      }
+    }
+  };
+
+  const openCategorizeModal = (transaction: Transaction) => {
+    setCategorizeModal(transaction.id);
+    setCategorizeTargetTransaction(transaction);
+    setSelectedCategory(transaction.categoryId || '');
+    setCategorySearch('');
+    // Open with collapsed tree; user expands only what is needed.
+    setExpandedCategoryIds(new Set());
+    setApplyToSimilar(false);
+    setSimilarKeyword(suggestKeyword(transaction.description));
+    setIsCreateCategoryOpen(false);
+    setNewCategoryName('');
+    setNewCategoryParentId('');
+    setCreateCategoryError('');
+  };
+
+  const openCreateCategory = () => {
+    setIsCreateCategoryOpen(true);
+    setCreateCategoryError('');
+    setNewCategoryName(categorySearch.trim());
+    setNewCategoryParentId('');
+  };
+
+  const closeCreateCategory = () => {
+    setIsCreateCategoryOpen(false);
+    setNewCategoryName('');
+    setNewCategoryParentId('');
+    setCreateCategoryError('');
+  };
+
+  const handleCreateCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name) {
+      setCreateCategoryError('Category name is required.');
+      return;
+    }
+
+    setIsCreatingCategory(true);
+    setCreateCategoryError('');
+    try {
+      const response = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          parentId: newCategoryParentId || null,
+          color: '#6B7280',
+          icon: 'Tag',
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create category');
+      }
+
+      if (onCategoryCreated) {
+        await onCategoryCreated();
+      }
+
+      if (newCategoryParentId) {
+        setExpandedCategoryIds((previous) => new Set(previous).add(newCategoryParentId));
+      }
+
+      setSelectedCategory(result.id);
+      setCategorySearch('');
+      closeCreateCategory();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to create category';
+      setCreateCategoryError(message);
+    } finally {
+      setIsCreatingCategory(false);
     }
   };
 
@@ -59,17 +390,102 @@ export function TransactionList({ transactions, categories, onCategorize, onBulk
     setSelectedTransactions(newSelected);
   };
 
-  const handleBulkCategorize = () => {
-    if (onBulkCategorize && selectedTransactions.size > 0) {
-      onBulkCategorize(Array.from(selectedTransactions), bulkCategory || null);
+  const handleBulkCategorize = async () => {
+    if (!onBulkCategorize || selectedTransactions.size === 0) return;
+
+    setIsSavingBulkCategorization(true);
+    try {
+      await onBulkCategorize(Array.from(selectedTransactions), bulkCategory || null);
       setSelectedTransactions(new Set());
       setBulkCategorizeModal(false);
       setBulkCategory('');
+    } finally {
+      setIsSavingBulkCategorization(false);
     }
+  };
+
+  const openBulkCategorizeModal = () => {
+    setBulkCategory('');
+    setBulkCategorizeModal(true);
   };
 
   const clearSelection = () => {
     setSelectedTransactions(new Set());
+  };
+
+  const renderCategoryOption = (category: CategoryNode, level: number = 0) => {
+    const isSelected = selectedCategory === category.id;
+    const hasChildren = category.children.length > 0;
+    const isExpanded = normalizedCategorySearch
+      ? autoExpandedFilteredIds.has(category.id)
+      : expandedCategoryIds.has(category.id);
+    const CategoryIcon = getCategoryIcon(category.icon);
+
+    return (
+      <div key={category.id}>
+        <div
+          className={`w-full py-2.5 pr-3 flex items-center gap-3 transition-colors ${
+            isSelected ? 'bg-green-50 hover:bg-green-50' : 'hover:bg-gray-50'
+          }`}
+          style={{ paddingLeft: `${12 + level * 20}px` }}
+        >
+          {hasChildren ? (
+            <button
+              type="button"
+              disabled={!!normalizedCategorySearch}
+              onClick={() => {
+                setExpandedCategoryIds((previous) => {
+                  const next = new Set(previous);
+                  if (next.has(category.id)) {
+                    next.delete(category.id);
+                  } else {
+                    next.add(category.id);
+                  }
+                  return next;
+                });
+              }}
+              className={`p-0.5 rounded shrink-0 ${normalizedCategorySearch ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-gray-200'}`}
+              title={isExpanded ? 'Collapse category' : 'Expand category'}
+            >
+              {isExpanded ? (
+                <ChevronDown className="w-4 h-4 text-gray-500" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-gray-500" />
+              )}
+            </button>
+          ) : (
+            <span className="w-5 h-5 shrink-0" />
+          )}
+          {hasChildren ? (
+            <div className="flex-1 min-w-0 flex items-center gap-3 text-left select-none">
+              {isSelected ? (
+                <CheckSquare className="w-5 h-5 text-green-600 shrink-0" />
+              ) : (
+                <Square className="w-5 h-5 text-gray-300 shrink-0" />
+              )}
+              <CategoryIcon className="w-4 h-4 shrink-0" style={{ color: category.color }} />
+              <span className={`${isSelected ? 'text-green-900' : 'text-gray-800'} truncate`}>{category.name}</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setSelectedCategory(category.id)}
+              className="flex-1 min-w-0 flex items-center gap-3 text-left cursor-pointer"
+            >
+              {isSelected ? (
+                <CheckSquare className="w-5 h-5 text-green-600 shrink-0" />
+              ) : (
+                <Square className="w-5 h-5 text-gray-300 shrink-0" />
+              )}
+              <CategoryIcon className="w-4 h-4 shrink-0" style={{ color: category.color }} />
+              <span className={`${isSelected ? 'text-green-900' : 'text-gray-900'} truncate`}>{category.name}</span>
+            </button>
+          )}
+        </div>
+
+        {hasChildren && isExpanded && category.children.map((child) => renderCategoryOption(child, level + 1))}
+      </div>
+    );
   };
 
   return (
@@ -90,7 +506,7 @@ export function TransactionList({ transactions, categories, onCategorize, onBulk
           </div>
           <Button
             size="sm"
-            onClick={() => setBulkCategorizeModal(true)}
+            onClick={openBulkCategorizeModal}
           >
             <TagIcon className="w-4 h-4 mr-1" />
             Categorize Selected
@@ -126,18 +542,30 @@ export function TransactionList({ transactions, categories, onCategorize, onBulk
                 </span>
               </div>
 
-              {transactions.map((transaction) => (
+              {transactions.map((transaction) => {
+                const transactionCategoryId = transaction.category?.id || transaction.categoryId || null;
+                const resolvedCategoryColor = transaction.category
+                  ? (transactionCategoryId ? (effectiveCategoryColors.get(transactionCategoryId) || transaction.category.color) : transaction.category.color)
+                  : null;
+                const resolvedCategoryIconName = transaction.category
+                  ? (transactionCategoryId
+                      ? (effectiveCategoryIcons.get(transactionCategoryId) || transaction.category.icon)
+                      : transaction.category.icon)
+                  : null;
+                const CategoryIcon = getCategoryIcon(resolvedCategoryIconName);
+
+                return (
                 <div
                   key={transaction.id}
                   className={`p-4 hover:bg-gray-50 transition-colors ${selectedTransactions.has(transaction.id) ? 'bg-blue-50' : ''
                     }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
                       {/* Checkbox */}
                       <button
                         onClick={() => toggleSelect(transaction.id)}
-                        className="p-1 hover:bg-gray-200 rounded"
+                        className="p-1 hover:bg-gray-200 rounded shrink-0"
                       >
                         {selectedTransactions.has(transaction.id) ? (
                           <CheckSquare className="w-5 h-5 text-blue-600" />
@@ -146,62 +574,88 @@ export function TransactionList({ transactions, categories, onCategorize, onBulk
                         )}
                       </button>
 
-                      <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
                         {getTypeIcon(transaction.type)}
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900 line-clamp-1">
-                          {transaction.description}
-                        </p>
+                      <div className="flex-1 min-w-0">
+                        {editingDescriptionId === transaction.id ? (
+                          <input
+                            type="text"
+                            autoFocus
+                            value={tempDescription}
+                            onChange={(e) => setTempDescription(e.target.value)}
+                            onBlur={(e) => handleDescriptionCommit(transaction.id, e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                e.currentTarget.blur();
+                              }
+                              if (e.key === 'Escape') {
+                                e.preventDefault();
+                                handleDescriptionCancel();
+                              }
+                            }}
+                            className="w-full font-medium text-gray-900 border-b border-blue-500 focus:outline-none bg-transparent"
+                          />
+                        ) : (
+                          <p 
+                            className="font-medium text-gray-900 line-clamp-1 cursor-text hover:text-blue-600 transition-colors"
+                            onClick={() => {
+                              setEditingDescriptionId(transaction.id);
+                              setTempDescription(transaction.description);
+                            }}
+                          >
+                            {transaction.description}
+                          </p>
+                        )}
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-sm text-gray-500">
                             {formatDate(transaction.date)}
                           </span>
                           {transaction.category ? (
-                            <span
-                              className="px-2 py-0.5 text-xs rounded-full"
+                            <button
+                              type="button"
+                              className="px-2 py-0.5 text-xs rounded-full hover:opacity-80 transition-opacity cursor-pointer inline-flex items-center gap-1"
                               style={{
-                                backgroundColor: `${transaction.category.color}20`,
-                                color: transaction.category.color,
+                                backgroundColor: `${resolvedCategoryColor}20`,
+                                color: resolvedCategoryColor || transaction.category.color,
                               }}
+                              onClick={() => openCategorizeModal(transaction)}
+                              title="Edit category"
                             >
+                              <CategoryIcon className="w-3.5 h-3.5" />
                               {transaction.category.name}
-                            </span>
+                            </button>
                           ) : (
-                            <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-500">
+                            <button
+                              type="button"
+                              className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors cursor-pointer inline-flex items-center gap-1"
+                              onClick={() => openCategorizeModal(transaction)}
+                              title="Set category"
+                            >
+                              <Tag className="w-3.5 h-3.5" />
                               Uncategorized
-                            </span>
+                            </button>
                           )}
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p
-                          className={`font-semibold ${transaction.type === 'INCOME' ? 'text-green-600' : 'text-gray-900'
-                            }`}
-                        >
-                          {transaction.type === 'INCOME' ? '+' : '-'}
-                          {formatCurrency(transaction.amount)}
-                        </p>
-                        {transaction.account && (
-                          <p className="text-xs text-gray-500">{transaction.account.name}</p>
-                        )}
-                      </div>
-                      <button
-                        className="p-1 rounded-lg hover:bg-gray-100"
-                        onClick={() => {
-                          setCategorizeModal(transaction.id);
-                          setSelectedCategory(transaction.categoryId || '');
-                        }}
-                        title="Categorize"
+                    <div className="text-right">
+                      <p
+                        className={`font-semibold ${transaction.type === 'INCOME' ? 'text-green-600' : 'text-gray-900'
+                          }`}
                       >
-                        <Tag className="w-4 h-4 text-gray-400" />
-                      </button>
+                        {transaction.type === 'INCOME' ? '+' : '-'}
+                        {formatCurrency(transaction.amount)}
+                      </p>
+                      {transaction.account && (
+                        <p className="text-xs text-gray-500">{transaction.account.name}</p>
+                      )}
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -210,26 +664,174 @@ export function TransactionList({ transactions, categories, onCategorize, onBulk
       {/* Single Transaction Categorize Modal */}
       <Modal
         isOpen={!!categorizeModal}
-        onClose={() => setCategorizeModal(null)}
+        onClose={closeCategorizeModal}
         title="Categorize Transaction"
-        size="sm"
+        size="xl"
       >
         <div className="space-y-4">
-          <Select
-            label="Category"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            options={[
-              { value: '', label: 'Uncategorized' },
-              ...categories.map((c) => ({ value: c.id, label: c.name })),
-            ]}
-          />
+          <div className="space-y-2">
+            <p className="text-sm text-gray-600">Category</p>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={categorySearch}
+                  onChange={(e) => setCategorySearch(e.target.value)}
+                  placeholder="Search categories..."
+                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={openCreateCategory}>
+                <Plus className="w-4 h-4 mr-1" />
+                New
+              </Button>
+            </div>
+
+            {isCreateCategoryOpen && (
+              <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Create Category</p>
+                  <button
+                    type="button"
+                    onClick={closeCreateCategory}
+                    className="text-xs text-gray-500 hover:text-gray-700"
+                  >
+                    Close
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="Category name"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                />
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-gray-500">Parent</p>
+                  <div className="max-h-32 overflow-y-auto pr-1">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setNewCategoryParentId('')}
+                        className={`px-2.5 py-1.5 rounded-lg border text-sm inline-flex items-center gap-1.5 transition-colors ${
+                          newCategoryParentId === ''
+                            ? 'border-blue-500 bg-blue-50 text-blue-700'
+                            : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <Tag className="w-3.5 h-3.5" />
+                        Main category
+                      </button>
+                      {parentCategoryOptions.map((option) => {
+                        const OptionIcon = getCategoryIcon(option.icon);
+                        const isSelected = newCategoryParentId === option.id;
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => setNewCategoryParentId(option.id)}
+                            className={`px-2.5 py-1.5 rounded-lg border text-sm inline-flex items-center gap-1.5 transition-colors ${
+                              isSelected
+                                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            <OptionIcon className="w-3.5 h-3.5" style={{ color: option.color }} />
+                            <span>{option.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+                {createCategoryError && (
+                  <p className="text-sm text-red-600">{createCategoryError}</p>
+                )}
+                <div className="flex items-center justify-end gap-2">
+                  <Button type="button" variant="secondary" size="sm" onClick={closeCreateCategory} disabled={isCreatingCategory}>
+                    Cancel
+                  </Button>
+                  <Button type="button" size="sm" onClick={handleCreateCategory} disabled={isCreatingCategory || !newCategoryName.trim()}>
+                    {isCreatingCategory ? 'Creating...' : 'Create'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-[28rem] overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+              {showUncategorizedOption && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('')}
+                  className={`w-full px-3 py-2.5 flex items-center gap-3 text-left cursor-pointer transition-colors ${
+                    selectedCategory === '' ? 'bg-green-50 hover:bg-green-50' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="w-5 h-5 shrink-0" />
+                  {selectedCategory === '' ? (
+                    <CheckSquare className="w-5 h-5 text-green-600 shrink-0" />
+                  ) : (
+                    <Square className="w-5 h-5 text-gray-300 shrink-0" />
+                  )}
+                  <Tag className="w-4 h-4 shrink-0 text-gray-500" />
+                  <span className={`${selectedCategory === '' ? 'text-green-900' : 'text-gray-900'}`}>
+                    Uncategorized
+                  </span>
+                </button>
+              )}
+
+              {filteredCategoryTree.map((category) => renderCategoryOption(category))}
+
+              {!showUncategorizedOption && filteredCategoryTree.length === 0 && (
+                <div className="px-3 py-8 text-center text-sm text-gray-500">
+                  <p>No categories found.</p>
+                  <button
+                    type="button"
+                    onClick={openCreateCategory}
+                    className="mt-2 text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Create a new category
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="rounded-lg border border-gray-200 p-3 space-y-2">
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={applyToSimilar}
+                onChange={(e) => setApplyToSimilar(e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              Apply to similar transactions
+            </label>
+            {applyToSimilar && (
+              <>
+                <input
+                  type="text"
+                  value={similarKeyword}
+                  onChange={(e) => setSimilarKeyword(e.target.value)}
+                  placeholder="Keyword (e.g. xfinity)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500">
+                  Applies to transactions containing this keyword with the same transaction type.
+                  {categorizeTargetTransaction ? ` Source: "${categorizeTargetTransaction.description}"` : ''}
+                </p>
+              </>
+            )}
+          </div>
           <div className="flex gap-2 justify-end">
-            <Button variant="secondary" onClick={() => setCategorizeModal(null)}>
+            <Button variant="secondary" onClick={closeCategorizeModal} disabled={isSavingCategorization}>
               Cancel
             </Button>
-            <Button onClick={handleCategorize}>
-              Save
+            <Button
+              onClick={handleCategorize}
+              disabled={isSavingCategorization || (applyToSimilar && similarKeyword.trim().length < 2)}
+            >
+              {isSavingCategorization ? 'Saving...' : 'Save'}
             </Button>
           </div>
         </div>
@@ -240,27 +842,31 @@ export function TransactionList({ transactions, categories, onCategorize, onBulk
         isOpen={bulkCategorizeModal}
         onClose={() => setBulkCategorizeModal(false)}
         title={`Categorize ${selectedTransactions.size} Transactions`}
-        size="sm"
+        size="md"
       >
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
             Select a category to apply to all selected transactions.
           </p>
-          <Select
-            label="Category"
+          <CategoryTreeSelector
+            categories={categories}
             value={bulkCategory}
-            onChange={(e) => setBulkCategory(e.target.value)}
-            options={[
-              { value: '', label: 'Uncategorized' },
-              ...categories.map((c) => ({ value: c.id, label: c.name })),
-            ]}
+            onChange={setBulkCategory}
+            transactionType={bulkTransactionType}
+            allowParentSelection={false}
+            includeUncategorized
+            maxHeightClassName="max-h-72"
           />
           <div className="flex gap-2 justify-end">
-            <Button variant="secondary" onClick={() => setBulkCategorizeModal(false)}>
+            <Button
+              variant="secondary"
+              onClick={() => setBulkCategorizeModal(false)}
+              disabled={isSavingBulkCategorization}
+            >
               Cancel
             </Button>
-            <Button onClick={handleBulkCategorize}>
-              Apply
+            <Button onClick={handleBulkCategorize} disabled={isSavingBulkCategorization}>
+              {isSavingBulkCategorization ? 'Applying...' : 'Apply'}
             </Button>
           </div>
         </div>

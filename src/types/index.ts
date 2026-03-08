@@ -37,7 +37,7 @@ export interface Transaction {
   notes?: string | null;
   createdAt: Date;
   updatedAt: Date;
-  category?: { id: string; name: string; color: string } | null;
+  category?: { id: string; name: string; color: string; icon?: string | null } | null;
   account?: { name: string; color: string };
 }
 
@@ -77,6 +77,19 @@ export interface CategorySummary {
   count: number;
 }
 
+// Unified distribution data for DistributionCarousel
+export interface DistributionItem {
+  name: string;
+  amount: number;
+  color: string;
+}
+
+export interface DistributionData {
+  id: string;
+  title: string;
+  data: DistributionItem[];
+}
+
 export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   CHECKING: 'Checking Account',
   SAVINGS: 'Savings Account',
@@ -94,3 +107,54 @@ export const ACCOUNT_TYPE_ICONS: Record<AccountType, string> = {
   CASH: 'Wallet',
   OTHER: 'CircleDollarSign',
 };
+
+export interface CategoryReportNode {
+  id: string;
+  name: string;
+  color: string;
+  amount: number;
+  count: number;
+  percentage: number;
+  subcategories: CategoryReportNode[];
+  transactions: {
+    id: string;
+    description: string;
+    amount: number;
+    date: Date;
+    type: TransactionType;
+    category?: { id: string; name: string; color: string; icon?: string | null } | null;
+  }[];
+}
+
+export interface ReportData {
+  summary: {
+    totalAmount: number;
+    transactionCount: number;
+    averageAmount: number;
+  };
+  timeSeries: { date: string; amount: number }[];
+  categoryBreakdown: CategoryReportNode[];
+  merchantBreakdown: {
+    name: string;
+    amount: number;
+    count: number;
+    percentage: number;
+    transactionIds: string[];
+    transactionType?: TransactionType | null;
+    primaryCategory?: { id: string; name: string; color: string; icon?: string | null } | null;
+    color: string; // Consistent color for distribution charts
+  }[];
+  accountDistribution: { name: string; amount: number; color: string; count: number; percentage: number }[];
+  recurringVsOneTime: { name: string; amount: number; color: string; count: number; percentage: number }[];
+  weekdayPattern: { name: string; amount: number; color: string; count: number; percentage: number }[];
+  subcategoryData: { name: string; amount: number; color: string; count: number; percentage: number }[];
+  largestTransactions: {
+    id: string;
+    description: string;
+    amount: number;
+    date: Date;
+    type: TransactionType;
+    category?: { id: string; name: string; color: string; icon?: string | null } | null;
+    account?: { id: string; name: string } | null;
+  }[];
+}

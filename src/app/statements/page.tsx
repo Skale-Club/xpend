@@ -12,6 +12,7 @@ export default function StatementsPage() {
   const [selectedYear, setSelectedYear] = useState(getCurrentMonthYear().year);
   const [statements, setStatements] = useState<{ month: number; year: number; uploadedAt?: string; fileName?: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isStatementsLoading, setIsStatementsLoading] = useState(true);
 
   const years = [];
   const currentYear = new Date().getFullYear();
@@ -36,6 +37,7 @@ export default function StatementsPage() {
 
   const fetchStatements = useCallback(async () => {
     if (!selectedAccountId) return;
+    setIsStatementsLoading(true);
     try {
       const res = await fetch(`/api/statements?accountId=${selectedAccountId}&year=${selectedYear}`);
       const data = await res.json();
@@ -49,6 +51,8 @@ export default function StatementsPage() {
       })));
     } catch (error) {
       console.error('Failed to fetch statements:', error);
+    } finally {
+      setIsStatementsLoading(false);
     }
   }, [selectedAccountId, selectedYear]);
 
@@ -147,13 +151,19 @@ export default function StatementsPage() {
       </Card>
 
       {selectedAccountId && (
-        <TimelineUpload
-          accountId={selectedAccountId}
-          year={selectedYear}
-          existingStatements={statements}
-          onUpload={handleUpload}
-          onDelete={handleDelete}
-        />
+        isStatementsLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <TimelineUpload
+            accountId={selectedAccountId}
+            year={selectedYear}
+            existingStatements={statements}
+            onUpload={handleUpload}
+            onDelete={handleDelete}
+          />
+        )
       )}
     </div>
   );

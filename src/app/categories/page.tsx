@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { Plus, Edit2, Trash2, Folder, ChevronRight, ChevronDown, DollarSign } from 'lucide-react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import {
+    Plus, Edit2, Trash2, ChevronRight, ChevronDown, DollarSign,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, Modal, Input, Button } from '@/components/ui';
 import { CategoryRules } from '@/components/categories/CategoryRules';
 import { Category } from '@/types';
+import { CATEGORY_ICONS, getCategoryIcon } from '@/lib/categoryIcons';
 
 interface CategoryWithChildren extends Category {
     children?: CategoryWithChildren[];
@@ -20,19 +23,35 @@ interface CategoryFormData {
     budget: number | null;
 }
 
-const CATEGORY_ICONS = [
-    'Utensils', 'ShoppingCart', 'Car', 'Fuel', 'Train', 'ShoppingBag', 'Shirt', 'Laptop', 'Home',
-    'Film', 'Tv', 'Clapperboard', 'Gamepad2', 'Receipt', 'Zap', 'Droplet', 'Wifi', 'Phone', 'Building',
-    'Heart', 'Stethoscope', 'Pill', 'Shield', 'Dumbbell', 'TrendingUp', 'Briefcase', 'PiggyBank',
-    'ArrowRightLeft', 'Plus', 'Minus', 'MoreHorizontal', 'Wallet', 'CreditCard', 'Banknote',
-    'Coffee', 'Pizza', 'Cake', 'Beer', 'Gift', 'Plane', 'Bed', 'Music', 'Book', 'GraduationCap',
-];
+function findCategoryById(
+    nodes: CategoryWithChildren[],
+    categoryId: string
+): CategoryWithChildren | null {
+    for (const node of nodes) {
+        if (node.id === categoryId) return node;
+        if (node.children?.length) {
+            const found = findCategoryById(node.children, categoryId);
+            if (found) return found;
+        }
+    }
+    return null;
+}
 
 const CATEGORY_COLORS = [
     '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#84CC16', '#22C55E', '#10B981', '#14B8A6',
     '#06B6D4', '#0EA5E9', '#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF', '#EC4899',
     '#F43F5E', '#6B7280', '#64748B', '#78716C',
 ];
+
+type CategoryScope = 'income' | 'outcome';
+
+function classifyRootCategory(name: string): CategoryScope {
+    const normalized = name.toLowerCase();
+    if (normalized.includes('income') || normalized.includes('receita') || normalized.includes('entrada')) {
+        return 'income';
+    }
+    return 'outcome';
+}
 
 export default function CategoriesPage() {
     const [categories, setCategories] = useState<CategoryWithChildren[]>([]);
@@ -41,6 +60,7 @@ export default function CategoriesPage() {
     const [deleteModal, setDeleteModal] = useState<CategoryWithChildren | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+    const [activeScope, setActiveScope] = useState<CategoryScope>('outcome');
     const [formData, setFormData] = useState<CategoryFormData>({
         name: '',
         color: '#6B7280',
@@ -74,6 +94,20 @@ export default function CategoriesPage() {
                     rootCategories.push(node);
                 }
             }
+
+            // Subcategories inherit parent color in the UI tree representation.
+            const applyInheritedColors = (
+                nodes: CategoryWithChildren[],
+                parentColor?: string
+            ) => {
+                for (const node of nodes) {
+                    if (parentColor) node.color = parentColor;
+                    if (node.children?.length) {
+                        applyInheritedColors(node.children, node.color);
+                    }
+                }
+            };
+            applyInheritedColors(rootCategories);
 
             setCategories(rootCategories);
         } catch (error) {
@@ -153,25 +187,40 @@ export default function CategoriesPage() {
 
     const openEditModal = (category?: CategoryWithChildren, parentId?: string) => {
         if (category) {
+            const parentColor = category.parentId
+                ? findCategoryById(categories, category.parentId)?.color
+                : null;
             setEditModal(category);
             setFormData({
                 name: category.name,
-                color: category.color,
+                color: parentColor || category.color,
                 icon: category.icon || 'Tag',
                 parentId: category.parentId || null,
                 budget: category.budget || null,
             });
         } else {
+            const parentColor = parentId
+                ? findCategoryById(categories, parentId)?.color
+                : null;
             setEditModal({ id: '' } as CategoryWithChildren);
             setFormData({
                 name: '',
-                color: '#6B7280',
+                color: parentColor || '#6B7280',
                 icon: 'Tag',
                 parentId: parentId || null,
                 budget: null,
             });
         }
     };
+
+    const selectedParent = formData.parentId
+        ? findCategoryById(categories, formData.parentId)
+        : null;
+
+    const visibleRootCategories = useMemo(() => {
+        const filtered = categories.filter((category) => classifyRootCategory(category.name) === activeScope);
+        return filtered.length > 0 ? filtered : categories;
+    }, [categories, activeScope]);
 
     const renderCategory = (category: CategoryWithChildren, level: number = 0) => {
         const hasChildren = category.children && category.children.length > 0;
@@ -180,8 +229,9 @@ export default function CategoriesPage() {
         return (
             <div key={category.id}>
                 <div
-                    className={`flex items-center justify-between p-3 hover:bg-gray-50 transition-colors ${level > 0 ? 'ml-8 border-l-2 border-gray-200' : ''
+                    className={`flex items-center justify-between py-3 pr-3 hover:bg-gray-50 transition-colors ${level > 0 ? 'border-l-2 border-gray-200' : ''
                         }`}
+                    style={{ paddingLeft: `${12 + level * 28}px` }}
                 >
                     <div className="flex items-center gap-3">
                         {hasChildren && (
@@ -202,7 +252,10 @@ export default function CategoriesPage() {
                             className="w-8 h-8 rounded-lg flex items-center justify-center"
                             style={{ backgroundColor: `${category.color}20` }}
                         >
-                            <Folder className="w-4 h-4" style={{ color: category.color }} />
+                            {(() => {
+                                const IconComponent = getCategoryIcon(category.icon || 'Tag');
+                                return <IconComponent className="w-4 h-4" style={{ color: category.color }} />;
+                            })()}
                         </div>
 
                         <div>
@@ -274,15 +327,41 @@ export default function CategoriesPage() {
                 <CardHeader
                     title="Category List"
                     subtitle="Manage your transaction categories"
-                />
-                <CardContent className="p-0 divide-y divide-gray-100">
-                    {categories.length === 0 ? (
-                        <div className="p-8 text-center text-gray-500">
-                            <p>No categories yet. Click &ldquo;Add Category&rdquo; to create one.</p>
+                    action={
+                        <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1 shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => setActiveScope('outcome')}
+                                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${activeScope === 'outcome'
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-900'
+                                    }`}
+                            >
+                                Outcome
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveScope('income')}
+                                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${activeScope === 'income'
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-900'
+                                    }`}
+                            >
+                                Income
+                            </button>
                         </div>
-                    ) : (
-                        categories.map((category) => renderCategory(category))
-                    )}
+                    }
+                />
+                <CardContent className="p-0">
+                    <div className="divide-y divide-gray-100">
+                        {visibleRootCategories.length === 0 ? (
+                            <div className="p-8 text-center text-gray-500">
+                                <p>No categories yet. Click &ldquo;Add Category&rdquo; to create one.</p>
+                            </div>
+                        ) : (
+                            visibleRootCategories.map((category) => renderCategory(category))
+                        )}
+                    </div>
                 </CardContent>
             </Card>
 
@@ -306,36 +385,55 @@ export default function CategoriesPage() {
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
-                        <div className="flex flex-wrap gap-2">
-                            {CATEGORY_COLORS.map((color) => (
-                                <button
-                                    key={color}
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, color })}
-                                    className={`w-8 h-8 rounded-lg border-2 transition-transform ${formData.color === color ? 'border-gray-900 scale-110' : 'border-transparent'
-                                        }`}
-                                    style={{ backgroundColor: color }}
-                                />
-                            ))}
-                        </div>
+                        {formData.parentId ? (
+                            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                                <p className="text-sm text-gray-600">
+                                    This subcategory inherits color from {selectedParent?.name || 'its parent'}.
+                                </p>
+                                <div className="mt-2 flex items-center gap-2">
+                                    <span
+                                        className="w-4 h-4 rounded-full border border-white shadow-sm"
+                                        style={{ backgroundColor: formData.color }}
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">{formData.color}</span>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex flex-wrap gap-2">
+                                {CATEGORY_COLORS.map((color) => (
+                                    <button
+                                        key={color}
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, color })}
+                                        className={`w-8 h-8 rounded-lg border-2 transition-transform ${formData.color === color ? 'border-gray-900 scale-110' : 'border-transparent'
+                                            }`}
+                                        style={{ backgroundColor: color }}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Icon</label>
                         <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 border rounded-lg">
-                            {CATEGORY_ICONS.map((icon) => (
-                                <button
-                                    key={icon}
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, icon })}
-                                    className={`p-2 rounded-lg border transition-colors ${formData.icon === icon
-                                        ? 'border-blue-500 bg-blue-50'
-                                        : 'border-gray-200 hover:bg-gray-50'
-                                        }`}
-                                >
-                                    <Folder className="w-5 h-5" style={{ color: formData.color }} />
-                                </button>
-                            ))}
+                            {CATEGORY_ICONS.map((iconName) => {
+                                const IconComponent = getCategoryIcon(iconName);
+                                return (
+                                    <button
+                                        key={iconName}
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, icon: iconName })}
+                                        className={`p-2 rounded-lg border transition-colors ${formData.icon === iconName
+                                            ? 'border-blue-500 bg-blue-50'
+                                            : 'border-gray-200 hover:bg-gray-50'
+                                            }`}
+                                        title={iconName}
+                                    >
+                                        <IconComponent className="w-5 h-5" style={{ color: formData.color }} />
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 

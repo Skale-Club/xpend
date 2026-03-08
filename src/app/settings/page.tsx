@@ -26,6 +26,9 @@ export default function SettingsPage() {
       const data = await res.json();
       setHasExistingKey(data.hasGeminiApiKey);
       setKeyPreview(data.geminiApiKeyPreview);
+      if (data.hasGeminiApiKey) {
+        setGeminiApiKey('•'.repeat(30));
+      }
     } catch (error) {
       console.error('Failed to load settings:', error);
     }
@@ -46,6 +49,12 @@ export default function SettingsPage() {
   };
 
   const handleSaveApiKey = async () => {
+    // If the user clicks save but the value is just the dummy dots, don't do anything
+    if (geminiApiKey === '•'.repeat(30)) {
+      setKeyMessage({ type: 'success', text: 'API key is already saved!' });
+      return;
+    }
+
     if (!geminiApiKey.trim()) {
       setKeyMessage({ type: 'error', text: 'Please enter a valid API key.' });
       return;
@@ -68,9 +77,9 @@ export default function SettingsPage() {
       }
 
       setKeyMessage({ type: 'success', text: 'API key saved successfully!' });
-      setGeminiApiKey('');
       setHasExistingKey(true);
       setKeyPreview(data.geminiApiKeyPreview);
+      setGeminiApiKey('•'.repeat(30));
     } catch (error) {
       setKeyMessage({
         type: 'error',
@@ -95,10 +104,22 @@ export default function SettingsPage() {
       setKeyMessage({ type: 'success', text: 'API key removed.' });
       setHasExistingKey(false);
       setKeyPreview(null);
+      setGeminiApiKey('');
     } catch {
       setKeyMessage({ type: 'error', text: 'Failed to remove API key' });
     } finally {
       setIsSavingKey(false);
+    }
+  };
+
+  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    // If the user starts typing and the current value is the dummy dots, clear the dots first
+    if (hasExistingKey && geminiApiKey === '•'.repeat(30) && !val.includes('•'.repeat(30))) {
+      // User pressed backspace or a key while the full dummy string was there
+      setGeminiApiKey(val.replace(/•/g, ''));
+    } else {
+      setGeminiApiKey(val);
     }
   };
 
@@ -146,8 +167,8 @@ export default function SettingsPage() {
               type="password"
               placeholder="AIzaSy..."
               value={geminiApiKey}
-              onChange={(e) => setGeminiApiKey(e.target.value)}
-              label="New API Key"
+              onChange={handleApiKeyChange}
+              label={hasExistingKey ? 'Update API Key' : 'New API Key'}
             />
 
             <div className="flex items-center gap-3">

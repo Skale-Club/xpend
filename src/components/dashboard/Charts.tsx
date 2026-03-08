@@ -64,7 +64,7 @@ export function CategoryPieChart({ data }: CategoryPieChartProps) {
           cx="50%"
           cy="50%"
           outerRadius={100}
-          label={({ name, value }) => `${name} ($${value})`}
+          label={({ name, value }) => `${name} (${formatCurrency(Number(value))})`}
           labelLine={false}
         >
           {data.map((entry, index) => (

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { validateTransactionUpdate, validateQueryParams, ValidationError } from '@/lib/validation';
+import { amountEqualsRange, parseSearchAmount } from '@/lib/searchAmount';
+import { expandCategoryIdsWithDescendants } from '@/lib/categoryDescendants';
 
 export async function GET(request: Request) {
   try {
@@ -32,7 +34,13 @@ export async function GET(request: Request) {
     const where: Record<string, unknown> = {};
 
     if (accountId) where.accountId = accountId;
-    if (categoryId) where.categoryId = categoryId;
+    if (categoryId) {
+      const allCategories = await prisma.category.findMany({
+        select: { id: true, parentId: true },
+      });
+      const expandedCategoryIds = expandCategoryIdsWithDescendants(allCategories, [categoryId]);
+      where.categoryId = { in: expandedCategoryIds };
+    }
     if (type) where.type = type;
     if (dateFrom || dateTo) {
       where.date = {};
@@ -45,7 +53,14 @@ export async function GET(request: Request) {
       if (maxAmount) (where.amount as Record<string, number>).lte = parseFloat(maxAmount);
     }
     if (search) {
-      where.description = { contains: search };
+      const amountFromSearch = parseSearchAmount(search);
+      where.OR = [
+        { description: { contains: search, mode: 'insensitive' } },
+        { notes: { contains: search, mode: 'insensitive' } },
+        { category: { name: { contains: search, mode: 'insensitive' } } },
+        { account: { name: { contains: search, mode: 'insensitive' } } },
+        ...(amountFromSearch !== null ? [{ amount: amountEqualsRange(amountFromSearch) }] : []),
+      ];
     }
 
     // Get total count for pagination
@@ -60,7 +75,7 @@ export async function GET(request: Request) {
       orderBy: { date: 'desc' },
       include: {
         account: { select: { name: true, color: true } },
-        category: { select: { name: true, color: true } },
+        category: { select: { id: true, name: true, color: true, icon: true } },
       },
       take: pageLimit,
       skip: pageOffset,
@@ -87,17 +102,19 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, categoryId, notes } = body;
+    const { id, categoryId, description, notes } = body;
 
     // Validate input
-    validateTransactionUpdate({ id, categoryId, notes });
+    validateTransactionUpdate({ id, categoryId, description, notes });
+
+    const data: Record<string, unknown> = {};
+    if (categoryId !== undefined) data.categoryId = categoryId || null;
+    if (description !== undefined) data.description = description;
+    if (notes !== undefined) data.notes = notes || null;
 
     const transaction = await prisma.transaction.update({
       where: { id },
-      data: {
-        categoryId: categoryId || null,
-        notes: notes || null,
-      },
+      data,
     });
 
     return NextResponse.json(transaction);

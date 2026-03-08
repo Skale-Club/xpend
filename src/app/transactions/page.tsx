@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Card, CardHeader, CardContent } from '@/components/ui';
+import { Card, CardHeader, CardContent, Pagination } from '@/components/ui';
 import { TransactionList } from '@/components/transactions';
 import { DashboardFiltersPanel } from '@/components/dashboard';
 import { Account, Category, DashboardFilters, TransactionType } from '@/types';
@@ -16,7 +16,7 @@ interface Transaction {
   isRecurring: boolean;
   createdAt: Date;
   updatedAt: Date;
-  category: { id: string; name: string; color: string } | null;
+  category: { id: string; name: string; color: string; icon?: string | null } | null;
   account: { name: string; color: string };
 }
 
@@ -26,9 +26,17 @@ export default function TransactionsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [filters, setFilters] = useState<DashboardFilters>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState(50);
+  const [totalCount, setTotalCount] = useState(0);
+
+  const fetchData = useCallback(async (options?: { silent?: boolean; page?: number }) => {
+    const silent = options?.silent ?? false;
+    const page = options?.page ?? currentPage;
+    if (!silent) setIsLoading(true);
     try {
       const params = new URLSearchParams();
       if (filters.dateFrom) params.set('dateFrom', filters.dateFrom.toISOString());
@@ -39,6 +47,10 @@ export default function TransactionsPage() {
       if (filters.minAmount) params.set('minAmount', filters.minAmount.toString());
       if (filters.maxAmount) params.set('maxAmount', filters.maxAmount.toString());
       if (filters.searchQuery) params.set('search', filters.searchQuery);
+
+      // Add pagination params
+      params.set('limit', limit.toString());
+      params.set('offset', ((page - 1) * limit).toString());
 
       const [transactionsRes, accountsRes, categoriesRes] = await Promise.all([
         fetch(`/api/transactions?${params}`),
@@ -62,18 +74,31 @@ export default function TransactionsPage() {
           type: t.type as TransactionType,
         }))
       );
+      setTotalCount(transactionsData.pagination?.total || 0);
       setAccounts(Array.isArray(accountsData) ? accountsData : []);
       setCategories(Array.isArray(categoriesData) ? categoriesData : []);
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
+      setHasLoadedOnce(true);
     }
-  }, [filters]);
+  }, [filters, limit, currentPage]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Handle page change
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    fetchData({ page: newPage });
+  };
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
 
   const handleCategorize = async (transactionId: string, categoryId: string | null) => {
     await fetch('/api/transactions', {
@@ -81,7 +106,33 @@ export default function TransactionsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: transactionId, categoryId }),
     });
-    fetchData();
+    await fetchData({ silent: true });
+  };
+
+  const handleDescriptionUpdate = async (transactionId: string, description: string) => {
+    await fetch('/api/transactions', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: transactionId, description }),
+    });
+    await fetchData({ silent: true });
+  };
+
+  const handleCategorizeByKeyword = async (
+    keyword: string,
+    categoryId: string | null,
+    transactionId: string
+  ) => {
+    await fetch('/api/transactions/categorize-by-keyword', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keyword, categoryId, transactionId }),
+    });
+    await fetchData({ silent: true });
+  };
+
+  const handleCategoryCreated = async () => {
+    await fetchData({ silent: true });
   };
 
   const handleBulkCategorize = async (transactionIds: string[], categoryId: string | null) => {
@@ -90,10 +141,10 @@ export default function TransactionsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ transactionIds, categoryId }),
     });
-    fetchData();
+    await fetchData({ silent: true });
   };
 
-  if (isLoading) {
+  if (isLoading && !hasLoadedOnce) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -118,15 +169,34 @@ export default function TransactionsPage() {
       <Card>
         <CardHeader
           title="All Transactions"
-          subtitle={`${transactions.length} transactions found`}
+          subtitle={`${totalCount} transactions found`}
+          action={
+            <Pagination
+              currentPage={currentPage}
+              totalCount={totalCount}
+              pageSize={limit}
+              onPageChange={handlePageChange}
+            />
+          }
         />
         <CardContent className="p-0">
           <TransactionList
             transactions={transactions}
             categories={categories}
             onCategorize={handleCategorize}
+            onDescriptionUpdate={handleDescriptionUpdate}
+            onCategorizeByKeyword={handleCategorizeByKeyword}
+            onCategoryCreated={handleCategoryCreated}
             onBulkCategorize={handleBulkCategorize}
           />
+          <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 rounded-b-xl">
+            <Pagination
+              currentPage={currentPage}
+              totalCount={totalCount}
+              pageSize={limit}
+              onPageChange={handlePageChange}
+            />
+          </div>
         </CardContent>
       </Card>
     </div>

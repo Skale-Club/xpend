@@ -1,6 +1,26 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
+async function getDescendantIds(categoryId: string): Promise<string[]> {
+    const descendants: string[] = [];
+    let currentLevelIds = [categoryId];
+
+    while (currentLevelIds.length > 0) {
+        const children = await prisma.category.findMany({
+            where: { parentId: { in: currentLevelIds } },
+            select: { id: true },
+        });
+
+        const childIds = children.map((child) => child.id);
+        if (childIds.length === 0) break;
+
+        descendants.push(...childIds);
+        currentLevelIds = childIds;
+    }
+
+    return descendants;
+}
+
 export async function GET(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
@@ -36,6 +56,7 @@ export async function PUT(
         const { id } = await params;
         const body = await request.json();
         const { name, color, icon, parentId, budget } = body;
+        const nextParentId = parentId || null;
 
         // Check if category exists
         const existing = await prisma.category.findUnique({
@@ -47,20 +68,45 @@ export async function PUT(
         }
 
         // Check for circular reference (category can't be its own parent)
-        if (parentId === id) {
+        if (nextParentId === id) {
             return NextResponse.json({ error: 'Category cannot be its own parent' }, { status: 400 });
+        }
+
+        let resolvedColor = color || existing.color;
+
+        if (nextParentId) {
+            const parent = await prisma.category.findUnique({
+                where: { id: nextParentId },
+                select: { color: true },
+            });
+
+            if (!parent) {
+                return NextResponse.json({ error: 'Parent category not found' }, { status: 400 });
+            }
+
+            // Subcategories always inherit parent color
+            resolvedColor = parent.color;
         }
 
         const category = await prisma.category.update({
             where: { id },
             data: {
                 name,
-                color,
+                color: resolvedColor,
                 icon,
-                parentId: parentId || null,
+                parentId: nextParentId,
                 budget: budget || null,
             },
         });
+
+        // Keep descendants in sync with the category color.
+        const descendantIds = await getDescendantIds(id);
+        if (descendantIds.length > 0) {
+            await prisma.category.updateMany({
+                where: { id: { in: descendantIds } },
+                data: { color: resolvedColor },
+            });
+        }
 
         return NextResponse.json(category);
     } catch (error) {

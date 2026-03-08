@@ -57,6 +57,7 @@ export function validateAccountData(data: {
 export function validateTransactionUpdate(data: {
   id?: unknown;
   categoryId?: unknown;
+  description?: unknown;
   notes?: unknown;
 }) {
   const errors: string[] = [];
@@ -67,6 +68,10 @@ export function validateTransactionUpdate(data: {
 
   if (data.categoryId !== null && data.categoryId !== undefined && typeof data.categoryId !== 'string') {
     errors.push('Category ID must be a string or null');
+  }
+
+  if (data.description !== undefined && (typeof data.description !== 'string' || data.description.trim().length === 0)) {
+    errors.push('Description must be a non-empty string');
   }
 
   if (data.notes !== null && data.notes !== undefined && typeof data.notes !== 'string') {

@@ -14,10 +14,12 @@ import {
   X,
   Tags,
   LogOut,
+  BarChart3,
 } from 'lucide-react';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/reports', label: 'Reports', icon: BarChart3 },
   { href: '/accounts', label: 'Accounts', icon: Wallet },
   { href: '/statements', label: 'Upload Statements', icon: Upload },
   { href: '/transactions', label: 'Transactions', icon: List },

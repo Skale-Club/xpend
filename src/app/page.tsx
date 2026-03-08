@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Card, CardHeader, CardContent } from '@/components/ui';
-import { StatsCards, MonthlyChart, CategoryPieChart, DashboardFiltersPanel, BalanceTrendChart } from '@/components/dashboard';
+import { Card, CardHeader, CardContent, Pagination } from '@/components/ui';
+import { StatsCards, MonthlyChart, DashboardFiltersPanel, BalanceTrendChart, DistributionCarousel } from '@/components/dashboard';
 import { TransactionList } from '@/components/transactions';
 import { Account, Category, DashboardFilters, TransactionType } from '@/types';
+import { buildDistributionTemplateItems, categorySummaryToDistribution } from '@/lib/distributionHelpers';
 
 interface DashboardData {
   totalIncome: number;
@@ -12,7 +13,20 @@ interface DashboardData {
   totalBalance: number;
   transactionCount: number;
   monthlyData: { month: string; year: number; income: number; expenses: number; balance: number }[];
-  categoryData: { categoryId: string; categoryName: string; color: string; total: number; percentage: number; count: number }[];
+  expenseCategoryData: { categoryId: string; categoryName: string; color: string; total: number; percentage: number; count: number }[];
+  incomeCategoryData: { categoryId: string; categoryName: string; color: string; total: number; percentage: number; count: number }[];
+  merchantData: { categoryId: string; categoryName: string; color: string; total: number; percentage: number; count: number }[];
+  accountDistribution: { categoryId: string; categoryName: string; color: string; total: number; percentage: number; count: number }[];
+  recurringVsOneTime: { categoryId: string; categoryName: string; color: string; total: number; percentage: number; count: number }[];
+  weekdayPattern: { categoryId: string; categoryName: string; color: string; total: number; percentage: number; count: number }[];
+  subcategoryData: { categoryId: string; categoryName: string; color: string; total: number; percentage: number; count: number }[];
+  parentCategoryBreakdown: {
+    parentId: string;
+    parentName: string;
+    parentColor: string;
+    total: number;
+    subcategories: { categoryId: string; categoryName: string; color: string; total: number; percentage: number; count: number }[];
+  }[];
   balanceTrend: { month: string; balance: number }[];
   transactions: {
     id: string;
@@ -20,9 +34,14 @@ interface DashboardData {
     amount: number;
     type: string;
     date: string;
-    category: { id: string; name: string; color: string } | null;
+    category: { id: string; name: string; color: string; icon?: string | null } | null;
     account: { name: string; color: string };
   }[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+  };
 }
 
 export default function DashboardPage() {
@@ -32,8 +51,14 @@ export default function DashboardPage() {
   const [filters, setFilters] = useState<DashboardFilters>({});
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
+  // Pagination state for Recent Transactions
+  const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+
+  const fetchData = useCallback(async (options?: { silent?: boolean; page?: number }) => {
+    const silent = options?.silent ?? false;
+    const page = options?.page ?? currentPage;
+    if (!silent) setIsLoading(true);
     try {
       const params = new URLSearchParams();
       if (filters.dateFrom) params.set('dateFrom', filters.dateFrom.toISOString());
@@ -44,6 +69,10 @@ export default function DashboardPage() {
       if (filters.minAmount) params.set('minAmount', filters.minAmount.toString());
       if (filters.maxAmount) params.set('maxAmount', filters.maxAmount.toString());
       if (filters.searchQuery) params.set('search', filters.searchQuery);
+
+      // Add pagination params for Recent Transactions list
+      params.set('limit', limit.toString());
+      params.set('offset', ((page - 1) * limit).toString());
 
       const [dashboardRes, accountsRes, categoriesRes] = await Promise.all([
         fetch(`/api/dashboard?${params}`),
@@ -63,13 +92,23 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
-  }, [filters]);
+  }, [filters, limit, currentPage]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    fetchData({ page: newPage });
+  };
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
 
   const handleCategorize = async (transactionId: string, categoryId: string | null) => {
     await fetch('/api/transactions', {
@@ -77,10 +116,36 @@ export default function DashboardPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: transactionId, categoryId }),
     });
-    fetchData();
+    await fetchData({ silent: true });
   };
 
-  if (isLoading) {
+  const handleDescriptionUpdate = async (transactionId: string, description: string) => {
+    await fetch('/api/transactions', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: transactionId, description }),
+    });
+    await fetchData({ silent: true });
+  };
+
+  const handleCategorizeByKeyword = async (
+    keyword: string,
+    categoryId: string | null,
+    transactionId: string
+  ) => {
+    await fetch('/api/transactions/categorize-by-keyword', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keyword, categoryId, transactionId }),
+    });
+    await fetchData({ silent: true });
+  };
+
+  const handleCategoryCreated = async () => {
+    await fetchData({ silent: true });
+  };
+
+  if (isLoading && !data) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -125,23 +190,37 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader title="Expenses by Category" />
-          <CardContent>
-            {data.categoryData.length > 0 ? (
-              <CategoryPieChart data={data.categoryData} />
-            ) : (
-              <div className="h-[300px] flex items-center justify-center text-gray-500">
-                No expense data available
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <DistributionCarousel
+          items={buildDistributionTemplateItems({
+            expenseByCategory: categorySummaryToDistribution(data.expenseCategoryData),
+            expenseBySubcategory: categorySummaryToDistribution(data.subcategoryData),
+            parentBreakdowns: data.parentCategoryBreakdown.map((parent) => ({
+              id: `parent-breakdown-${parent.parentId}`,
+              title: `${parent.parentName} Breakdown`,
+              data: categorySummaryToDistribution(parent.subcategories),
+            })),
+            incomeByCategory: categorySummaryToDistribution(data.incomeCategoryData),
+            topMerchants: categorySummaryToDistribution(data.merchantData),
+            expenseByAccount: categorySummaryToDistribution(data.accountDistribution),
+            recurringVsOneTime: categorySummaryToDistribution(data.recurringVsOneTime),
+            expenseByWeekday: categorySummaryToDistribution(data.weekdayPattern),
+          })}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
-          <CardHeader title="Recent Transactions" />
+          <CardHeader 
+            title="Recent Transactions" 
+            action={
+              <Pagination
+                currentPage={currentPage}
+                totalCount={data.pagination.total}
+                pageSize={limit}
+                onPageChange={handlePageChange}
+              />
+            }
+          />
           <CardContent className="p-0">
             <TransactionList
               transactions={data.transactions.map((t) => ({
@@ -156,7 +235,18 @@ export default function DashboardPage() {
               }))}
               categories={categories}
               onCategorize={handleCategorize}
+              onDescriptionUpdate={handleDescriptionUpdate}
+              onCategorizeByKeyword={handleCategorizeByKeyword}
+              onCategoryCreated={handleCategoryCreated}
             />
+            <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 rounded-b-xl">
+              <Pagination
+                currentPage={currentPage}
+                totalCount={data.pagination.total}
+                pageSize={limit}
+                onPageChange={handlePageChange}
+              />
+            </div>
           </CardContent>
         </Card>
 

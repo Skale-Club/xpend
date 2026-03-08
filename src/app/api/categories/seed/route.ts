@@ -92,6 +92,35 @@ const DEFAULT_CATEGORIES: CategorySeed[] = [
     icon: 'TrendingUp',
     children: [
       { name: 'Salary', color: '#22C55E', icon: 'Briefcase', rules: ['salary', 'payroll', 'paycheck', 'wage', 'direct deposit'] },
+      {
+        name: 'Gig Work',
+        color: '#22C55E',
+        icon: 'Briefcase',
+        children: [
+          { name: 'Delivery Apps', color: '#22C55E', icon: 'Car' },
+          { name: 'Logistics Earnings', color: '#22C55E', icon: 'Car' },
+        ],
+      },
+      {
+        name: 'Agency Services',
+        color: '#22C55E',
+        icon: 'Laptop',
+        children: [
+          { name: 'Website Development', color: '#22C55E', icon: 'Laptop' },
+          { name: 'Marketing Automation', color: '#22C55E', icon: 'TrendingUp' },
+          { name: 'Client Retainers', color: '#22C55E', icon: 'CreditCard' },
+          { name: 'Project-Based Work', color: '#22C55E', icon: 'Briefcase' },
+        ],
+      },
+      {
+        name: 'Service Business',
+        color: '#22C55E',
+        icon: 'Building',
+        children: [
+          { name: 'Janitorial Services', color: '#22C55E', icon: 'Home' },
+          { name: 'Service Contracts', color: '#22C55E', icon: 'Receipt' },
+        ],
+      },
       { name: 'Freelance', color: '#4ADE80', icon: 'Laptop', rules: ['freelance', 'contract', 'consulting', 'gig'] },
       { name: 'Investments', color: '#16A34A', icon: 'LineChart', rules: ['dividend', 'interest', 'investment', 'return', 'capital gain'] },
       { name: 'Other Income', color: '#15803D', icon: 'Plus', rules: ['refund', 'reimbursement', 'cashback'] },
@@ -117,6 +146,17 @@ const DEFAULT_CATEGORIES: CategorySeed[] = [
       { name: 'Other Income', color: '#9CA3AF', icon: 'Plus', rules: [] },
     ],
     rules: [],
+  },
+  {
+    name: 'Subscriptions',
+    color: '#8B5CF6',
+    icon: 'CreditCard',
+    budget: 200,
+    children: [
+      { name: 'Personal Subscriptions', color: '#8B5CF6', icon: 'CreditCard', budget: 100, rules: ['personal', 'individual'] },
+      { name: 'Business Subscriptions', color: '#7C3AED', icon: 'Briefcase', budget: 100, rules: ['business', 'work', 'professional'] },
+    ],
+    rules: ['subscription', 'monthly', 'annual', 'recurring'],
   },
 ];
 
