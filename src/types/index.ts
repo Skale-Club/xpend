@@ -79,6 +79,7 @@ export interface CategorySummary {
 
 // Unified distribution data for DistributionCarousel
 export interface DistributionItem {
+  id?: string;
   name: string;
   amount: number;
   color: string;

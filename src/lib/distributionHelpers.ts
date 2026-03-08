@@ -7,6 +7,7 @@ export function categorySummaryToDistribution(
   categories: CategorySummary[]
 ): DistributionItem[] {
   return categories.map((cat) => ({
+    id: cat.categoryId,
     name: cat.categoryName,
     amount: cat.total,
     color: cat.color,
@@ -21,6 +22,7 @@ export function categoryReportNodeToDistribution(
   nodes: CategoryReportNode[]
 ): DistributionItem[] {
   return nodes.map((node) => ({
+    id: node.id,
     name: node.name,
     amount: node.amount,
     color: node.color,
@@ -40,6 +42,7 @@ export function merchantBreakdownToDistribution(
   defaultColor: string = '#3B82F6'
 ): DistributionItem[] {
   return merchants.map((merchant) => ({
+    id: merchant.name,
     name: merchant.name,
     amount: merchant.amount,
     // Use merchant color, or primary category color, or default
@@ -77,6 +80,7 @@ export function assignMerchantColors(
     }
 
     return {
+      id: merchant.name,
       name: merchant.name,
       amount: merchant.amount,
       color: colorMap.get(merchant.name)!,
@@ -91,6 +95,7 @@ export function genericToDistribution(
   data: Array<{ name: string; amount: number; color: string }>
 ): DistributionItem[] {
   return data.map((item) => ({
+    id: item.name,
     name: item.name,
     amount: item.amount,
     color: item.color,
@@ -176,12 +181,14 @@ export function categoryReportNodesToParentBreakdowns(
       // If a parent has direct transactions and no children, it still gets a single-segment breakdown.
       data: (node.subcategories && node.subcategories.length > 0
         ? node.subcategories.map((sub) => ({
+            id: sub.id,
             name: sub.name,
             amount: sub.amount,
             color: node.color,
           }))
         : [
             {
+              id: node.id,
               name: node.name,
               amount: node.amount,
               color: node.color,
@@ -206,6 +213,7 @@ export function categoryReportNodesToSubcategoryDistribution(
   const walk = (node: CategoryReportNode, root: CategoryReportNode) => {
     for (const sub of node.subcategories || []) {
       subcategories.push({
+        id: sub.id,
         name: `${root.name} - ${sub.name}`,
         amount: sub.amount,
         color: root.color,

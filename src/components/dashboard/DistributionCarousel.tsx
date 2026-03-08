@@ -3,11 +3,12 @@
 import { useState, useMemo } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui';
 import { ChevronLeft, ChevronRight, PieChart as PieIcon } from 'lucide-react';
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Sector } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell, Sector } from 'recharts';
 import { formatCurrency } from '@/lib/utils';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 
 export interface DistributionDataPoint {
+  id?: string;
   name: string;
   amount: number;
   color: string;
@@ -21,11 +22,38 @@ export interface DistributionCarouselItem {
 
 interface DistributionCarouselProps {
   items: DistributionCarouselItem[];
+  onDataPointClick?: (payload: {
+    viewId: string;
+    viewTitle: string;
+    dataPoint: DistributionDataPoint;
+  }) => void;
+}
+
+interface ActiveShapeProps {
+  cx?: number;
+  cy?: number;
+  innerRadius?: number;
+  outerRadius?: number;
+  startAngle?: number;
+  endAngle?: number;
+  fill?: string;
 }
 
 // Custom active shape for the donut slices
-const renderActiveShape = (props: any) => {
+const renderActiveShape = (props: ActiveShapeProps) => {
   const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+
+  if (
+    cx === undefined ||
+    cy === undefined ||
+    innerRadius === undefined ||
+    outerRadius === undefined ||
+    startAngle === undefined ||
+    endAngle === undefined ||
+    !fill
+  ) {
+    return null;
+  }
 
   return (
     <g>
@@ -43,7 +71,7 @@ const renderActiveShape = (props: any) => {
   );
 };
 
-export function DistributionCarousel({ items }: DistributionCarouselProps) {
+export function DistributionCarousel({ items, onDataPointClick }: DistributionCarouselProps) {
   const [activeIndex, setActiveIndex] = useState<number | undefined>(undefined);
   const { hideSensitiveValues } = useSensitiveValues();
 
@@ -116,12 +144,24 @@ export function DistributionCarousel({ items }: DistributionCarouselProps) {
     return null;
   }
 
-  const onPieEnter = (_: any, index: number) => {
+  const onPieEnter = (_: unknown, index: number) => {
     setActiveIndex(index);
   };
 
   const onPieLeave = () => {
     setActiveIndex(undefined);
+  };
+
+  const handleDataPointClick = (index: number) => {
+    if (!onDataPointClick || !currentItem) return;
+    const dataPoint = chartData[index];
+    if (!dataPoint || dataPoint.name === 'Other') return;
+
+    onDataPointClick({
+      viewId: currentItem.id,
+      viewTitle: currentItem.title,
+      dataPoint,
+    });
   };
 
   return (
@@ -213,7 +253,7 @@ export function DistributionCarousel({ items }: DistributionCarouselProps) {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      {...({ activeIndex } as any)}
+                      activeIndex={activeIndex}
                       activeShape={renderActiveShape}
                       data={chartData}
                       dataKey="amount"
@@ -226,6 +266,7 @@ export function DistributionCarousel({ items }: DistributionCarouselProps) {
                       cornerRadius={4}
                       onMouseEnter={onPieEnter}
                       onMouseLeave={onPieLeave}
+                      onClick={(_, index) => handleDataPointClick(index)}
                       stroke="none"
                     >
                       {chartData.map((entry, index) => (
@@ -277,17 +318,28 @@ export function DistributionCarousel({ items }: DistributionCarouselProps) {
               {chartData.map((entry, index) => {
                 const percentage = ((entry.amount / totalAmount) * 100).toFixed(1);
                 const isActive = activeIndex === index;
+                const isClickable = !!onDataPointClick && entry.name !== 'Other';
 
                 return (
                   <div
                     key={index}
-                    className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer group ${
+                    className={`flex items-center justify-between p-3 rounded-lg border transition-all group ${
                       isActive
                         ? 'bg-slate-50 border-slate-200 shadow-sm'
                         : 'bg-white border-slate-100 hover:bg-slate-50 hover:border-slate-200'
-                    }`}
+                    } ${isClickable ? 'cursor-pointer' : 'cursor-default'}`}
                     onMouseEnter={() => setActiveIndex(index)}
                     onMouseLeave={() => setActiveIndex(undefined)}
+                    onClick={() => handleDataPointClick(index)}
+                    role={isClickable ? 'button' : undefined}
+                    tabIndex={isClickable ? 0 : -1}
+                    onKeyDown={(e) => {
+                      if (!isClickable) return;
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleDataPointClick(index);
+                      }
+                    }}
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div
