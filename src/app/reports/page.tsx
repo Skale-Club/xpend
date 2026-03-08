@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Card, CardHeader, CardContent, Modal, Button, Loader } from '@/components/ui';
 import { DashboardFiltersPanel, DistributionCarousel } from '@/components/dashboard';
 import { CategoryTreeSelector } from '@/components/categories/CategoryTreeSelector';
@@ -18,6 +18,13 @@ import {
 import { Tag, CreditCard, DollarSign, ChevronDown, ChevronRight, CornerDownRight, ArrowUpRight, ArrowDownRight, ArrowRight } from 'lucide-react';
 import { getCategoryIcon } from '@/lib/categoryIcons';
 
+type TrendMode = 'overall' | 'category' | 'income' | 'income-vs-outcome';
+type CategoryReportNode = ReportData['categoryBreakdown'][number];
+type CategoryTransaction = CategoryReportNode['transactions'][number];
+type TimeGranularity = 'day' | 'month';
+
+const MONTH_BUCKET_REGEX = /^\d{4}-\d{2}$/;
+
 function getTypeIcon(type: string) {
   switch (type) {
     case 'INCOME':
@@ -29,6 +36,26 @@ function getTypeIcon(type: string) {
     default:
       return null;
   }
+}
+
+function getTimeGranularity(referenceSeries: ReportData['timeSeries']): TimeGranularity {
+  return referenceSeries.some((point) => MONTH_BUCKET_REGEX.test(point.date)) ? 'month' : 'day';
+}
+
+function getBucketKey(rawDate: Date | string, granularity: TimeGranularity) {
+  const date = new Date(rawDate);
+  if (granularity === 'month') {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  }
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function collectTransactionsFromNode(node: CategoryReportNode): CategoryTransaction[] {
+  const transactions = [...node.transactions];
+  for (const subcategory of node.subcategories) {
+    transactions.push(...collectTransactionsFromNode(subcategory));
+  }
+  return transactions;
 }
 
 function CategoryRow({
@@ -215,6 +242,8 @@ export default function ReportsPage() {
   const [tempDescription, setTempDescription] = useState('');
   const [editingMerchantKey, setEditingMerchantKey] = useState<string | null>(null);
   const [tempMerchantName, setTempMerchantName] = useState('');
+  const [trendMode, setTrendMode] = useState<TrendMode>('overall');
+  const [trendCategoryId, setTrendCategoryId] = useState('');
 
   const toggleExpanded = (id: string) => {
     const newExpanded = new Set(expandedCategories);
@@ -240,6 +269,9 @@ export default function ReportsPage() {
       if (filters.accountIds?.length) params.set('accountIds', filters.accountIds.join(','));
       if (filters.categoryIds?.length) params.set('categoryIds', filters.categoryIds.join(','));
       if (filters.transactionType) params.set('type', filters.transactionType);
+      if (filters.searchQuery) params.set('search', filters.searchQuery);
+      if (filters.minAmount !== undefined) params.set('minAmount', String(filters.minAmount));
+      if (filters.maxAmount !== undefined) params.set('maxAmount', String(filters.maxAmount));
 
       const [reportsRes, accountsRes, categoriesRes] = await Promise.all([
         fetch(`/api/reports?${params}`),

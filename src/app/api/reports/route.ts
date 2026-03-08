@@ -27,23 +27,22 @@ export async function GET(request: Request) {
 
     const allCategories = await prisma.category.findMany();
 
-    const where: Record<string, unknown> = {};
-    if (type) where.type = type;
+    const baseWhere: Record<string, unknown> = {};
 
     if (dateFrom || dateTo) {
-      where.date = {};
-      if (dateFrom) (where.date as Record<string, Date>).gte = new Date(dateFrom);
-      if (dateTo) (where.date as Record<string, Date>).lte = new Date(dateTo);
+      baseWhere.date = {};
+      if (dateFrom) (baseWhere.date as Record<string, Date>).gte = new Date(dateFrom);
+      if (dateTo) (baseWhere.date as Record<string, Date>).lte = new Date(dateTo);
     }
 
     if (minAmount || maxAmount) {
-      where.amount = {};
-      if (minAmount) (where.amount as Record<string, number>).gte = parseFloat(minAmount);
-      if (maxAmount) (where.amount as Record<string, number>).lte = parseFloat(maxAmount);
+      baseWhere.amount = {};
+      if (minAmount) (baseWhere.amount as Record<string, number>).gte = parseFloat(minAmount);
+      if (maxAmount) (baseWhere.amount as Record<string, number>).lte = parseFloat(maxAmount);
     }
 
     if (accountIds && accountIds.length > 0) {
-      where.accountId = { in: accountIds };
+      baseWhere.accountId = { in: accountIds };
     }
 
     if (categoryIds && categoryIds.length > 0) {
@@ -51,12 +50,12 @@ export async function GET(request: Request) {
         allCategories.map((category) => ({ id: category.id, parentId: category.parentId })),
         categoryIds
       );
-      where.categoryId = { in: expandedCategoryIds };
+      baseWhere.categoryId = { in: expandedCategoryIds };
     }
 
     if (search) {
       const amountFromSearch = parseSearchAmount(search);
-      where.OR = [
+      baseWhere.OR = [
         { description: { contains: search, mode: 'insensitive' } },
         { notes: { contains: search, mode: 'insensitive' } },
         { category: { name: { contains: search, mode: 'insensitive' } } },
@@ -64,6 +63,9 @@ export async function GET(request: Request) {
         ...(amountFromSearch !== null ? [{ amount: amountEqualsRange(amountFromSearch) }] : []),
       ];
     }
+
+    const where: Record<string, unknown> = { ...baseWhere };
+    if (type) where.type = type;
 
     const transactions = await prisma.transaction.findMany({
       where,
@@ -81,22 +83,58 @@ export async function GET(request: Request) {
 
     // 2. Time Series (Daily or Monthly based on range)
     const isLongRange = dateFrom && dateTo && (new Date(dateTo).getTime() - new Date(dateFrom).getTime() > 1000 * 60 * 60 * 24 * 60); // > 60 days
+
+    const getTimeBucketKey = (rawDate: Date | string) => {
+      const date = new Date(rawDate);
+      if (isLongRange) {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      }
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    };
+
     const timeMap = new Map<string, number>();
 
     for (const t of transactions) {
-      const date = new Date(t.date);
-      let key = '';
-      if (isLongRange) {
-        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      } else {
-        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      }
+      const key = getTimeBucketKey(t.date);
       timeMap.set(key, (timeMap.get(key) || 0) + t.amount);
     }
 
     const timeSeries = Array.from(timeMap.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, amount]) => ({ date, amount }));
+
+    const incomeOutcomeTransactions = await prisma.transaction.findMany({
+      where: {
+        ...baseWhere,
+        type: { in: ['INCOME', 'EXPENSE'] as const },
+      },
+      select: { date: true, amount: true, type: true },
+      orderBy: { date: 'asc' },
+    });
+
+    const incomeVsOutcomeMap = new Map<string, { income: number; outcome: number }>();
+    for (const t of incomeOutcomeTransactions) {
+      const key = getTimeBucketKey(t.date);
+      if (!incomeVsOutcomeMap.has(key)) {
+        incomeVsOutcomeMap.set(key, { income: 0, outcome: 0 });
+      }
+      const bucket = incomeVsOutcomeMap.get(key)!;
+      if (t.type === 'INCOME') {
+        bucket.income += t.amount;
+      } else if (t.type === 'EXPENSE') {
+        bucket.outcome += t.amount;
+      }
+    }
+
+    const incomeVsOutcomeSeries = Array.from(incomeVsOutcomeMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, totals]) => ({
+        date,
+        income: totals.income,
+        outcome: totals.outcome,
+      }));
+
+    const incomeTimeSeries = incomeVsOutcomeSeries.map(({ date, income }) => ({ date, amount: income }));
 
     // 3. Category Breakdown (Hierarchical)
     const categoriesMap = new Map(allCategories.map(c => [c.id, c]));
@@ -342,6 +380,8 @@ export async function GET(request: Request) {
     return NextResponse.json({
       summary: { totalAmount, transactionCount, averageAmount },
       timeSeries,
+      incomeTimeSeries,
+      incomeVsOutcomeSeries,
       categoryBreakdown,
       merchantBreakdown,
       accountDistribution,

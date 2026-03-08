@@ -133,6 +133,8 @@ export interface ReportData {
     averageAmount: number;
   };
   timeSeries: { date: string; amount: number }[];
+  incomeTimeSeries: { date: string; amount: number }[];
+  incomeVsOutcomeSeries: { date: string; income: number; outcome: number }[];
   categoryBreakdown: CategoryReportNode[];
   merchantBreakdown: {
     name: string;
