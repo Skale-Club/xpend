@@ -15,7 +15,10 @@ import {
   Tags,
   LogOut,
   BarChart3,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
+import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -34,6 +37,7 @@ interface SidebarProps {
 export function Sidebar({ onLogout }: SidebarProps) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { hideSensitiveValues, toggleSensitiveValues } = useSensitiveValues();
 
   return (
     <>
@@ -97,6 +101,16 @@ export function Sidebar({ onLogout }: SidebarProps) {
         </nav>
 
         <div className="border-t border-gray-100 p-4">
+          <button
+            type="button"
+            onClick={toggleSensitiveValues}
+            className="mb-2 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-gray-600 transition-colors hover:bg-gray-50"
+            aria-label={hideSensitiveValues ? 'Show sensitive values' : 'Hide sensitive values'}
+          >
+            {hideSensitiveValues ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+            <span className="font-medium">{hideSensitiveValues ? 'Show values' : 'Hide values'}</span>
+          </button>
+
           {onLogout ? (
             <button
               type="button"

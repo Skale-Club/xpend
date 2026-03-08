@@ -5,6 +5,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui';
 import { ChevronLeft, ChevronRight, PieChart as PieIcon } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Sector } from 'recharts';
 import { formatCurrency } from '@/lib/utils';
+import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 
 export interface DistributionDataPoint {
   name: string;
@@ -43,20 +44,45 @@ const renderActiveShape = (props: any) => {
 };
 
 export function DistributionCarousel({ items }: DistributionCarouselProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [activeIndex, setActiveIndex] = useState<number | undefined>(undefined);
+  const { hideSensitiveValues } = useSensitiveValues();
+
+  // Separate parent breakdown items from regular items
+  const { parentBreakdowns, regularItems } = useMemo(() => {
+    const parentBreakdowns = items.filter(item => item.id.startsWith('parent-breakdown-'));
+    const regularItems = items.filter(item => !item.id.startsWith('parent-breakdown-'));
+    return { parentBreakdowns, regularItems };
+  }, [items]);
+
+  // State for main selection (regular items)
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // State for parent breakdown selection (when viewing subcategory breakdown)
+  const [selectedParentIndex, setSelectedParentIndex] = useState(0);
+
+  // Determine if we're showing a parent breakdown
+  const currentMainItem = regularItems[currentIndex];
+  const isSubcategoryBreakdownView = currentMainItem?.id === 'subcategory' && parentBreakdowns.length > 0;
+
+  // Get the actual item to display
+  const currentItem = isSubcategoryBreakdownView
+    ? parentBreakdowns[selectedParentIndex]
+    : currentMainItem;
 
   const cycleMode = (direction: 'prev' | 'next') => {
-    if (items.length === 0) return;
+    if (regularItems.length === 0) return;
     setActiveIndex(undefined);
     if (direction === 'next') {
-      setCurrentIndex((prev) => (prev + 1) % items.length);
+      const newIndex = (currentIndex + 1) % regularItems.length;
+      setCurrentIndex(newIndex);
+      // Reset parent selection when changing main view
+      setSelectedParentIndex(0);
     } else {
-      setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
+      const newIndex = (currentIndex - 1 + regularItems.length) % regularItems.length;
+      setCurrentIndex(newIndex);
+      setSelectedParentIndex(0);
     }
   };
-
-  const currentItem = items[currentIndex];
 
   const totalAmount = useMemo(() => {
     if (!currentItem || !currentItem.data) return 0;
@@ -66,16 +92,16 @@ export function DistributionCarousel({ items }: DistributionCarouselProps) {
   // Group by "Other" if there are too many items to keep the chart clean
   const chartData = useMemo(() => {
     if (!currentItem || !currentItem.data) return [];
-    
+
     // Sort by amount descending
     const sortedData = [...currentItem.data].sort((a, b) => b.amount - a.amount);
-    
+
     if (sortedData.length <= 8) return sortedData;
-    
+
     const top = sortedData.slice(0, 7);
     const rest = sortedData.slice(7);
     const otherAmount = rest.reduce((sum, item) => sum + item.amount, 0);
-    
+
     return [
       ...top,
       {
@@ -111,11 +137,13 @@ export function DistributionCarousel({ items }: DistributionCarouselProps) {
         }
         action={
           <div className="flex items-center gap-2">
+            {/* Main view selector */}
             <select
               value={currentIndex}
               onChange={(e) => {
                 setCurrentIndex(Number(e.target.value));
                 setActiveIndex(undefined);
+                setSelectedParentIndex(0);
               }}
               className="text-sm font-medium bg-white border border-slate-200 text-slate-700 py-1.5 pl-3 pr-9 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 cursor-pointer hover:border-slate-300 transition-all appearance-none"
               style={{
@@ -125,16 +153,42 @@ export function DistributionCarousel({ items }: DistributionCarouselProps) {
                 backgroundSize: '1.25rem'
               }}
             >
-              {items.map((item, idx) => (
+              {regularItems.map((item, idx) => (
                 <option key={item.id} value={idx}>{item.title}</option>
               ))}
             </select>
+
+            {/* Conditional parent category selector - only for subcategory breakdown view */}
+            {isSubcategoryBreakdownView && (
+              <select
+                value={selectedParentIndex}
+                onChange={(e) => {
+                  setSelectedParentIndex(Number(e.target.value));
+                  setActiveIndex(undefined);
+                }}
+                className="text-sm font-medium bg-white border border-slate-200 text-slate-700 py-1.5 pl-3 pr-9 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 cursor-pointer hover:border-slate-300 transition-all appearance-none"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 0.5rem center',
+                  backgroundSize: '1.25rem'
+                }}
+              >
+                {parentBreakdowns.map((item, idx) => (
+                  <option key={item.id} value={idx}>
+                    {item.title.replace(' Breakdown', '')}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Navigation buttons */}
             <div className="flex items-center gap-0.5 border border-slate-200 bg-white rounded-lg p-0.5">
               <button
                 onClick={() => cycleMode('prev')}
                 className="p-1.5 hover:bg-slate-50 rounded text-slate-400 hover:text-slate-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Previous"
-                disabled={items.length <= 1}
+                disabled={regularItems.length <= 1}
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -142,7 +196,7 @@ export function DistributionCarousel({ items }: DistributionCarouselProps) {
                 onClick={() => cycleMode('next')}
                 className="p-1.5 hover:bg-slate-50 rounded text-slate-400 hover:text-slate-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Next"
-                disabled={items.length <= 1}
+                disabled={regularItems.length <= 1}
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -183,18 +237,19 @@ export function DistributionCarousel({ items }: DistributionCarouselProps) {
                       ))}
                     </Pie>
                     <Tooltip
+                      cursor={false}
                       content={({ active, payload }) => {
                         if (active && payload && payload.length) {
                           const data = payload[0].payload;
                           const percentage = ((data.amount / totalAmount) * 100).toFixed(1);
                           return (
-                            <div className="bg-white border border-slate-200 shadow-lg rounded-lg p-3">
+                            <div className="bg-white border-2 border-slate-300 shadow-xl rounded-lg p-3 backdrop-blur-none">
                               <div className="flex items-center gap-2 mb-1.5">
-                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: data.color }} />
+                                <div className="w-3 h-3 rounded-full ring-2 ring-white" style={{ backgroundColor: data.color }} />
                                 <span className="font-semibold text-slate-800 text-sm">{data.name}</span>
                               </div>
                               <div className="flex flex-col gap-0.5">
-                                <span className="text-lg font-bold text-slate-900">{formatCurrency(data.amount)}</span>
+                                <span className="text-lg font-bold text-slate-900">{formatCurrency(data.amount, { hideSensitiveValues })}</span>
                                 <span className="text-xs text-slate-500">{percentage}% of total</span>
                               </div>
                             </div>
@@ -208,31 +263,33 @@ export function DistributionCarousel({ items }: DistributionCarouselProps) {
 
                 {/* Center text for the donut */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
-                  {activeIndex !== undefined ? (
-                    <>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">
-                        {chartData[activeIndex].name}
-                      </span>
-                      <span className="text-2xl font-extrabold text-slate-900">
-                        {formatCurrency(chartData[activeIndex].amount)}
-                      </span>
-                      <span className="text-xs font-semibold text-slate-500 mt-0.5">
-                        {((chartData[activeIndex].amount / totalAmount) * 100).toFixed(1)}%
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">
-                        Total
-                      </span>
-                      <span className="text-2xl font-extrabold text-slate-900">
-                        {formatCurrency(totalAmount)}
-                      </span>
-                      <span className="text-[10px] font-medium text-slate-400 mt-1">
-                        {currentItem.title}
-                      </span>
-                    </>
-                  )}
+                  <div className="bg-white rounded-2xl shadow-md border border-slate-200 px-4 py-3 max-w-[140px] text-center">
+                    {activeIndex !== undefined ? (
+                      <>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block mb-1 truncate">
+                          {chartData[activeIndex].name}
+                        </span>
+                        <span className="text-xl font-extrabold text-slate-900 block">
+                          {formatCurrency(chartData[activeIndex].amount, { hideSensitiveValues })}
+                        </span>
+                        <span className="text-xs font-semibold text-slate-500 block mt-0.5">
+                          {((chartData[activeIndex].amount / totalAmount) * 100).toFixed(1)}%
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block mb-1">
+                          Total
+                        </span>
+                        <span className="text-xl font-extrabold text-slate-900 block">
+                          {formatCurrency(totalAmount, { hideSensitiveValues })}
+                        </span>
+                        <span className="text-[9px] font-medium text-slate-400 block mt-1 truncate">
+                          {currentItem.title}
+                        </span>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -269,7 +326,7 @@ export function DistributionCarousel({ items }: DistributionCarouselProps) {
                       <span className={`text-sm font-bold transition-colors ${
                         isActive ? 'text-slate-900' : 'text-slate-700'
                       }`}>
-                        {formatCurrency(entry.amount)}
+                        {formatCurrency(entry.amount, { hideSensitiveValues })}
                       </span>
                       <span className="text-xs font-medium text-slate-400 min-w-[3rem] text-right">
                         {percentage}%

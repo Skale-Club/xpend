@@ -3,6 +3,7 @@
 import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui';
 import { formatCurrency } from '@/lib/utils';
+import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 
 interface StatsCardsProps {
   totalIncome: number;
@@ -21,6 +22,8 @@ export function StatsCards({
   incomeChange,
   expenseChange,
 }: StatsCardsProps) {
+  const { hideSensitiveValues } = useSensitiveValues();
+
   const stats = [
     {
       title: 'Total Income',
@@ -64,7 +67,7 @@ export function StatsCards({
               <div>
                 <p className="text-sm text-gray-500">{stat.title}</p>
                 <p className={`text-2xl font-bold mt-1 ${stat.value < 0 ? 'text-red-600' : 'text-gray-900'}`}>
-                  {stat.isCount ? stat.value : formatCurrency(stat.value)}
+                  {stat.isCount ? stat.value : formatCurrency(stat.value, { hideSensitiveValues })}
                 </p>
                 {stat.change !== undefined && (
                   <div className={`flex items-center gap-1 mt-1 text-sm ${

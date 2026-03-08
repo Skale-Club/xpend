@@ -1,8 +1,37 @@
-export function formatCurrency(value: number): string {
+interface CurrencyFormatOptions {
+  hideSensitiveValues?: boolean;
+  hiddenValue?: string;
+  minimumFractionDigits?: number;
+  maximumFractionDigits?: number;
+}
+
+export function formatCurrency(value: number, options: CurrencyFormatOptions = {}): string {
+  const {
+    hideSensitiveValues = false,
+    hiddenValue = '••••••',
+    minimumFractionDigits,
+    maximumFractionDigits,
+  } = options;
+
+  if (hideSensitiveValues) {
+    return hiddenValue;
+  }
+
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
+    minimumFractionDigits,
+    maximumFractionDigits,
   }).format(value);
+}
+
+export function formatCurrencyTick(value: number, hideSensitiveValues = false): string {
+  return formatCurrency(value, {
+    hideSensitiveValues,
+    hiddenValue: '••••',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
 }
 
 export function formatDate(date: Date | string): string {

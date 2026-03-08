@@ -5,6 +5,7 @@ import { Building2, PiggyBank, CreditCard, Smartphone, Wallet, CircleDollarSign,
 import { Card as UICard, CardContent, Button, Modal } from '@/components/ui';
 import { Account, ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_ICONS } from '@/types';
 import { formatCurrency } from '@/lib/utils';
+import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
   Building2,
@@ -26,6 +27,7 @@ interface AccountListProps {
 export function AccountList({ accounts, balances, onAddAccount, onEditAccount, onDeleteAccount }: AccountListProps) {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState<string | null>(null);
+  const { hideSensitiveValues } = useSensitiveValues();
 
   const getIcon = (iconName: string) => {
     const IconComponent = iconMap[iconName] || CircleDollarSign;
@@ -75,7 +77,7 @@ export function AccountList({ accounts, balances, onAddAccount, onEditAccount, o
                     <div className="flex items-center gap-4">
                       <div className="text-right">
                         <p className={`font-semibold ${balance >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
-                          {formatCurrency(balance)}
+                          {formatCurrency(balance, { hideSensitiveValues })}
                         </p>
                         <p className="text-xs text-gray-500">Current Balance</p>
                       </div>

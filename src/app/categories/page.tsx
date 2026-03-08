@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, Modal, Input, Button, Loader } from '@/c
 import { CategoryRules } from '@/components/categories/CategoryRules';
 import { Category } from '@/types';
 import { CATEGORY_ICONS, getCategoryIcon } from '@/lib/categoryIcons';
+import { formatCurrency } from '@/lib/utils';
+import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 
 interface CategoryWithChildren extends Category {
     children?: CategoryWithChildren[];
@@ -54,6 +56,7 @@ function classifyRootCategory(name: string): CategoryScope {
 }
 
 export default function CategoriesPage() {
+    const { hideSensitiveValues } = useSensitiveValues();
     const [categories, setCategories] = useState<CategoryWithChildren[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [editModal, setEditModal] = useState<CategoryWithChildren | null>(null);
@@ -262,7 +265,7 @@ export default function CategoriesPage() {
                             <p className="font-medium text-gray-900">{category.name}</p>
                             {category.budget && (
                                 <p className="text-xs text-gray-500">
-                                    Budget: ${category.budget.toFixed(2)}/month
+                                    Budget: {formatCurrency(category.budget, { hideSensitiveValues })}/month
                                 </p>
                             )}
                         </div>

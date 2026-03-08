@@ -7,6 +7,7 @@ import { Transaction, Category, TransactionType } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { getCategoryIcon } from '@/lib/categoryIcons';
 import { CategoryTreeSelector } from '@/components/categories/CategoryTreeSelector';
+import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -86,6 +87,7 @@ export function TransactionList({
   onCategoryCreated,
   onBulkCategorize
 }: TransactionListProps) {
+  const { hideSensitiveValues } = useSensitiveValues();
   const [categorizeModal, setCategorizeModal] = useState<string | null>(null);
   const [categorizeTargetTransaction, setCategorizeTargetTransaction] = useState<Transaction | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -646,7 +648,7 @@ export function TransactionList({
                           }`}
                       >
                         {transaction.type === 'INCOME' ? '+' : '-'}
-                        {formatCurrency(transaction.amount)}
+                        {formatCurrency(transaction.amount, { hideSensitiveValues })}
                       </p>
                       {transaction.account && (
                         <p className="text-xs text-gray-500">{transaction.account.name}</p>

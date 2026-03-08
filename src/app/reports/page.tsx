@@ -17,6 +17,7 @@ import {
 } from '@/lib/distributionHelpers';
 import { Tag, CreditCard, DollarSign, ChevronDown, ChevronRight, CornerDownRight, ArrowUpRight, ArrowDownRight, ArrowRight } from 'lucide-react';
 import { getCategoryIcon } from '@/lib/categoryIcons';
+import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 
 type TrendMode = 'overall' | 'category' | 'income' | 'income-vs-outcome';
 type CategoryReportNode = ReportData['categoryBreakdown'][number];
@@ -116,6 +117,7 @@ function CategoryRow({
   onTempDescriptionChange,
   onCommitDescriptionEdit,
   onCancelDescriptionEdit,
+  formatAmount,
 }: {
   node: any,
   level?: number,
@@ -128,6 +130,7 @@ function CategoryRow({
   onTempDescriptionChange: (value: string) => void,
   onCommitDescriptionEdit: (id: string, nextValue: string, currentDescription: string) => void,
   onCancelDescriptionEdit: () => void,
+  formatAmount: (amount: number) => string,
 }) {
   const isExpanded = expandedIds.has(node.id);
   const hasChildren = node.subcategories?.length > 0 || node.transactions?.length > 0;
@@ -159,7 +162,7 @@ function CategoryRow({
         </td>
         <td className="px-4 py-3 text-right text-gray-500">{node.count}</td>
         <td className="px-4 py-3 text-right font-medium text-gray-900">
-          {formatCurrency(node.amount)}
+          {formatAmount(node.amount)}
         </td>
         <td className="px-4 py-3 text-right text-gray-500">
           {node.percentage.toFixed(1)}%
@@ -180,6 +183,7 @@ function CategoryRow({
           onTempDescriptionChange={onTempDescriptionChange}
           onCommitDescriptionEdit={onCommitDescriptionEdit}
           onCancelDescriptionEdit={onCancelDescriptionEdit}
+          formatAmount={formatAmount}
         />
       ))}
 
@@ -259,7 +263,7 @@ function CategoryRow({
                         </div>
                       </td>
                       <td className="py-2 text-right font-medium text-gray-900">
-                        {formatCurrency(tx.amount)}
+                        {formatAmount(tx.amount)}
                       </td>
                     </tr>
                   ))}
@@ -274,6 +278,7 @@ function CategoryRow({
 }
 
 export default function ReportsPage() {
+  const { hideSensitiveValues } = useSensitiveValues();
   const [data, setData] = useState<ReportData | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -293,6 +298,11 @@ export default function ReportsPage() {
   const [trendGranularity, setTrendGranularity] = useState<TimeGranularity>('month');
   const [isTrendCategoryOpen, setIsTrendCategoryOpen] = useState(false);
   const trendCategoryFilterRef = useRef<HTMLDivElement | null>(null);
+
+  const formatAmount = useCallback(
+    (amount: number) => formatCurrency(amount, { hideSensitiveValues }),
+    [hideSensitiveValues]
+  );
 
   const toggleExpanded = (id: string) => {
     const newExpanded = new Set(expandedCategories);
@@ -703,7 +713,7 @@ export default function ReportsPage() {
                   <div>
                     <p className="text-sm font-medium text-gray-500">Total {typeLabel}</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {formatCurrency(data.summary.totalAmount)}
+                      {formatAmount(data.summary.totalAmount)}
                     </p>
                   </div>
                 </div>
@@ -733,7 +743,7 @@ export default function ReportsPage() {
                   <div>
                     <p className="text-sm font-medium text-gray-500">Average Transaction</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {formatCurrency(data.summary.averageAmount)}
+                      {formatAmount(data.summary.averageAmount)}
                     </p>
                   </div>
                 </div>
@@ -887,6 +897,7 @@ export default function ReportsPage() {
                           onTempDescriptionChange={setTempDescription}
                           onCommitDescriptionEdit={handleDescriptionCommit}
                           onCancelDescriptionEdit={cancelDescriptionEdit}
+                          formatAmount={formatAmount}
                         />
                       ))
                     )}
@@ -982,7 +993,7 @@ export default function ReportsPage() {
                             </td>
                             <td className="px-4 py-3 text-right text-gray-500 whitespace-nowrap">{merchant.count}</td>
                             <td className="px-4 py-3 text-right font-medium text-gray-900 whitespace-nowrap">
-                              {formatCurrency(merchant.amount)}
+                              {formatAmount(merchant.amount)}
                             </td>
                           </tr>
                         );
@@ -1089,7 +1100,7 @@ export default function ReportsPage() {
                           {tx.account?.name}
                         </td>
                         <td className="px-4 py-3 text-right font-medium text-gray-900">
-                          {formatCurrency(tx.amount)}
+                          {formatAmount(tx.amount)}
                         </td>
                       </tr>
                     ))

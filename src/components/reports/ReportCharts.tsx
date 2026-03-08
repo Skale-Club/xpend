@@ -1,8 +1,9 @@
 'use client';
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatCurrencyTick } from '@/lib/utils';
 import { ReportData } from '@/types';
+import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 
 type AmountSeriesPoint = ReportData['timeSeries'][number];
 type IncomeVsOutcomePoint = ReportData['incomeVsOutcomeSeries'][number];
@@ -53,6 +54,8 @@ export function TimeSeriesChart({
   singleSeriesLabel = 'Amount',
   singleSeriesColor = '#3B82F6',
 }: TimeSeriesChartProps) {
+  const { hideSensitiveValues } = useSensitiveValues();
+
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
@@ -62,9 +65,12 @@ export function TimeSeriesChart({
           tick={{ fill: '#6B7280', fontSize: 12 }}
           tickFormatter={(value) => formatBucketLabel(String(value))}
         />
-        <YAxis tick={{ fill: '#6B7280', fontSize: 12 }} tickFormatter={(value) => `$${value}`} />
+        <YAxis
+          tick={{ fill: '#6B7280', fontSize: 12 }}
+          tickFormatter={(value) => formatCurrencyTick(Number(value), hideSensitiveValues)}
+        />
         <Tooltip
-          formatter={(value) => formatCurrency(Number(value))}
+          formatter={(value) => formatCurrency(Number(value), { hideSensitiveValues })}
           labelFormatter={(label) => formatBucketTooltip(String(label))}
           contentStyle={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '8px' }}
         />

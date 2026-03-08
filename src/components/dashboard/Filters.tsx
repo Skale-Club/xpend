@@ -5,6 +5,8 @@ import { Search, Filter, X, ChevronDown, Calendar, ArrowRight, Tag, DollarSign }
 import { Button, Select } from '@/components/ui';
 import { Account, Category, DashboardFilters, TransactionType } from '@/types';
 import { CategoryTreeSelector } from '@/components/categories/CategoryTreeSelector';
+import { formatCurrency } from '@/lib/utils';
+import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 
 interface DashboardFiltersProps {
   accounts: Account[];
@@ -19,6 +21,7 @@ export function DashboardFiltersPanel({
   filters,
   onFiltersChange,
 }: DashboardFiltersProps) {
+  const { hideSensitiveValues } = useSensitiveValues();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCategoryFilterOpen, setIsCategoryFilterOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(filters.searchQuery || '');
@@ -388,7 +391,7 @@ export function DashboardFiltersPanel({
 
           {(filters.minAmount !== undefined || filters.maxAmount !== undefined) && (
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-teal-50 text-teal-700 rounded-full border border-teal-100 text-xs font-medium">
-              Amount: {filters.minAmount !== undefined ? `$${filters.minAmount}` : 'Any'} - {filters.maxAmount !== undefined ? `$${filters.maxAmount}` : 'Any'}
+              Amount: {filters.minAmount !== undefined ? formatCurrency(filters.minAmount, { hideSensitiveValues, minimumFractionDigits: 0, maximumFractionDigits: 2 }) : 'Any'} - {filters.maxAmount !== undefined ? formatCurrency(filters.maxAmount, { hideSensitiveValues, minimumFractionDigits: 0, maximumFractionDigits: 2 }) : 'Any'}
               <button 
                 onClick={() => {
                   const newFilters = { ...filters };

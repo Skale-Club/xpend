@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthGate } from "@/components/auth/AuthGate";
 import { ToastProvider } from "@/components/ui";
 import { ChatWidget } from "@/components/chat";
+import { SensitiveValuesProvider } from "@/components/layout/SensitiveValuesProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,8 +34,10 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <ToastProvider>
-          <AuthGate>{children}</AuthGate>
-          <ChatWidget />
+          <SensitiveValuesProvider>
+            <AuthGate>{children}</AuthGate>
+            <ChatWidget />
+          </SensitiveValuesProvider>
         </ToastProvider>
       </body>
     </html>
