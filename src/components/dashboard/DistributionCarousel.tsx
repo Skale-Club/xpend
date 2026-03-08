@@ -32,11 +32,11 @@ const renderActiveShape = (props: any) => {
         cx={cx}
         cy={cy}
         innerRadius={innerRadius}
-        outerRadius={outerRadius + 8}
+        outerRadius={outerRadius + 10}
         startAngle={startAngle}
         endAngle={endAngle}
         fill={fill}
-        style={{ filter: `drop-shadow(0 0 8px ${fill}44)` }}
+        style={{ filter: `drop-shadow(0 4px 12px ${fill}55)` }}
       />
     </g>
   );
@@ -99,55 +99,63 @@ export function DistributionCarousel({ items }: DistributionCarouselProps) {
   };
 
   return (
-    <Card className="overflow-hidden border-none shadow-sm bg-white">
-      <CardHeader 
+    <Card className="overflow-hidden border border-slate-200 bg-white">
+      <CardHeader
         title={
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
               <PieIcon className="w-4 h-4" />
             </div>
-            <span className="font-semibold text-slate-800">Distribution Analysis</span>
+            <span className="font-semibold text-slate-900">Distribution Analysis</span>
           </div>
-        } 
+        }
         action={
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <select
               value={currentIndex}
               onChange={(e) => {
                 setCurrentIndex(Number(e.target.value));
                 setActiveIndex(undefined);
               }}
-              className="text-xs font-medium bg-slate-50 border-none text-slate-600 py-1.5 pl-3 pr-8 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer hover:bg-slate-100 transition-colors appearance-none"
-              style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0\' stroke=\'%2364748b\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center', backgroundSize: '12px' }}
+              className="text-sm font-medium bg-white border border-slate-200 text-slate-700 py-1.5 pl-3 pr-9 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 cursor-pointer hover:border-slate-300 transition-all appearance-none"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 0.5rem center',
+                backgroundSize: '1.25rem'
+              }}
             >
               {items.map((item, idx) => (
                 <option key={item.id} value={idx}>{item.title}</option>
               ))}
             </select>
-            <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-full">
-              <button 
+            <div className="flex items-center gap-0.5 border border-slate-200 bg-white rounded-lg p-0.5">
+              <button
                 onClick={() => cycleMode('prev')}
-                className="p-1 hover:bg-white hover:shadow-sm rounded-full text-slate-400 hover:text-blue-600 transition-all"
-                title="Previous chart"
+                className="p-1.5 hover:bg-slate-50 rounded text-slate-400 hover:text-slate-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Previous"
+                disabled={items.length <= 1}
               >
-                <ChevronLeft className="w-3.5 h-3.5" />
+                <ChevronLeft className="w-4 h-4" />
               </button>
-              <button 
+              <button
                 onClick={() => cycleMode('next')}
-                className="p-1 hover:bg-white hover:shadow-sm rounded-full text-slate-400 hover:text-blue-600 transition-all"
-                title="Next chart"
+                className="p-1.5 hover:bg-slate-50 rounded text-slate-400 hover:text-slate-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Next"
+                disabled={items.length <= 1}
               >
-                <ChevronRight className="w-3.5 h-3.5" />
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
         }
       />
-      <CardContent className="pt-6">
-        <div className="relative">
-          {chartData.length > 0 ? (
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="relative w-full h-[320px] max-w-[320px]">
+      <CardContent className="pt-4 pb-6">
+        {chartData.length > 0 ? (
+          <div className="grid lg:grid-cols-2 gap-8 items-start">
+            {/* Donut Chart */}
+            <div className="flex flex-col items-center">
+              <div className="relative w-full h-[280px] max-w-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -158,10 +166,10 @@ export function DistributionCarousel({ items }: DistributionCarouselProps) {
                       nameKey="name"
                       cx="50%"
                       cy="50%"
-                      innerRadius={85}
-                      outerRadius={110}
-                      paddingAngle={4}
-                      cornerRadius={6}
+                      innerRadius={75}
+                      outerRadius={100}
+                      paddingAngle={2}
+                      cornerRadius={4}
                       onMouseEnter={onPieEnter}
                       onMouseLeave={onPieLeave}
                       stroke="none"
@@ -174,20 +182,20 @@ export function DistributionCarousel({ items }: DistributionCarouselProps) {
                         />
                       ))}
                     </Pie>
-                    <Tooltip 
+                    <Tooltip
                       content={({ active, payload }) => {
                         if (active && payload && payload.length) {
                           const data = payload[0].payload;
                           const percentage = ((data.amount / totalAmount) * 100).toFixed(1);
                           return (
-                            <div className="bg-white/95 backdrop-blur-sm border border-slate-100 shadow-xl rounded-xl p-3 animate-in fade-in zoom-in duration-200">
-                              <div className="flex items-center gap-2 mb-1">
-                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: data.color }} />
-                                <span className="font-semibold text-slate-700">{data.name}</span>
+                            <div className="bg-white border border-slate-200 shadow-lg rounded-lg p-3">
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: data.color }} />
+                                <span className="font-semibold text-slate-800 text-sm">{data.name}</span>
                               </div>
-                              <div className="flex flex-col">
+                              <div className="flex flex-col gap-0.5">
                                 <span className="text-lg font-bold text-slate-900">{formatCurrency(data.amount)}</span>
-                                <span className="text-xs text-slate-400 font-medium">{percentage}% of total</span>
+                                <span className="text-xs text-slate-500">{percentage}% of total</span>
                               </div>
                             </div>
                           );
@@ -197,79 +205,89 @@ export function DistributionCarousel({ items }: DistributionCarouselProps) {
                     />
                   </PieChart>
                 </ResponsiveContainer>
-                
+
                 {/* Center text for the donut */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
                   {activeIndex !== undefined ? (
                     <>
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">
                         {chartData[activeIndex].name}
                       </span>
-                      <span className="text-xl font-extrabold text-slate-900">
+                      <span className="text-2xl font-extrabold text-slate-900">
                         {formatCurrency(chartData[activeIndex].amount)}
                       </span>
-                      <span className="text-[10px] font-medium text-slate-400">
+                      <span className="text-xs font-semibold text-slate-500 mt-0.5">
                         {((chartData[activeIndex].amount / totalAmount) * 100).toFixed(1)}%
                       </span>
                     </>
                   ) : (
                     <>
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">
                         Total
                       </span>
-                      <span className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                      <span className="text-2xl font-extrabold text-slate-900">
                         {formatCurrency(totalAmount)}
                       </span>
-                      <span className="text-[10px] font-medium text-slate-400">
+                      <span className="text-[10px] font-medium text-slate-400 mt-1">
                         {currentItem.title}
                       </span>
                     </>
                   )}
                 </div>
               </div>
+            </div>
 
-              {/* Enhanced Legend */}
-              <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4 md:mt-0 md:pl-4">
-                {chartData.map((entry, index) => (
-                  <div 
-                    key={index} 
-                    className={`flex items-center justify-between p-2 rounded-xl border transition-all cursor-default group
-                      ${activeIndex === index 
-                        ? 'bg-slate-50 border-slate-100 shadow-sm' 
-                        : 'bg-transparent border-transparent hover:bg-slate-50/50'}`}
+            {/* Legend */}
+            <div className="w-full space-y-2">
+              {chartData.map((entry, index) => {
+                const percentage = ((entry.amount / totalAmount) * 100).toFixed(1);
+                const isActive = activeIndex === index;
+
+                return (
+                  <div
+                    key={index}
+                    className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer group ${
+                      isActive
+                        ? 'bg-slate-50 border-slate-200 shadow-sm'
+                        : 'bg-white border-slate-100 hover:bg-slate-50 hover:border-slate-200'
+                    }`}
                     onMouseEnter={() => setActiveIndex(index)}
                     onMouseLeave={() => setActiveIndex(undefined)}
                   >
-                    <div className="flex items-center gap-2.5 overflow-hidden">
-                      <div 
-                        className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm" 
-                        style={{ backgroundColor: entry.color }} 
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div
+                        className="w-3 h-3 rounded-full shrink-0"
+                        style={{ backgroundColor: entry.color }}
                       />
-                      <span className="text-sm font-medium text-slate-600 truncate group-hover:text-slate-900 transition-colors">
+                      <span className={`text-sm font-medium truncate transition-colors ${
+                        isActive ? 'text-slate-900' : 'text-slate-700 group-hover:text-slate-900'
+                      }`}>
                         {entry.name}
                       </span>
                     </div>
-                    <div className="flex flex-col items-end shrink-0">
-                      <span className="text-sm font-bold text-slate-700">
+                    <div className="flex items-center gap-3 shrink-0 ml-3">
+                      <span className={`text-sm font-bold transition-colors ${
+                        isActive ? 'text-slate-900' : 'text-slate-700'
+                      }`}>
                         {formatCurrency(entry.amount)}
                       </span>
-                      <span className="text-[10px] font-medium text-slate-400">
-                        {((entry.amount / totalAmount) * 100).toFixed(0)}%
+                      <span className="text-xs font-medium text-slate-400 min-w-[3rem] text-right">
+                        {percentage}%
                       </span>
                     </div>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
-          ) : (
-            <div className="h-[300px] flex flex-col items-center justify-center text-slate-400 gap-3">
-              <div className="p-4 bg-slate-50 rounded-full">
-                <PieIcon className="w-8 h-8 opacity-20" />
-              </div>
-              <p className="text-sm font-medium">No data available for this view</p>
+          </div>
+        ) : (
+          <div className="h-[280px] flex flex-col items-center justify-center text-slate-400 gap-3">
+            <div className="p-4 bg-slate-50 rounded-full">
+              <PieIcon className="w-8 h-8 opacity-20" />
             </div>
-          )}
-        </div>
+            <p className="text-sm font-medium">No data available for this view</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
