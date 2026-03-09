@@ -1,14 +1,21 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { ToastContainer, Toast, ToastType } from './Toast';
+import { ToastContainer, Toast, ToastType, ToastAction } from './Toast';
+
+interface ToastOptions {
+  duration?: number;
+  action?: ToastAction;
+  showRetry?: boolean;
+  onRetry?: () => void;
+}
 
 interface ToastContextType {
-  showToast: (type: ToastType, message: string, duration?: number) => void;
-  success: (message: string, duration?: number) => void;
-  error: (message: string, duration?: number) => void;
-  warning: (message: string, duration?: number) => void;
-  info: (message: string, duration?: number) => void;
+  showToast: (type: ToastType, message: string, options?: ToastOptions) => void;
+  success: (message: string, options?: ToastOptions) => void;
+  error: (message: string, options?: ToastOptions) => void;
+  warning: (message: string, options?: ToastOptions) => void;
+  info: (message: string, options?: ToastOptions) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -20,26 +27,34 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
 
-  const showToast = useCallback((type: ToastType, message: string, duration?: number) => {
+  const showToast = useCallback((type: ToastType, message: string, options?: ToastOptions) => {
     const id = Math.random().toString(36).substring(2, 9);
-    const newToast: Toast = { id, type, message, duration };
+    const newToast: Toast = {
+      id,
+      type,
+      message,
+      duration: options?.duration,
+      action: options?.action,
+      showRetry: options?.showRetry,
+      onRetry: options?.onRetry,
+    };
     setToasts((prev) => [...prev, newToast]);
   }, []);
 
-  const success = useCallback((message: string, duration?: number) => {
-    showToast('success', message, duration);
+  const success = useCallback((message: string, options?: ToastOptions) => {
+    showToast('success', message, options);
   }, [showToast]);
 
-  const error = useCallback((message: string, duration?: number) => {
-    showToast('error', message, duration);
+  const error = useCallback((message: string, options?: ToastOptions) => {
+    showToast('error', message, options);
   }, [showToast]);
 
-  const warning = useCallback((message: string, duration?: number) => {
-    showToast('warning', message, duration);
+  const warning = useCallback((message: string, options?: ToastOptions) => {
+    showToast('warning', message, options);
   }, [showToast]);
 
-  const info = useCallback((message: string, duration?: number) => {
-    showToast('info', message, duration);
+  const info = useCallback((message: string, options?: ToastOptions) => {
+    showToast('info', message, options);
   }, [showToast]);
 
   return (

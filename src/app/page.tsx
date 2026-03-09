@@ -1,10 +1,17 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Card, CardHeader, CardContent, Pagination, Loader, Modal } from '@/components/ui';
-import { StatsCards, MonthlyChart, DashboardFiltersPanel, BalanceTrendChart, DistributionCarousel } from '@/components/dashboard';
+import { Card, CardHeader, CardContent, Pagination, Loader, Modal, ExportButton } from '@/components/ui';
+import {
+  StatsCards,
+  MonthlyChart,
+  DashboardFiltersPanel,
+  BalanceTrendChart,
+  DistributionCarousel,
+  SpendingPaceCard,
+} from '@/components/dashboard';
 import { TransactionList } from '@/components/transactions';
-import { Account, Category, DashboardFilters, TransactionType } from '@/types';
+import { Account, Category, DashboardFilters, TransactionType, Transaction } from '@/types';
 import { buildDistributionTemplateItems, categorySummaryToDistribution } from '@/lib/distributionHelpers';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
@@ -30,6 +37,19 @@ interface DashboardData {
     subcategories: { categoryId: string; categoryName: string; color: string; total: number; percentage: number; count: number }[];
   }[];
   balanceTrend: { month: string; balance: number }[];
+  spendingPace: {
+    currentTotal: number;
+    previousComparableTotal: number;
+    previousMonthTotal: number;
+    changePercentage: number | null;
+    status: 'below' | 'above' | 'equal';
+    currentComparableDay: number;
+    chartData: {
+      day: number;
+      currentMonth: number | null;
+      previousMonth: number | null;
+    }[];
+  };
   transactions: {
     id: string;
     description: string;
@@ -199,9 +219,24 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 mt-1">Overview of your spending and income</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-500 mt-1">Overview of your spending and income</p>
+        </div>
+        <ExportButton
+          transactions={data.transactions.map((t) => ({
+            ...t,
+            date: new Date(t.date),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            accountId: '',
+            isRecurring: false,
+            type: t.type as TransactionType,
+            account: t.account ? { name: t.account.name, color: t.account.color } : undefined,
+          })) as Transaction[]}
+          filename={`transactions-${new Date().toISOString().split('T')[0]}`}
+        />
       </div>
 
       <DashboardFiltersPanel
@@ -217,6 +252,11 @@ export default function DashboardPage() {
         totalBalance={data.totalBalance}
         transactionCount={data.transactionCount}
       />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SpendingPaceCard data={data.spendingPace} />
+        <div className="hidden lg:block" aria-hidden="true" />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>

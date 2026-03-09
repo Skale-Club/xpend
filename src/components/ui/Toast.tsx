@@ -1,15 +1,23 @@
 'use client';
 
 import { useEffect } from 'react';
-import { X, CheckCircle, XCircle, AlertCircle, Info } from 'lucide-react';
+import { X, CheckCircle, XCircle, AlertCircle, Info, RotateCcw } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
 
 export interface Toast {
   id: string;
   type: ToastType;
   message: string;
   duration?: number;
+  action?: ToastAction;
+  showRetry?: boolean;
+  onRetry?: () => void;
 }
 
 interface ToastItemProps {
@@ -41,18 +49,51 @@ function ToastItem({ toast, onClose }: ToastItemProps) {
     info: 'bg-blue-50 border-blue-200 text-blue-800',
   };
 
+  const handleRetry = () => {
+    if (toast.onRetry) {
+      toast.onRetry();
+      onClose(toast.id);
+    }
+  };
+
+  const handleAction = () => {
+    if (toast.action) {
+      toast.action.onClick();
+      onClose(toast.id);
+    }
+  };
+
   return (
     <div
       className={`flex items-center gap-3 min-w-80 max-w-md p-4 rounded-lg border shadow-lg animate-slide-in ${styles[toast.type]}`}
     >
       {icons[toast.type]}
       <p className="flex-1 text-sm font-medium">{toast.message}</p>
-      <button
-        onClick={() => onClose(toast.id)}
-        className="p-1 hover:bg-black/5 rounded transition-colors"
-      >
-        <X className="w-4 h-4" />
-      </button>
+      <div className="flex items-center gap-1">
+        {toast.showRetry && toast.onRetry && (
+          <button
+            onClick={handleRetry}
+            className="flex items-center gap-1 px-2 py-1 text-xs font-medium hover:bg-black/10 rounded transition-colors"
+          >
+            <RotateCcw className="w-3 h-3" />
+            Retry
+          </button>
+        )}
+        {toast.action && (
+          <button
+            onClick={handleAction}
+            className="px-2 py-1 text-xs font-medium hover:bg-black/10 rounded transition-colors"
+          >
+            {toast.action.label}
+          </button>
+        )}
+        <button
+          onClick={() => onClose(toast.id)}
+          className="p-1 hover:bg-black/5 rounded transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }

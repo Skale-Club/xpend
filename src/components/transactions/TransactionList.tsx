@@ -1,13 +1,14 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ArrowUpRight, ArrowDownRight, ArrowRight, Tag, CheckSquare, Square, X, TagIcon, ChevronRight, ChevronDown, Search, Plus } from 'lucide-react';
-import { Card, CardContent, Modal, Button } from '@/components/ui';
+import { ArrowUpRight, ArrowDownRight, ArrowRight, Tag, CheckSquare, Square, X, TagIcon, ChevronRight, ChevronDown, Search, Plus, Trash2, Download } from 'lucide-react';
+import { Card, CardContent, Modal, Button, useToast } from '@/components/ui';
 import { Transaction, Category, TransactionType } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { getCategoryIcon } from '@/lib/categoryIcons';
 import { CategoryTreeSelector } from '@/components/categories/CategoryTreeSelector';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
+import { exportTransactions } from '@/lib/export';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -21,6 +22,7 @@ interface TransactionListProps {
   ) => Promise<void> | void;
   onCategoryCreated?: () => Promise<void> | void;
   onBulkCategorize?: (transactionIds: string[], categoryId: string | null) => Promise<void> | void;
+  onBulkDelete?: (transactionIds: string[]) => Promise<void> | void;
 }
 
 interface CategoryNode extends Category {
@@ -85,9 +87,11 @@ export function TransactionList({
   onDescriptionUpdate,
   onCategorizeByKeyword,
   onCategoryCreated,
-  onBulkCategorize
+  onBulkCategorize,
+  onBulkDelete
 }: TransactionListProps) {
   const { hideSensitiveValues } = useSensitiveValues();
+  const toast = useToast();
   const [categorizeModal, setCategorizeModal] = useState<string | null>(null);
   const [categorizeTargetTransaction, setCategorizeTargetTransaction] = useState<Transaction | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -398,12 +402,36 @@ export function TransactionList({
     setIsSavingBulkCategorization(true);
     try {
       await onBulkCategorize(Array.from(selectedTransactions), bulkCategory || null);
+      toast.success(`Categorized ${selectedTransactions.size} transactions`);
       setSelectedTransactions(new Set());
       setBulkCategorizeModal(false);
       setBulkCategory('');
+    } catch {
+      toast.error('Failed to categorize transactions', { showRetry: true, onRetry: handleBulkCategorize });
     } finally {
       setIsSavingBulkCategorization(false);
     }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!onBulkDelete || selectedTransactions.size === 0) return;
+
+    try {
+      await onBulkDelete(Array.from(selectedTransactions));
+      toast.success(`Deleted ${selectedTransactions.size} transactions`);
+      setSelectedTransactions(new Set());
+    } catch {
+      toast.error('Failed to delete transactions', { showRetry: true, onRetry: handleBulkDelete });
+    }
+  };
+
+  const handleBulkExport = (format: 'csv' | 'json') => {
+    const selectedTx = transactions.filter((t) => selectedTransactions.has(t.id));
+    exportTransactions(selectedTx, {
+      format,
+      filename: `selected-transactions-${new Date().toISOString().split('T')[0]}`
+    });
+    toast.success(`Exported ${selectedTx.length} transactions as ${format.toUpperCase()}`);
   };
 
   const openBulkCategorizeModal = () => {
@@ -426,9 +454,8 @@ export function TransactionList({
     return (
       <div key={category.id}>
         <div
-          className={`w-full py-2.5 pr-3 flex items-center gap-3 transition-colors ${
-            isSelected ? 'bg-green-50 hover:bg-green-50' : 'hover:bg-gray-50'
-          }`}
+          className={`w-full py-2.5 pr-3 flex items-center gap-3 transition-colors ${isSelected ? 'bg-green-50 hover:bg-green-50' : 'hover:bg-gray-50'
+            }`}
           style={{ paddingLeft: `${12 + level * 20}px` }}
         >
           {hasChildren ? (
@@ -494,7 +521,7 @@ export function TransactionList({
     <>
       {/* Bulk Action Bar */}
       {selectedTransactions.size > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 flex items-center justify-between">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-blue-700">
               {selectedTransactions.size} selected
@@ -506,13 +533,36 @@ export function TransactionList({
               <X className="w-4 h-4 text-blue-600" />
             </button>
           </div>
-          <Button
-            size="sm"
-            onClick={openBulkCategorizeModal}
-          >
-            <TagIcon className="w-4 h-4 mr-1" />
-            Categorize Selected
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleBulkExport('csv')}
+              className="bg-white"
+            >
+              <Download className="w-4 h-4 mr-1" />
+              Export CSV
+            </Button>
+            {onBulkCategorize && (
+              <Button
+                size="sm"
+                onClick={openBulkCategorizeModal}
+              >
+                <TagIcon className="w-4 h-4 mr-1" />
+                Categorize
+              </Button>
+            )}
+            {onBulkDelete && (
+              <Button
+                size="sm"
+                variant="danger"
+                onClick={handleBulkDelete}
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                Delete
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
@@ -551,111 +601,111 @@ export function TransactionList({
                   : null;
                 const resolvedCategoryIconName = transaction.category
                   ? (transactionCategoryId
-                      ? (effectiveCategoryIcons.get(transactionCategoryId) || transaction.category.icon)
-                      : transaction.category.icon)
+                    ? (effectiveCategoryIcons.get(transactionCategoryId) || transaction.category.icon)
+                    : transaction.category.icon)
                   : null;
                 const CategoryIcon = getCategoryIcon(resolvedCategoryIconName);
 
                 return (
-                <div
-                  key={transaction.id}
-                  className={`p-4 hover:bg-gray-50 transition-colors ${selectedTransactions.has(transaction.id) ? 'bg-blue-50' : ''
-                    }`}
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      {/* Checkbox */}
-                      <button
-                        onClick={() => toggleSelect(transaction.id)}
-                        className="p-1 hover:bg-gray-200 rounded shrink-0"
-                      >
-                        {selectedTransactions.has(transaction.id) ? (
-                          <CheckSquare className="w-5 h-5 text-blue-600" />
-                        ) : (
-                          <Square className="w-5 h-5 text-gray-400" />
-                        )}
-                      </button>
-
-                      <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-                        {getTypeIcon(transaction.type)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        {editingDescriptionId === transaction.id ? (
-                          <input
-                            type="text"
-                            autoFocus
-                            value={tempDescription}
-                            onChange={(e) => setTempDescription(e.target.value)}
-                            onBlur={(e) => handleDescriptionCommit(transaction.id, e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                e.currentTarget.blur();
-                              }
-                              if (e.key === 'Escape') {
-                                e.preventDefault();
-                                handleDescriptionCancel();
-                              }
-                            }}
-                            className="w-full font-medium text-gray-900 border-b border-blue-500 focus:outline-none bg-transparent"
-                          />
-                        ) : (
-                          <p 
-                            className="font-medium text-gray-900 line-clamp-1 cursor-text hover:text-blue-600 transition-colors"
-                            onClick={() => {
-                              setEditingDescriptionId(transaction.id);
-                              setTempDescription(transaction.description);
-                            }}
-                          >
-                            {transaction.description}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-sm text-gray-500">
-                            {formatDate(transaction.date)}
-                          </span>
-                          {transaction.category ? (
-                            <button
-                              type="button"
-                              className="px-2 py-0.5 text-xs rounded-full hover:opacity-80 transition-opacity cursor-pointer inline-flex items-center gap-1"
-                              style={{
-                                backgroundColor: `${resolvedCategoryColor}20`,
-                                color: resolvedCategoryColor || transaction.category.color,
-                              }}
-                              onClick={() => openCategorizeModal(transaction)}
-                              title="Edit category"
-                            >
-                              <CategoryIcon className="w-3.5 h-3.5" />
-                              {transaction.category.name}
-                            </button>
+                  <div
+                    key={transaction.id}
+                    className={`p-4 hover:bg-gray-50 transition-colors ${selectedTransactions.has(transaction.id) ? 'bg-blue-50' : ''
+                      }`}
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {/* Checkbox */}
+                        <button
+                          onClick={() => toggleSelect(transaction.id)}
+                          className="p-1 hover:bg-gray-200 rounded shrink-0"
+                        >
+                          {selectedTransactions.has(transaction.id) ? (
+                            <CheckSquare className="w-5 h-5 text-blue-600" />
                           ) : (
-                            <button
-                              type="button"
-                              className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors cursor-pointer inline-flex items-center gap-1"
-                              onClick={() => openCategorizeModal(transaction)}
-                              title="Set category"
-                            >
-                              <Tag className="w-3.5 h-3.5" />
-                              Uncategorized
-                            </button>
+                            <Square className="w-5 h-5 text-gray-400" />
                           )}
+                        </button>
+
+                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                          {getTypeIcon(transaction.type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          {editingDescriptionId === transaction.id ? (
+                            <input
+                              type="text"
+                              autoFocus
+                              value={tempDescription}
+                              onChange={(e) => setTempDescription(e.target.value)}
+                              onBlur={(e) => handleDescriptionCommit(transaction.id, e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  e.currentTarget.blur();
+                                }
+                                if (e.key === 'Escape') {
+                                  e.preventDefault();
+                                  handleDescriptionCancel();
+                                }
+                              }}
+                              className="w-full font-medium text-gray-900 border-b border-blue-500 focus:outline-none bg-transparent"
+                            />
+                          ) : (
+                            <p
+                              className="font-medium text-gray-900 line-clamp-1 cursor-text hover:text-blue-600 transition-colors"
+                              onClick={() => {
+                                setEditingDescriptionId(transaction.id);
+                                setTempDescription(transaction.description);
+                              }}
+                            >
+                              {transaction.description}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-sm text-gray-500">
+                              {formatDate(transaction.date)}
+                            </span>
+                            {transaction.category ? (
+                              <button
+                                type="button"
+                                className="px-2 py-0.5 text-xs rounded-full hover:opacity-80 transition-opacity cursor-pointer inline-flex items-center gap-1"
+                                style={{
+                                  backgroundColor: `${resolvedCategoryColor}20`,
+                                  color: resolvedCategoryColor || transaction.category.color,
+                                }}
+                                onClick={() => openCategorizeModal(transaction)}
+                                title="Edit category"
+                              >
+                                <CategoryIcon className="w-3.5 h-3.5" />
+                                {transaction.category.name}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors cursor-pointer inline-flex items-center gap-1"
+                                onClick={() => openCategorizeModal(transaction)}
+                                title="Set category"
+                              >
+                                <Tag className="w-3.5 h-3.5" />
+                                Uncategorized
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <p
-                        className={`font-semibold ${transaction.type === 'INCOME' ? 'text-green-600' : 'text-gray-900'
-                          }`}
-                      >
-                        {transaction.type === 'INCOME' ? '+' : '-'}
-                        {formatCurrency(transaction.amount, { hideSensitiveValues })}
-                      </p>
-                      {transaction.account && (
-                        <p className="text-xs text-gray-500">{transaction.account.name}</p>
-                      )}
+                      <div className="text-right">
+                        <p
+                          className={`font-semibold ${transaction.type === 'INCOME' ? 'text-green-600' : 'text-gray-900'
+                            }`}
+                        >
+                          {transaction.type === 'INCOME' ? '+' : '-'}
+                          {formatCurrency(transaction.amount, { hideSensitiveValues })}
+                        </p>
+                        {transaction.account && (
+                          <p className="text-xs text-gray-500">{transaction.account.name}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
                 );
               })}
             </div>
@@ -716,11 +766,10 @@ export function TransactionList({
                       <button
                         type="button"
                         onClick={() => setNewCategoryParentId('')}
-                        className={`px-2.5 py-1.5 rounded-lg border text-sm inline-flex items-center gap-1.5 transition-colors ${
-                          newCategoryParentId === ''
-                            ? 'border-blue-500 bg-blue-50 text-blue-700'
-                            : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-                        }`}
+                        className={`px-2.5 py-1.5 rounded-lg border text-sm inline-flex items-center gap-1.5 transition-colors ${newCategoryParentId === ''
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                          }`}
                       >
                         <Tag className="w-3.5 h-3.5" />
                         Main category
@@ -733,11 +782,10 @@ export function TransactionList({
                             key={option.id}
                             type="button"
                             onClick={() => setNewCategoryParentId(option.id)}
-                            className={`px-2.5 py-1.5 rounded-lg border text-sm inline-flex items-center gap-1.5 transition-colors ${
-                              isSelected
-                                ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-                            }`}
+                            className={`px-2.5 py-1.5 rounded-lg border text-sm inline-flex items-center gap-1.5 transition-colors ${isSelected
+                              ? 'border-blue-500 bg-blue-50 text-blue-700'
+                              : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                              }`}
                           >
                             <OptionIcon className="w-3.5 h-3.5" style={{ color: option.color }} />
                             <span>{option.label}</span>
@@ -766,9 +814,8 @@ export function TransactionList({
                 <button
                   type="button"
                   onClick={() => setSelectedCategory('')}
-                  className={`w-full px-3 py-2.5 flex items-center gap-3 text-left cursor-pointer transition-colors ${
-                    selectedCategory === '' ? 'bg-green-50 hover:bg-green-50' : 'hover:bg-gray-50'
-                  }`}
+                  className={`w-full px-3 py-2.5 flex items-center gap-3 text-left cursor-pointer transition-colors ${selectedCategory === '' ? 'bg-green-50 hover:bg-green-50' : 'hover:bg-gray-50'
+                    }`}
                 >
                   <span className="w-5 h-5 shrink-0" />
                   {selectedCategory === '' ? (

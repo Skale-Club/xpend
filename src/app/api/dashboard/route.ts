@@ -124,6 +124,7 @@ export async function GET(request: Request) {
     const parentCategoryBreakdown = getParentCategoryBreakdown(transactions, 'EXPENSE', categoryContext);
 
     const balanceTrend = getBalanceTrend(accounts, transactions);
+    const spendingPace = getSpendingPaceData(transactions);
 
     return NextResponse.json({
       totalIncome,
@@ -140,6 +141,7 @@ export async function GET(request: Request) {
       subcategoryData,
       parentCategoryBreakdown,
       balanceTrend,
+      spendingPace,
       balances,
       transactions: paginatedTransactions,
       pagination: {
@@ -582,5 +584,90 @@ function getBalanceTrend(
         balance,
       };
     });
+}
+
+function getSpendingPaceData(transactions: { date: Date; type: string; amount: number }[]) {
+  const now = new Date();
+  const currentMonthDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  const previousMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+  const currentYear = currentMonthDate.getFullYear();
+  const currentMonth = currentMonthDate.getMonth();
+  const previousYear = previousMonthDate.getFullYear();
+  const previousMonth = previousMonthDate.getMonth();
+
+  const today = now.getDate();
+  const currentMonthDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const previousMonthDays = new Date(previousYear, previousMonth + 1, 0).getDate();
+
+  const currentDailyTotals = Array.from({ length: currentMonthDays + 1 }, () => 0);
+  const previousDailyTotals = Array.from({ length: previousMonthDays + 1 }, () => 0);
+
+  for (const transaction of transactions) {
+    if (transaction.type !== 'EXPENSE') continue;
+
+    const transactionDate = new Date(transaction.date);
+    const day = transactionDate.getDate();
+    const year = transactionDate.getFullYear();
+    const month = transactionDate.getMonth();
+
+    if (year === currentYear && month === currentMonth) {
+      currentDailyTotals[day] += transaction.amount;
+    } else if (year === previousYear && month === previousMonth) {
+      previousDailyTotals[day] += transaction.amount;
+    }
+  }
+
+  const currentCumulative = Array.from({ length: currentMonthDays + 1 }, () => 0);
+  const previousCumulative = Array.from({ length: previousMonthDays + 1 }, () => 0);
+
+  for (let day = 1; day <= currentMonthDays; day += 1) {
+    currentCumulative[day] = currentCumulative[day - 1] + currentDailyTotals[day];
+  }
+
+  for (let day = 1; day <= previousMonthDays; day += 1) {
+    previousCumulative[day] = previousCumulative[day - 1] + previousDailyTotals[day];
+  }
+
+  const maxDays = Math.max(currentMonthDays, previousMonthDays);
+  const currentComparableDay = Math.min(today, currentMonthDays);
+  const previousComparableDay = Math.min(today, previousMonthDays);
+
+  const currentTotal = currentCumulative[currentComparableDay] || 0;
+  const previousComparableTotal = previousCumulative[previousComparableDay] || 0;
+  const previousMonthTotal = previousCumulative[previousMonthDays] || 0;
+
+  const changePercentage =
+    previousComparableTotal > 0
+      ? ((currentTotal - previousComparableTotal) / previousComparableTotal) * 100
+      : currentTotal === 0
+        ? 0
+        : null;
+
+  const status =
+    currentTotal < previousComparableTotal
+      ? 'below'
+      : currentTotal > previousComparableTotal
+        ? 'above'
+        : 'equal';
+
+  const chartData = Array.from({ length: maxDays }, (_, index) => {
+    const day = index + 1;
+    return {
+      day,
+      currentMonth: day <= currentComparableDay ? currentCumulative[day] || 0 : null,
+      previousMonth: day <= previousMonthDays ? previousCumulative[day] || 0 : null,
+    };
+  });
+
+  return {
+    currentTotal,
+    previousComparableTotal,
+    previousMonthTotal,
+    changePercentage,
+    status,
+    currentComparableDay,
+    chartData,
+  };
 }
 

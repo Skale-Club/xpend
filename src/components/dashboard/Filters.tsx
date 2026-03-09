@@ -34,11 +34,11 @@ export function DashboardFiltersPanel({
 
   const handleSearchChange = (value: string) => {
     setLocalSearch(value);
-    
+
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
-    
+
     searchTimeoutRef.current = setTimeout(() => {
       updateFilter('searchQuery', value || undefined);
     }, 500);
@@ -56,11 +56,11 @@ export function DashboardFiltersPanel({
     if (key === 'searchQuery') setLocalSearch('');
   };
 
-  const setQuickRange = (range: 'thisMonth' | 'lastMonth' | 'thisYear' | 'last30Days') => {
+  const setQuickRange = (range: 'thisMonth' | 'lastMonth' | 'thisYear' | 'last30Days' | 'last7Days' | 'last90Days') => {
     const now = new Date();
     let from: Date | undefined;
     let to: Date | undefined = new Date();
-    
+
     switch (range) {
       case 'thisMonth':
         from = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -72,12 +72,20 @@ export function DashboardFiltersPanel({
       case 'thisYear':
         from = new Date(now.getFullYear(), 0, 1);
         break;
+      case 'last7Days':
+        from = new Date();
+        from.setDate(now.getDate() - 7);
+        break;
       case 'last30Days':
         from = new Date();
         from.setDate(now.getDate() - 30);
         break;
+      case 'last90Days':
+        from = new Date();
+        from.setDate(now.getDate() - 90);
+        break;
     }
-    
+
     onFiltersChange({ ...filters, dateFrom: from, dateTo: to });
   };
 
@@ -135,7 +143,7 @@ export function DashboardFiltersPanel({
                   className="h-10 text-sm"
                 />
               </div>
-              
+
               {/* Category Dropdown */}
               <div className="relative w-1/2 sm:w-44 md:w-52 shrink-0" ref={categoryFilterRef}>
                 <button
@@ -205,16 +213,34 @@ export function DashboardFiltersPanel({
             {/* Range Shortcuts */}
             <div className="hidden md:flex items-center gap-1 bg-gray-50 p-1 rounded-lg border border-gray-100 h-10">
               <button
+                onClick={() => setQuickRange('last7Days')}
+                className="px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-white hover:shadow-sm rounded-md transition-all h-full flex items-center"
+              >
+                7D
+              </button>
+              <button
+                onClick={() => setQuickRange('last30Days')}
+                className="px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-white hover:shadow-sm rounded-md transition-all h-full flex items-center"
+              >
+                30D
+              </button>
+              <button
                 onClick={() => setQuickRange('thisMonth')}
-                className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-white hover:shadow-sm rounded-md transition-all h-full flex items-center"
+                className="px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-white hover:shadow-sm rounded-md transition-all h-full flex items-center"
               >
                 This Month
               </button>
               <button
                 onClick={() => setQuickRange('lastMonth')}
-                className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-white hover:shadow-sm rounded-md transition-all h-full flex items-center"
+                className="px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-white hover:shadow-sm rounded-md transition-all h-full flex items-center"
               >
                 Last Month
+              </button>
+              <button
+                onClick={() => setQuickRange('thisYear')}
+                className="px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-white hover:shadow-sm rounded-md transition-all h-full flex items-center"
+              >
+                This Year
               </button>
             </div>
 
@@ -235,8 +261,8 @@ export function DashboardFiltersPanel({
             </Button>
 
             {hasActiveFilters && (
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 onClick={clearFilters}
                 className="text-sm h-10 shrink-0 text-gray-500 hover:text-red-600 px-2 sm:px-4"
               >
@@ -334,7 +360,7 @@ export function DashboardFiltersPanel({
       {hasActiveFilters && (
         <div className="flex flex-wrap items-center gap-2 px-1">
           <span className="text-xs font-medium text-gray-500 mr-1">Active filters:</span>
-          
+
           {filters.searchQuery && (
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-100 text-xs font-medium">
               Search: &ldquo;{filters.searchQuery}&rdquo;
@@ -348,13 +374,13 @@ export function DashboardFiltersPanel({
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 text-orange-700 rounded-full border border-orange-100 text-xs font-medium">
               <Calendar className="w-3 h-3" />
               {filters.dateFrom ? formatDateLabel(filters.dateFrom) : '...'} - {filters.dateTo ? formatDateLabel(filters.dateTo) : 'Now'}
-              <button 
+              <button
                 onClick={() => {
                   const newFilters = { ...filters };
                   delete newFilters.dateFrom;
                   delete newFilters.dateTo;
                   onFiltersChange(newFilters);
-                }} 
+                }}
                 className="hover:text-orange-900"
               >
                 <X className="w-3 h-3" />
@@ -392,13 +418,13 @@ export function DashboardFiltersPanel({
           {(filters.minAmount !== undefined || filters.maxAmount !== undefined) && (
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-teal-50 text-teal-700 rounded-full border border-teal-100 text-xs font-medium">
               Amount: {filters.minAmount !== undefined ? formatCurrency(filters.minAmount, { hideSensitiveValues, minimumFractionDigits: 0, maximumFractionDigits: 2 }) : 'Any'} - {filters.maxAmount !== undefined ? formatCurrency(filters.maxAmount, { hideSensitiveValues, minimumFractionDigits: 0, maximumFractionDigits: 2 }) : 'Any'}
-              <button 
+              <button
                 onClick={() => {
                   const newFilters = { ...filters };
                   delete newFilters.minAmount;
                   delete newFilters.maxAmount;
                   onFiltersChange(newFilters);
-                }} 
+                }}
                 className="hover:text-teal-900"
               >
                 <X className="w-3 h-3" />
