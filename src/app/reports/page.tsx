@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Card, CardHeader, CardContent, Modal, Button, Loader } from '@/components/ui';
-import { DashboardFiltersPanel, DistributionCarousel } from '@/components/dashboard';
+import { DashboardFiltersPanel, DistributionCarousel, TopCategoriesComparisonCard } from '@/components/dashboard';
 import { CategoryTreeSelector } from '@/components/categories/CategoryTreeSelector';
 import { TimeSeriesChart } from '@/components/reports';
 import { Account, Category, DashboardFilters, ReportData } from '@/types';
@@ -23,6 +23,36 @@ type TrendMode = 'overall' | 'category' | 'income' | 'income-vs-outcome';
 type CategoryReportNode = ReportData['categoryBreakdown'][number];
 type CategoryTransaction = CategoryReportNode['transactions'][number];
 type TimeGranularity = 'day' | 'month';
+
+interface CategoryBreakdownData {
+  category: {
+    id: string;
+    name: string;
+    color: string;
+    total: number;
+    count: number;
+  };
+  subcategories: {
+    id: string;
+    name: string;
+    color: string;
+    total: number;
+    count: number;
+    percentage: number;
+  }[];
+  transactions: {
+    id: string;
+    description: string;
+    type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
+    amount: number;
+    date: string;
+    subcategoryName: string;
+    category: { id: string; name: string; color: string; icon?: string | null } | null;
+    account: { id: string; name: string; color: string } | null;
+  }[];
+  totalTransactions: number;
+  truncated: boolean;
+}
 
 function getTypeIcon(type: string) {
   switch (type) {
@@ -103,6 +133,17 @@ function aggregateIncomeOutcomeSeries(
       income: totals.income,
       outcome: totals.outcome,
     }));
+}
+
+function getDefaultComparisonMonths() {
+  const now = new Date();
+  const current = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const previous = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+
+  return {
+    currentMonth: `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`,
+    previousMonth: `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, '0')}`,
+  };
 }
 
 function CategoryRow({
@@ -298,6 +339,11 @@ export default function ReportsPage() {
   const [trendGranularity, setTrendGranularity] = useState<TimeGranularity>('month');
   const [isTrendCategoryOpen, setIsTrendCategoryOpen] = useState(false);
   const trendCategoryFilterRef = useRef<HTMLDivElement | null>(null);
+  const [isCategoryBreakdownOpen, setIsCategoryBreakdownOpen] = useState(false);
+  const [isCategoryBreakdownLoading, setIsCategoryBreakdownLoading] = useState(false);
+  const [categoryBreakdownData, setCategoryBreakdownData] = useState<CategoryBreakdownData | null>(null);
+  const [categoryBreakdownError, setCategoryBreakdownError] = useState<string | null>(null);
+  const [comparisonMonths, setComparisonMonths] = useState(getDefaultComparisonMonths);
 
   const formatAmount = useCallback(
     (amount: number) => formatCurrency(amount, { hideSensitiveValues }),
@@ -331,6 +377,8 @@ export default function ReportsPage() {
       if (filters.searchQuery) params.set('search', filters.searchQuery);
       if (filters.minAmount !== undefined) params.set('minAmount', String(filters.minAmount));
       if (filters.maxAmount !== undefined) params.set('maxAmount', String(filters.maxAmount));
+      params.set('compareCurrentMonth', comparisonMonths.currentMonth);
+      params.set('comparePreviousMonth', comparisonMonths.previousMonth);
 
       const [reportsRes, accountsRes, categoriesRes] = await Promise.all([
         fetch(`/api/reports?${params}`),
@@ -352,7 +400,7 @@ export default function ReportsPage() {
     } finally {
       if (!silent) setIsLoading(false);
     }
-  }, [filters]);
+  }, [comparisonMonths.currentMonth, comparisonMonths.previousMonth, filters]);
 
   useEffect(() => {
     fetchData();
@@ -856,6 +904,45 @@ export default function ReportsPage() {
                 recurringVsOneTime: genericToDistribution(data.recurringVsOneTime),
                 expenseByWeekday: genericToDistribution(data.weekdayPattern),
               })}
+              onDataPointClick={async ({ viewId, dataPoint }) => {
+                const parentCategoryId = viewId === 'expense'
+                  ? dataPoint.id
+                  : viewId.startsWith('parent-breakdown-')
+                    ? viewId.replace('parent-breakdown-', '')
+                    : null;
+                if (!parentCategoryId) return;
+
+                setIsCategoryBreakdownOpen(true);
+                setIsCategoryBreakdownLoading(true);
+                setCategoryBreakdownData(null);
+                setCategoryBreakdownError(null);
+
+                try {
+                  const params = new URLSearchParams();
+                  params.set('parentCategoryId', parentCategoryId);
+
+                  if (filters.dateFrom) params.set('dateFrom', filters.dateFrom.toISOString());
+                  if (filters.dateTo) params.set('dateTo', filters.dateTo.toISOString());
+                  if (filters.accountIds?.length) params.set('accountIds', filters.accountIds.join(','));
+                  if (filters.categoryIds?.length) params.set('categoryIds', filters.categoryIds.join(','));
+                  if (filters.minAmount) params.set('minAmount', filters.minAmount.toString());
+                  if (filters.maxAmount) params.set('maxAmount', filters.maxAmount.toString());
+                  if (filters.searchQuery) params.set('search', filters.searchQuery);
+
+                  const response = await fetch(`/api/dashboard/category-breakdown?${params.toString()}`);
+                  if (!response.ok) {
+                    throw new Error('Failed to load breakdown');
+                  }
+
+                  const breakdown = await response.json();
+                  setCategoryBreakdownData(breakdown);
+                } catch (error) {
+                  console.error('Failed to fetch category breakdown:', error);
+                  setCategoryBreakdownError('Failed to load category breakdown');
+                } finally {
+                  setIsCategoryBreakdownLoading(false);
+                }
+              }}
             />
           </div>
 
@@ -1107,8 +1194,195 @@ export default function ReportsPage() {
               </table>
             </div>
           </Card>
+
+          <TopCategoriesComparisonCard
+            data={data.topCategoriesComparison}
+            showLink={false}
+            monthSelection={{
+              currentMonth: comparisonMonths.currentMonth,
+              previousMonth: comparisonMonths.previousMonth,
+              onChange: setComparisonMonths,
+            }}
+          />
         </>
       )}
+
+      <Modal
+        isOpen={isCategoryBreakdownOpen}
+        onClose={() => {
+          setIsCategoryBreakdownOpen(false);
+          setCategoryBreakdownData(null);
+          setCategoryBreakdownError(null);
+        }}
+        title={categoryBreakdownData ? `${categoryBreakdownData.category.name} Breakdown` : 'Category Breakdown'}
+        size="xl"
+      >
+        {isCategoryBreakdownLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader size={56} />
+          </div>
+        ) : categoryBreakdownError ? (
+          <div className="py-8 text-center text-sm text-red-600">
+            {categoryBreakdownError}
+          </div>
+        ) : categoryBreakdownData ? (
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total</div>
+                <div className="text-base font-bold text-slate-900">
+                  {formatCurrency(categoryBreakdownData.category.total, { hideSensitiveValues })}
+                </div>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Transactions</div>
+                <div className="text-base font-bold text-slate-900">{categoryBreakdownData.totalTransactions}</div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 mb-2">Subcategories</h3>
+              <div className="space-y-2">
+                {categoryBreakdownData.subcategories.length === 0 ? (
+                  <div className="rounded-lg border border-slate-100 px-3 py-4 text-sm text-slate-500">
+                    No subcategories found.
+                  </div>
+                ) : (
+                  categoryBreakdownData.subcategories.map((subcategory) => (
+                    <div key={subcategory.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: subcategory.color }} />
+                        <span className="text-sm text-slate-800 truncate">{subcategory.name}</span>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-sm font-semibold text-slate-900">
+                          {formatCurrency(subcategory.total, { hideSensitiveValues })}
+                        </span>
+                        <span className="text-xs text-slate-500 min-w-[3rem] text-right">
+                          {subcategory.percentage.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 mb-2">Related Transactions</h3>
+              <div className="max-h-[320px] overflow-y-auto rounded-lg border border-slate-200">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs text-slate-500 bg-slate-50 sticky top-0 border-b border-slate-200">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Date</th>
+                      <th className="px-3 py-2 font-medium">Description</th>
+                      <th className="px-3 py-2 font-medium">Subcategory</th>
+                      <th className="px-3 py-2 font-medium text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {categoryBreakdownData.transactions.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-3 py-6 text-center text-slate-500">
+                          No transactions found for this category.
+                        </td>
+                      </tr>
+                    ) : (
+                      categoryBreakdownData.transactions.map((transaction) => (
+                        <tr key={transaction.id} className="hover:bg-slate-50">
+                          <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{formatDate(transaction.date)}</td>
+                          <td className="px-3 py-2 text-slate-900 max-w-[220px]">
+                            <div className="flex items-center gap-2 min-w-0">
+                              {getTypeIcon(transaction.type)}
+                              {editingDescriptionId === transaction.id ? (
+                                <input
+                                  autoFocus
+                                  value={tempDescription}
+                                  onChange={(event) => setTempDescription(event.target.value)}
+                                  onBlur={(event) =>
+                                    handleDescriptionCommit(
+                                      transaction.id,
+                                      event.target.value,
+                                      transaction.description
+                                    )
+                                  }
+                                  onKeyDown={(event) => {
+                                    if (event.key === 'Enter') {
+                                      event.preventDefault();
+                                      event.currentTarget.blur();
+                                    } else if (event.key === 'Escape') {
+                                      event.preventDefault();
+                                      cancelDescriptionEdit();
+                                    }
+                                  }}
+                                  className="w-full bg-white border border-blue-300 rounded px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => startDescriptionEdit(transaction.id, transaction.description)}
+                                  className="truncate text-left hover:text-blue-600 transition-colors cursor-text"
+                                  title="Edit description"
+                                >
+                                  {transaction.description}
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2">
+                            {transaction.category ? (
+                              (() => {
+                                const CategoryIcon = getCategoryIcon(transaction.category.icon);
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => openTransactionCategorize(transaction)}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                                    style={{
+                                      backgroundColor: `${transaction.category.color}20`,
+                                      color: transaction.category.color,
+                                    }}
+                                    title="Change category"
+                                  >
+                                    <CategoryIcon className="w-3.5 h-3.5" />
+                                    {transaction.subcategoryName}
+                                  </button>
+                                );
+                              })()
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => openTransactionCategorize(transaction)}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600"
+                                title="Set category"
+                              >
+                                <Tag className="w-3.5 h-3.5" />
+                                {transaction.subcategoryName}
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-right font-semibold text-slate-900 whitespace-nowrap">
+                            {formatCurrency(transaction.amount, { hideSensitiveValues })}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {categoryBreakdownData.truncated && (
+                <p className="mt-2 text-xs text-slate-500">
+                  Showing the 100 most recent transactions for this category.
+                </p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="py-8 text-center text-sm text-slate-500">
+            Select a category to view details.
+          </div>
+        )}
+      </Modal>
 
       <Modal
         isOpen={!!merchantToCategorize}

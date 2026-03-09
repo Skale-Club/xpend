@@ -27,6 +27,8 @@ interface SpendingPaceData {
   changePercentage: number | null;
   status: 'below' | 'above' | 'equal';
   currentComparableDay: number;
+  currentMonthLabel: string;
+  previousMonthLabel: string;
   chartData: SpendingPaceDataPoint[];
 }
 
@@ -95,7 +97,7 @@ export function SpendingPaceCard({ data }: SpendingPaceCardProps) {
           </span>
           <span className="text-slate-500">
             vs {formatCurrency(data.previousComparableTotal, { hideSensitiveValues, maximumFractionDigits: 0 })}{' '}
-            previous month
+            {data.previousMonthLabel}
           </span>
         </div>
 
@@ -119,7 +121,7 @@ export function SpendingPaceCard({ data }: SpendingPaceCardProps) {
               <Tooltip
                 formatter={(value: number | string, name: string) => [
                   formatCurrency(Number(value), { hideSensitiveValues, maximumFractionDigits: 0 }),
-                  name === 'currentMonth' ? 'This month' : 'Last month',
+                  name === 'currentMonth' ? data.currentMonthLabel : data.previousMonthLabel,
                 ]}
                 labelFormatter={(label) => `Day ${label}`}
                 contentStyle={{
@@ -157,11 +159,11 @@ export function SpendingPaceCard({ data }: SpendingPaceCardProps) {
         <div className="mt-3 flex items-center gap-5 text-xs text-slate-500">
           <div className="inline-flex items-center gap-1.5">
             <span className="h-2 w-6 rounded-full bg-green-500" />
-            This month
+            {data.currentMonthLabel}
           </div>
           <div className="inline-flex items-center gap-1.5">
             <span className="h-0.5 w-6 border-t border-dashed border-slate-400" />
-            Last month
+            {data.previousMonthLabel}
           </div>
         </div>
       </CardContent>

@@ -16,6 +16,8 @@ export async function GET(request: Request) {
     const search = searchParams.get('search');
     const minAmount = searchParams.get('minAmount');
     const maxAmount = searchParams.get('maxAmount');
+    const compareCurrentMonth = searchParams.get('compareCurrentMonth');
+    const comparePreviousMonth = searchParams.get('comparePreviousMonth');
 
     validateQueryParams({
       dateFrom,
@@ -376,6 +378,12 @@ export async function GET(request: Request) {
         category: t.category,
         account: t.account,
       }));
+    const topCategoriesComparison = getTopCategoriesComparison(
+      transactions,
+      allCategories,
+      compareCurrentMonth,
+      comparePreviousMonth
+    );
 
     return NextResponse.json({
       summary: { totalAmount, transactionCount, averageAmount },
@@ -389,6 +397,7 @@ export async function GET(request: Request) {
       weekdayPattern,
       subcategoryData,
       largestTransactions,
+      topCategoriesComparison,
     });
   } catch (error) {
     if (error instanceof ValidationError) {
@@ -512,4 +521,124 @@ function getSubcategoryData(categoryBreakdown: any[]) {
   }
 
   return subcategories.sort((a, b) => b.amount - a.amount).slice(0, 10);
+}
+
+function getLatestClosedMonthPair() {
+  const now = new Date();
+
+  return {
+    currentMonthDate: new Date(now.getFullYear(), now.getMonth() - 1, 1),
+    previousMonthDate: new Date(now.getFullYear(), now.getMonth() - 2, 1),
+  };
+}
+
+function parseMonthKey(monthKey: string | null): Date | null {
+  if (!monthKey || !/^\d{4}-\d{2}$/.test(monthKey)) return null;
+  const [year, month] = monthKey.split('-').map(Number);
+  if (!year || !month || month < 1 || month > 12) return null;
+  return new Date(year, month - 1, 1);
+}
+
+function getComparisonMonthPair(compareCurrentMonth: string | null, comparePreviousMonth: string | null) {
+  const parsedCurrent = parseMonthKey(compareCurrentMonth);
+  const parsedPrevious = parseMonthKey(comparePreviousMonth);
+
+  if (parsedCurrent && parsedPrevious) {
+    return {
+      currentMonthDate: parsedCurrent,
+      previousMonthDate: parsedPrevious,
+    };
+  }
+
+  return getLatestClosedMonthPair();
+}
+
+function getTopCategoriesComparison(
+  transactions: { date: Date; amount: number; category: { id: string; name: string; color: string } | null }[],
+  categories: { id: string; name: string; color: string; parentId: string | null }[],
+  compareCurrentMonth: string | null,
+  comparePreviousMonth: string | null
+) {
+  const { currentMonthDate, previousMonthDate } = getComparisonMonthPair(compareCurrentMonth, comparePreviousMonth);
+  const currentYear = currentMonthDate.getFullYear();
+  const currentMonth = currentMonthDate.getMonth();
+  const previousYear = previousMonthDate.getFullYear();
+  const previousMonth = previousMonthDate.getMonth();
+
+  const categoryById = new Map(categories.map((category) => [category.id, category]));
+  const rootCategoryCache = new Map<string, string>();
+  const getRootCategoryId = (categoryId: string): string => {
+    if (rootCategoryCache.has(categoryId)) {
+      return rootCategoryCache.get(categoryId)!;
+    }
+
+    let currentId = categoryId;
+    let current = categoryById.get(currentId);
+    while (current?.parentId) {
+      currentId = current.parentId;
+      current = categoryById.get(currentId);
+    }
+
+    rootCategoryCache.set(categoryId, currentId);
+    return currentId;
+  };
+
+  const comparisonMap = new Map<
+    string,
+    {
+      categoryId: string;
+      categoryName: string;
+      color: string;
+      currentAmount: number;
+      previousAmount: number;
+    }
+  >();
+
+  for (const transaction of transactions) {
+    const txDate = new Date(transaction.date);
+    const year = txDate.getFullYear();
+    const month = txDate.getMonth();
+
+    const rootCategoryId = transaction.category?.id ? getRootCategoryId(transaction.category.id) : 'uncategorized';
+    const rootCategory = transaction.category?.id ? categoryById.get(rootCategoryId) : null;
+
+    if (!comparisonMap.has(rootCategoryId)) {
+      comparisonMap.set(rootCategoryId, {
+        categoryId: rootCategoryId,
+        categoryName: rootCategory?.name || 'Uncategorized',
+        color: rootCategory?.color || '#6B7280',
+        currentAmount: 0,
+        previousAmount: 0,
+      });
+    }
+
+    const item = comparisonMap.get(rootCategoryId)!;
+    if (year === currentYear && month === currentMonth) {
+      item.currentAmount += transaction.amount;
+    } else if (year === previousYear && month === previousMonth) {
+      item.previousAmount += transaction.amount;
+    }
+  }
+
+  const items = Array.from(comparisonMap.values())
+    .filter((item) => item.currentAmount > 0 || item.previousAmount > 0)
+    .map((item) => ({
+      ...item,
+      variationPercentage:
+        item.previousAmount > 0
+          ? ((item.currentAmount - item.previousAmount) / item.previousAmount) * 100
+          : item.currentAmount === 0
+            ? 0
+            : null,
+    }))
+    .sort((a, b) => b.currentAmount - a.currentAmount)
+    .slice(0, 8);
+
+  return {
+    currentMonthLabel: currentMonthDate.toLocaleString('default', { month: 'short', year: 'numeric' }),
+    previousMonthLabel: previousMonthDate.toLocaleString('default', { month: 'short', year: 'numeric' }),
+    currentMonthKey: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`,
+    previousMonthKey: `${previousYear}-${String(previousMonth + 1).padStart(2, '0')}`,
+    items,
+  };
 }

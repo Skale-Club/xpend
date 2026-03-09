@@ -95,6 +95,7 @@ export async function GET(request: Request) {
         accountId: true,
         type: true,
         amount: true,
+        date: true,
       },
     });
 
@@ -125,6 +126,8 @@ export async function GET(request: Request) {
 
     const balanceTrend = getBalanceTrend(accounts, transactions);
     const spendingPace = getSpendingPaceData(transactions);
+    const cashFlowSummary = getCashFlowSummaryData(transactions);
+    const netWorthSummary = getNetWorthSummaryData(accounts, allTransactions, balances);
 
     return NextResponse.json({
       totalIncome,
@@ -142,6 +145,8 @@ export async function GET(request: Request) {
       parentCategoryBreakdown,
       balanceTrend,
       spendingPace,
+      cashFlowSummary,
+      netWorthSummary,
       balances,
       transactions: paginatedTransactions,
       pagination: {
@@ -587,16 +592,13 @@ function getBalanceTrend(
 }
 
 function getSpendingPaceData(transactions: { date: Date; type: string; amount: number }[]) {
-  const now = new Date();
-  const currentMonthDate = new Date(now.getFullYear(), now.getMonth(), 1);
-  const previousMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const { currentMonthDate, previousMonthDate } = getLatestClosedMonthPair();
 
   const currentYear = currentMonthDate.getFullYear();
   const currentMonth = currentMonthDate.getMonth();
   const previousYear = previousMonthDate.getFullYear();
   const previousMonth = previousMonthDate.getMonth();
 
-  const today = now.getDate();
   const currentMonthDays = new Date(currentYear, currentMonth + 1, 0).getDate();
   const previousMonthDays = new Date(previousYear, previousMonth + 1, 0).getDate();
 
@@ -630,8 +632,8 @@ function getSpendingPaceData(transactions: { date: Date; type: string; amount: n
   }
 
   const maxDays = Math.max(currentMonthDays, previousMonthDays);
-  const currentComparableDay = Math.min(today, currentMonthDays);
-  const previousComparableDay = Math.min(today, previousMonthDays);
+  const currentComparableDay = currentMonthDays;
+  const previousComparableDay = previousMonthDays;
 
   const currentTotal = currentCumulative[currentComparableDay] || 0;
   const previousComparableTotal = previousCumulative[previousComparableDay] || 0;
@@ -655,10 +657,13 @@ function getSpendingPaceData(transactions: { date: Date; type: string; amount: n
     const day = index + 1;
     return {
       day,
-      currentMonth: day <= currentComparableDay ? currentCumulative[day] || 0 : null,
+      currentMonth: day <= currentMonthDays ? currentCumulative[day] || 0 : null,
       previousMonth: day <= previousMonthDays ? previousCumulative[day] || 0 : null,
     };
   });
+
+  const currentMonthLabel = currentMonthDate.toLocaleString('default', { month: 'short', year: 'numeric' });
+  const previousMonthLabel = previousMonthDate.toLocaleString('default', { month: 'short', year: 'numeric' });
 
   return {
     currentTotal,
@@ -667,7 +672,127 @@ function getSpendingPaceData(transactions: { date: Date; type: string; amount: n
     changePercentage,
     status,
     currentComparableDay,
+    currentMonthLabel,
+    previousMonthLabel,
     chartData,
+  };
+}
+
+function getLatestClosedMonthPair() {
+  const now = new Date();
+
+  return {
+    currentMonthDate: new Date(now.getFullYear(), now.getMonth() - 1, 1),
+    previousMonthDate: new Date(now.getFullYear(), now.getMonth() - 2, 1),
+  };
+}
+
+function getCashFlowSummaryData(transactions: { date: Date; type: string; amount: number }[]) {
+  const { currentMonthDate, previousMonthDate } = getLatestClosedMonthPair();
+  const currentYear = currentMonthDate.getFullYear();
+  const currentMonth = currentMonthDate.getMonth();
+  const previousYear = previousMonthDate.getFullYear();
+  const previousMonth = previousMonthDate.getMonth();
+
+  let currentIncome = 0;
+  let currentExpense = 0;
+  let currentTransfer = 0;
+  let previousNet = 0;
+
+  for (const transaction of transactions) {
+    const txDate = new Date(transaction.date);
+    const year = txDate.getFullYear();
+    const month = txDate.getMonth();
+
+    if (year === currentYear && month === currentMonth) {
+      if (transaction.type === 'INCOME') currentIncome += transaction.amount;
+      if (transaction.type === 'EXPENSE') currentExpense += transaction.amount;
+      if (transaction.type === 'TRANSFER') currentTransfer += transaction.amount;
+      continue;
+    }
+
+    if (year === previousYear && month === previousMonth) {
+      if (transaction.type === 'INCOME') previousNet += transaction.amount;
+      if (transaction.type === 'EXPENSE') previousNet -= transaction.amount;
+    }
+  }
+
+  const currentNet = currentIncome - currentExpense;
+  const changePercentage =
+    previousNet !== 0
+      ? ((currentNet - previousNet) / Math.abs(previousNet)) * 100
+      : currentNet === 0
+        ? 0
+        : null;
+
+  return {
+    currentMonthLabel: currentMonthDate.toLocaleString('default', { month: 'short', year: 'numeric' }),
+    previousMonthLabel: previousMonthDate.toLocaleString('default', { month: 'short', year: 'numeric' }),
+    netAmount: currentNet,
+    previousNetAmount: previousNet,
+    incomeAmount: currentIncome,
+    expenseAmount: currentExpense,
+    transferAmount: currentTransfer,
+    changePercentage,
+  };
+}
+
+function getNetWorthSummaryData(
+  accounts: { id: string; initialBalance: number }[],
+  allTransactions: { accountId: string; type: string; amount: number; date: Date }[],
+  balances: Record<string, number>
+) {
+  const netWorth = Object.values(balances).reduce((sum, value) => sum + value, 0);
+  const initialTotal = accounts.reduce((sum, account) => sum + account.initialBalance, 0);
+  const sortedTransactions = [...allTransactions].sort((a, b) => a.date.getTime() - b.date.getTime());
+  const firstTransactionDate = sortedTransactions[0]?.date ?? null;
+
+  const now = new Date();
+  const startDate = new Date(now);
+  startDate.setDate(now.getDate() - 6);
+  startDate.setHours(0, 0, 0, 0);
+
+  const dailyDelta = new Map<string, number>();
+  let runningBalance = initialTotal;
+  const series: { label: string; value: number }[] = [];
+
+  for (const transaction of sortedTransactions) {
+    const date = new Date(transaction.date);
+    const dayKey = date.toISOString().slice(0, 10);
+    const currentDelta = dailyDelta.get(dayKey) || 0;
+    const delta = transaction.type === 'INCOME' ? transaction.amount : transaction.type === 'EXPENSE' ? -transaction.amount : 0;
+    dailyDelta.set(dayKey, currentDelta + delta);
+  }
+
+  const baselineDate = new Date(startDate);
+  baselineDate.setDate(startDate.getDate() - 1);
+  for (const transaction of sortedTransactions) {
+    if (transaction.date > baselineDate) break;
+    if (transaction.type === 'INCOME') runningBalance += transaction.amount;
+    if (transaction.type === 'EXPENSE') runningBalance -= transaction.amount;
+  }
+
+  for (let i = 0; i < 7; i += 1) {
+    const day = new Date(startDate);
+    day.setDate(startDate.getDate() + i);
+    const key = day.toISOString().slice(0, 10);
+    runningBalance += dailyDelta.get(key) || 0;
+
+    series.push({
+      label: day.toLocaleDateString('en-US', { weekday: 'short' }),
+      value: runningBalance,
+    });
+  }
+
+  const daysTracked = firstTransactionDate
+    ? Math.floor((now.getTime() - firstTransactionDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    : 0;
+
+  return {
+    netWorth,
+    daysTracked,
+    hasEnoughHistory: daysTracked >= 7,
+    series,
   };
 }
 

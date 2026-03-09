@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Card, CardHeader, CardContent, Pagination, Loader, Modal, ExportButton } from '@/components/ui';
+import { ArrowDownRight, ArrowRight, ArrowUpRight, Tag } from 'lucide-react';
+import { Card, CardHeader, CardContent, Pagination, Loader, Modal, ExportButton, Button } from '@/components/ui';
 import {
   StatsCards,
   MonthlyChart,
@@ -9,12 +10,16 @@ import {
   BalanceTrendChart,
   DistributionCarousel,
   SpendingPaceCard,
+  CashFlowResultCard,
+  NetWorthCard,
 } from '@/components/dashboard';
 import { TransactionList } from '@/components/transactions';
+import { CategoryTreeSelector } from '@/components/categories/CategoryTreeSelector';
 import { Account, Category, DashboardFilters, TransactionType, Transaction } from '@/types';
 import { buildDistributionTemplateItems, categorySummaryToDistribution } from '@/lib/distributionHelpers';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
+import { getCategoryIcon } from '@/lib/categoryIcons';
 
 interface DashboardData {
   totalIncome: number;
@@ -44,11 +49,27 @@ interface DashboardData {
     changePercentage: number | null;
     status: 'below' | 'above' | 'equal';
     currentComparableDay: number;
+    currentMonthLabel: string;
+    previousMonthLabel: string;
     chartData: {
       day: number;
       currentMonth: number | null;
       previousMonth: number | null;
     }[];
+  };
+  cashFlowSummary: {
+    currentMonthLabel: string;
+    previousMonthLabel: string;
+    netAmount: number;
+    previousNetAmount: number;
+    incomeAmount: number;
+    expenseAmount: number;
+    transferAmount: number;
+    changePercentage: number | null;
+  };
+  netWorthSummary: {
+    netWorth: number;
+    series: { label: string; value: number }[];
   };
   transactions: {
     id: string;
@@ -85,9 +106,11 @@ interface CategoryBreakdownData {
   transactions: {
     id: string;
     description: string;
+    type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
     amount: number;
     date: string;
     subcategoryName: string;
+    category: { id: string; name: string; color: string; icon?: string | null } | null;
     account: { id: string; name: string; color: string } | null;
   }[];
   totalTransactions: number;
@@ -106,6 +129,11 @@ export default function DashboardPage() {
   const [isCategoryBreakdownLoading, setIsCategoryBreakdownLoading] = useState(false);
   const [categoryBreakdownData, setCategoryBreakdownData] = useState<CategoryBreakdownData | null>(null);
   const [categoryBreakdownError, setCategoryBreakdownError] = useState<string | null>(null);
+  const [breakdownTransactionToCategorize, setBreakdownTransactionToCategorize] = useState<CategoryBreakdownData['transactions'][number] | null>(null);
+  const [selectedBreakdownCategory, setSelectedBreakdownCategory] = useState('');
+  const [isSavingBreakdownCategory, setIsSavingBreakdownCategory] = useState(false);
+  const [editingBreakdownDescriptionId, setEditingBreakdownDescriptionId] = useState<string | null>(null);
+  const [breakdownTempDescription, setBreakdownTempDescription] = useState('');
 
   // Pagination state for Recent Transactions
   const [currentPage, setCurrentPage] = useState(1);
@@ -201,6 +229,91 @@ export default function DashboardPage() {
     await fetchData({ silent: true });
   };
 
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'INCOME':
+        return <ArrowUpRight className="w-4 h-4 shrink-0 text-green-500" />;
+      case 'EXPENSE':
+        return <ArrowDownRight className="w-4 h-4 shrink-0 text-red-500" />;
+      case 'TRANSFER':
+        return <ArrowRight className="w-4 h-4 shrink-0 text-blue-500" />;
+      default:
+        return null;
+    }
+  };
+
+  const startBreakdownDescriptionEdit = (id: string, currentDescription: string) => {
+    setEditingBreakdownDescriptionId(id);
+    setBreakdownTempDescription(currentDescription);
+  };
+
+  const cancelBreakdownDescriptionEdit = () => {
+    setEditingBreakdownDescriptionId(null);
+    setBreakdownTempDescription('');
+  };
+
+  const handleBreakdownDescriptionCommit = async (
+    id: string,
+    nextValue: string,
+    currentDescription: string
+  ) => {
+    const nextDescription = nextValue.trim();
+    setEditingBreakdownDescriptionId(null);
+    setBreakdownTempDescription('');
+
+    if (!nextDescription || nextDescription === currentDescription) {
+      return;
+    }
+
+    try {
+      await handleDescriptionUpdate(id, nextDescription);
+      setCategoryBreakdownData((previous) => {
+        if (!previous) return previous;
+        return {
+          ...previous,
+          transactions: previous.transactions.map((transaction) =>
+            transaction.id === id
+              ? { ...transaction, description: nextDescription }
+              : transaction
+          ),
+        };
+      });
+    } catch (error) {
+      console.error('Failed to update breakdown transaction description:', error);
+    }
+  };
+
+  const openBreakdownTransactionCategorize = (transaction: CategoryBreakdownData['transactions'][number]) => {
+    setBreakdownTransactionToCategorize(transaction);
+    setSelectedBreakdownCategory(transaction.category?.id || '');
+  };
+
+  const closeBreakdownTransactionCategorize = () => {
+    setBreakdownTransactionToCategorize(null);
+    setSelectedBreakdownCategory('');
+  };
+
+  const handleBreakdownTransactionCategorize = async () => {
+    if (!breakdownTransactionToCategorize) return;
+    setIsSavingBreakdownCategory(true);
+    try {
+      await fetch('/api/transactions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: breakdownTransactionToCategorize.id,
+          categoryId: selectedBreakdownCategory || null,
+        }),
+      });
+      closeBreakdownTransactionCategorize();
+      await fetchData({ silent: true });
+    } catch (error) {
+      console.error('Failed to categorize breakdown transaction:', error);
+    } finally {
+      setIsSavingBreakdownCategory(false);
+    }
+  };
+
   if (isLoading && !data) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -254,9 +367,11 @@ export default function DashboardPage() {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SpendingPaceCard data={data.spendingPace} />
-        <div className="hidden lg:block" aria-hidden="true" />
+        <CashFlowResultCard data={data.cashFlowSummary} />
+        <NetWorthCard data={data.netWorthSummary} />
       </div>
+
+      <SpendingPaceCard data={data.spendingPace} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
@@ -385,6 +500,7 @@ export default function DashboardPage() {
           setIsCategoryBreakdownOpen(false);
           setCategoryBreakdownData(null);
           setCategoryBreakdownError(null);
+          cancelBreakdownDescriptionEdit();
         }}
         title={categoryBreakdownData ? `${categoryBreakdownData.category.name} Breakdown` : 'Category Breakdown'}
         size="xl"
@@ -463,11 +579,75 @@ export default function DashboardPage() {
                       categoryBreakdownData.transactions.map((transaction) => (
                         <tr key={transaction.id} className="hover:bg-slate-50">
                           <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{formatDate(transaction.date)}</td>
-                          <td className="px-3 py-2 text-slate-900 max-w-[220px] truncate">{transaction.description}</td>
+                          <td className="px-3 py-2 text-slate-900 max-w-[220px]">
+                            <div className="flex items-center gap-2 min-w-0">
+                              {getTypeIcon(transaction.type)}
+                              {editingBreakdownDescriptionId === transaction.id ? (
+                                <input
+                                  autoFocus
+                                  value={breakdownTempDescription}
+                                  onChange={(event) => setBreakdownTempDescription(event.target.value)}
+                                  onBlur={(event) =>
+                                    handleBreakdownDescriptionCommit(
+                                      transaction.id,
+                                      event.target.value,
+                                      transaction.description
+                                    )
+                                  }
+                                  onKeyDown={(event) => {
+                                    if (event.key === 'Enter') {
+                                      event.preventDefault();
+                                      event.currentTarget.blur();
+                                    } else if (event.key === 'Escape') {
+                                      event.preventDefault();
+                                      cancelBreakdownDescriptionEdit();
+                                    }
+                                  }}
+                                  className="w-full bg-white border border-blue-300 rounded px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => startBreakdownDescriptionEdit(transaction.id, transaction.description)}
+                                  className="truncate text-left hover:text-blue-600 transition-colors cursor-text"
+                                  title="Edit description"
+                                >
+                                  {transaction.description}
+                                </button>
+                              )}
+                            </div>
+                          </td>
                           <td className="px-3 py-2">
-                            <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                              {transaction.subcategoryName}
-                            </span>
+                            {transaction.category ? (
+                              (() => {
+                                const CategoryIcon = getCategoryIcon(transaction.category.icon);
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => openBreakdownTransactionCategorize(transaction)}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                                    style={{
+                                      backgroundColor: `${transaction.category.color}20`,
+                                      color: transaction.category.color,
+                                    }}
+                                    title="Change category"
+                                  >
+                                    <CategoryIcon className="w-3.5 h-3.5" />
+                                    {transaction.subcategoryName}
+                                  </button>
+                                );
+                              })()
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => openBreakdownTransactionCategorize(transaction)}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600"
+                                title="Set category"
+                              >
+                                <Tag className="w-3.5 h-3.5" />
+                                {transaction.subcategoryName}
+                              </button>
+                            )}
                           </td>
                           <td className="px-3 py-2 text-right font-semibold text-slate-900 whitespace-nowrap">
                             {formatCurrency(transaction.amount, { hideSensitiveValues })}
@@ -490,6 +670,36 @@ export default function DashboardPage() {
             Select a category to view details.
           </div>
         )}
+      </Modal>
+
+      <Modal
+        isOpen={!!breakdownTransactionToCategorize}
+        onClose={closeBreakdownTransactionCategorize}
+        title="Change Transaction Category"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 line-clamp-2">
+            {breakdownTransactionToCategorize?.description}
+          </p>
+          <CategoryTreeSelector
+            categories={categories}
+            value={selectedBreakdownCategory}
+            onChange={setSelectedBreakdownCategory}
+            transactionType={breakdownTransactionToCategorize?.type || null}
+            allowParentSelection={false}
+            includeUncategorized
+            maxHeightClassName="max-h-72"
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={closeBreakdownTransactionCategorize} disabled={isSavingBreakdownCategory}>
+              Cancel
+            </Button>
+            <Button onClick={handleBreakdownTransactionCategorize} disabled={isSavingBreakdownCategory}>
+              {isSavingBreakdownCategory ? 'Saving...' : 'Save'}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

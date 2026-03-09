@@ -185,6 +185,7 @@ export async function GET(request: Request) {
       id: transaction.id,
       date: transaction.date,
       description: transaction.description,
+      type: transaction.type,
       amount: transaction.amount,
       category: transaction.category,
       account: transaction.account,

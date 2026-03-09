@@ -126,8 +126,9 @@ export function DashboardFiltersPanel({
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4">
-        <div className="flex flex-col xl:flex-row xl:items-center gap-3">
+      <div className="sticky top-0 z-30 bg-gray-50/95 backdrop-blur-sm py-2">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4">
+          <div className="flex flex-col xl:flex-row xl:items-center gap-3">
           {/* Primary Filters (Always Visible) */}
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto flex-1">
             <div className="flex gap-3 w-full sm:w-auto">
@@ -271,11 +272,11 @@ export function DashboardFiltersPanel({
               </Button>
             )}
           </div>
-        </div>
+          </div>
 
-        {isExpanded && (
-          <div className="mt-4 pt-4 border-t border-gray-100 animate-in slide-in-from-top-2 duration-200">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {isExpanded && (
+            <div className="mt-4 pt-4 border-t border-gray-100 animate-in slide-in-from-top-2 duration-200">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Date Group */}
               <div className="space-y-3">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
@@ -351,9 +352,10 @@ export function DashboardFiltersPanel({
                   </div>
                 </div>
               </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Filter Chips */}

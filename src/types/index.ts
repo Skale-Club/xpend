@@ -160,4 +160,18 @@ export interface ReportData {
     category?: { id: string; name: string; color: string; icon?: string | null } | null;
     account?: { id: string; name: string } | null;
   }[];
+  topCategoriesComparison: {
+    currentMonthLabel: string;
+    previousMonthLabel: string;
+    currentMonthKey: string;
+    previousMonthKey: string;
+    items: {
+      categoryId: string;
+      categoryName: string;
+      color: string;
+      currentAmount: number;
+      previousAmount: number;
+      variationPercentage: number | null;
+    }[];
+  };
 }
