@@ -22,6 +22,13 @@ enum TransactionType {
   TRANSFER
 }
 
+enum BillingCycle {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
 model Account {
   id          String   @id @default(cuid())
   name        String
@@ -35,6 +42,7 @@ model Account {
   updatedAt   DateTime @updatedAt
   statements  Statement[]
   transactions Transaction[]
+  subscriptions Subscription[]
 }
 
 model Statement {
@@ -60,6 +68,7 @@ model Category {
   parent       Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
   children     Category[] @relation("CategoryHierarchy")
   transactions Transaction[]
+  subscriptions Subscription[]
   rules        CategorizationRule[]
   isSystem     Boolean  @default(false)
   budget       Float?
@@ -103,6 +112,31 @@ model Transaction {
   @@index([accountId, date])
   @@index([categoryId])
   @@index([date])
+}
+
+model Subscription {
+  id              String       @id @default(cuid())
+  name            String
+  logo            String?
+  price           Float
+  currency        String       @default("USD")
+  billingCycle    BillingCycle @default(MONTHLY)
+  frequency       Int          @default(1) // Every X days/weeks/months/years
+  nextPayment     DateTime
+  autoRenew       Boolean      @default(true)
+  inactive        Boolean      @default(false)
+  url             String?
+  notes           String?
+  categoryId      String?
+  category        Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  accountId       String?
+  account         Account?     @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  replacementId   String?      // ID of subscription that replaced this one
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  
+  @@index([nextPayment])
+  @@index([inactive])
 }
 
 model Settings {

@@ -17,6 +17,7 @@ import {
   BarChart3,
   Eye,
   EyeOff,
+  Repeat,
 } from 'lucide-react';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 
@@ -24,6 +25,7 @@ const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
   { href: '/accounts', label: 'Accounts', icon: Wallet },
+  { href: '/subscriptions', label: 'Subscriptions', icon: Repeat },
   { href: '/statements', label: 'Upload Statements', icon: Upload },
   { href: '/transactions', label: 'Transactions', icon: List },
   { href: '/categories', label: 'Categories', icon: Tags },
@@ -61,9 +63,8 @@ export function Sidebar({ onLogout }: SidebarProps) {
       )}
 
       <aside
-        className={`fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-gray-200 bg-white transition-transform duration-300 ${
-          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        }`}
+        className={`fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-gray-200 bg-white transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          }`}
       >
         <div className="border-b border-gray-100 p-6">
           <Link href="/" className="flex items-center gap-3">
@@ -87,9 +88,8 @@ export function Sidebar({ onLogout }: SidebarProps) {
                   <Link
                     href={item.href}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
-                      isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'
-                    }`}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'
+                      }`}
                   >
                     <item.icon className="h-5 w-5" />
                     <span className="font-medium">{item.label}</span>

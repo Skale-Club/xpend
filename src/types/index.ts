@@ -175,3 +175,101 @@ export interface ReportData {
     }[];
   };
 }
+
+// Dashboard data types (extracted from page.tsx)
+export interface DashboardData {
+  totalIncome: number;
+  totalExpenses: number;
+  totalBalance: number;
+  transactionCount: number;
+  monthlyData: { month: string; year: number; income: number; expenses: number; balance: number }[];
+  expenseCategoryData: CategorySummary[];
+  incomeCategoryData: CategorySummary[];
+  merchantData: CategorySummary[];
+  accountDistribution: CategorySummary[];
+  recurringVsOneTime: CategorySummary[];
+  weekdayPattern: CategorySummary[];
+  subcategoryData: CategorySummary[];
+  parentCategoryBreakdown: {
+    parentId: string;
+    parentName: string;
+    parentColor: string;
+    total: number;
+    subcategories: CategorySummary[];
+  }[];
+  balanceTrend: { month: string; balance: number }[];
+  spendingPace: {
+    currentTotal: number;
+    previousComparableTotal: number;
+    previousMonthTotal: number;
+    changePercentage: number | null;
+    status: 'below' | 'above' | 'equal';
+    currentComparableDay: number;
+    currentMonthLabel: string;
+    previousMonthLabel: string;
+    chartData: {
+      day: number;
+      currentMonth: number | null;
+      previousMonth: number | null;
+    }[];
+  };
+  cashFlowSummary: {
+    currentMonthLabel: string;
+    previousMonthLabel: string;
+    netAmount: number;
+    previousNetAmount: number;
+    incomeAmount: number;
+    expenseAmount: number;
+    transferAmount: number;
+    changePercentage: number | null;
+  };
+  netWorthSummary: {
+    netWorth: number;
+    series: { label: string; value: number }[];
+  };
+  transactions: {
+    id: string;
+    description: string;
+    amount: number;
+    type: string;
+    date: string;
+    category: { id: string; name: string; color: string; icon?: string | null } | null;
+    account: { name: string; color: string };
+  }[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+  };
+}
+
+// Category breakdown data for dashboard modal
+export interface CategoryBreakdownData {
+  category: {
+    id: string;
+    name: string;
+    color: string;
+    total: number;
+    count: number;
+  };
+  subcategories: {
+    id: string;
+    name: string;
+    color: string;
+    total: number;
+    count: number;
+    percentage: number;
+  }[];
+  transactions: {
+    id: string;
+    description: string;
+    type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
+    amount: number;
+    date: string;
+    subcategoryName: string;
+    category: { id: string; name: string; color: string; icon?: string | null } | null;
+    account: { id: string; name: string; color: string } | null;
+  }[];
+  totalTransactions: number;
+  truncated: boolean;
+}

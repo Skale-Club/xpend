@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Scripts use CommonJS require()
     "scripts/**",
+    // Prisma generated code (auto-generated, not editable)
+    "src/generated/**",
   ]),
 ]);
 

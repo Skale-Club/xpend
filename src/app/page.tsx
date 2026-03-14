@@ -15,107 +15,11 @@ import {
 } from '@/components/dashboard';
 import { TransactionList } from '@/components/transactions';
 import { CategoryTreeSelector } from '@/components/categories/CategoryTreeSelector';
-import { Account, Category, DashboardFilters, TransactionType, Transaction } from '@/types';
+import { Account, Category, DashboardFilters, TransactionType, Transaction, DashboardData, CategoryBreakdownData } from '@/types';
 import { buildDistributionTemplateItems, categorySummaryToDistribution } from '@/lib/distributionHelpers';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 import { getCategoryIcon } from '@/lib/categoryIcons';
-
-interface DashboardData {
-  totalIncome: number;
-  totalExpenses: number;
-  totalBalance: number;
-  transactionCount: number;
-  monthlyData: { month: string; year: number; income: number; expenses: number; balance: number }[];
-  expenseCategoryData: { categoryId: string; categoryName: string; color: string; total: number; percentage: number; count: number }[];
-  incomeCategoryData: { categoryId: string; categoryName: string; color: string; total: number; percentage: number; count: number }[];
-  merchantData: { categoryId: string; categoryName: string; color: string; total: number; percentage: number; count: number }[];
-  accountDistribution: { categoryId: string; categoryName: string; color: string; total: number; percentage: number; count: number }[];
-  recurringVsOneTime: { categoryId: string; categoryName: string; color: string; total: number; percentage: number; count: number }[];
-  weekdayPattern: { categoryId: string; categoryName: string; color: string; total: number; percentage: number; count: number }[];
-  subcategoryData: { categoryId: string; categoryName: string; color: string; total: number; percentage: number; count: number }[];
-  parentCategoryBreakdown: {
-    parentId: string;
-    parentName: string;
-    parentColor: string;
-    total: number;
-    subcategories: { categoryId: string; categoryName: string; color: string; total: number; percentage: number; count: number }[];
-  }[];
-  balanceTrend: { month: string; balance: number }[];
-  spendingPace: {
-    currentTotal: number;
-    previousComparableTotal: number;
-    previousMonthTotal: number;
-    changePercentage: number | null;
-    status: 'below' | 'above' | 'equal';
-    currentComparableDay: number;
-    currentMonthLabel: string;
-    previousMonthLabel: string;
-    chartData: {
-      day: number;
-      currentMonth: number | null;
-      previousMonth: number | null;
-    }[];
-  };
-  cashFlowSummary: {
-    currentMonthLabel: string;
-    previousMonthLabel: string;
-    netAmount: number;
-    previousNetAmount: number;
-    incomeAmount: number;
-    expenseAmount: number;
-    transferAmount: number;
-    changePercentage: number | null;
-  };
-  netWorthSummary: {
-    netWorth: number;
-    series: { label: string; value: number }[];
-  };
-  transactions: {
-    id: string;
-    description: string;
-    amount: number;
-    type: string;
-    date: string;
-    category: { id: string; name: string; color: string; icon?: string | null } | null;
-    account: { name: string; color: string };
-  }[];
-  pagination: {
-    total: number;
-    limit: number;
-    offset: number;
-  };
-}
-
-interface CategoryBreakdownData {
-  category: {
-    id: string;
-    name: string;
-    color: string;
-    total: number;
-    count: number;
-  };
-  subcategories: {
-    id: string;
-    name: string;
-    color: string;
-    total: number;
-    count: number;
-    percentage: number;
-  }[];
-  transactions: {
-    id: string;
-    description: string;
-    type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
-    amount: number;
-    date: string;
-    subcategoryName: string;
-    category: { id: string; name: string; color: string; icon?: string | null } | null;
-    account: { id: string; name: string; color: string } | null;
-  }[];
-  totalTransactions: number;
-  truncated: boolean;
-}
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);

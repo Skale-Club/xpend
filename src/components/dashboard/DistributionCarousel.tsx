@@ -253,6 +253,7 @@ export function DistributionCarousel({ items, onDataPointClick }: DistributionCa
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
+                      // @ts-expect-error - Recharts v3 types are missing activeIndex
                       activeIndex={activeIndex}
                       activeShape={renderActiveShape}
                       data={chartData}

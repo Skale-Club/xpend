@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { amountEqualsRange, parseSearchAmount } from '@/lib/searchAmount';
 import { expandCategoryIdsWithDescendants } from '@/lib/categoryDescendants';
+import type { Prisma } from '@/generated/prisma';
 
 export async function GET(request: Request) {
   try {
@@ -19,25 +20,34 @@ export async function GET(request: Request) {
       select: { id: true, name: true, color: true, parentId: true },
     });
 
-    const dateFilter: Record<string, Date> = {};
-    if (dateFrom) dateFilter.gte = new Date(dateFrom);
-    if (dateTo) dateFilter.lte = new Date(dateTo);
+    // Build the date filter with proper typing
+    const dateFilter: Prisma.DateTimeFilter | undefined = (dateFrom || dateTo)
+      ? {
+        ...(dateFrom && { gte: new Date(dateFrom) }),
+        ...(dateTo && { lte: new Date(dateTo) }),
+      }
+      : undefined;
 
-    const where: Record<string, unknown> = {};
-    if (Object.keys(dateFilter).length > 0) where.date = dateFilter;
-    if (accountIds && accountIds.length > 0) where.accountId = { in: accountIds };
-    if (categoryIds && categoryIds.length > 0) {
-      const expandedCategoryIds = expandCategoryIdsWithDescendants(allCategories, categoryIds);
-      where.categoryId = { in: expandedCategoryIds };
-    }
-    if (type) where.type = type;
-    
-    if (minAmount || maxAmount) {
-      where.amount = {};
-      if (minAmount) (where.amount as Record<string, number>).gte = parseFloat(minAmount);
-      if (maxAmount) (where.amount as Record<string, number>).lte = parseFloat(maxAmount);
-    }
-    
+    // Build the amount filter with proper typing
+    const amountFilter: Prisma.FloatFilter | undefined = (minAmount || maxAmount)
+      ? {
+        ...(minAmount && { gte: parseFloat(minAmount) }),
+        ...(maxAmount && { lte: parseFloat(maxAmount) }),
+      }
+      : undefined;
+
+    // Build the where clause with proper Prisma types
+    const where: Prisma.TransactionWhereInput = {
+      ...(dateFilter && { date: dateFilter }),
+      ...(accountIds && accountIds.length > 0 && { accountId: { in: accountIds } }),
+      ...(categoryIds && categoryIds.length > 0 && {
+        categoryId: { in: expandCategoryIdsWithDescendants(allCategories, categoryIds) }
+      }),
+      ...(type && { type: type as Prisma.EnumTransactionTypeFilter['equals'] }),
+      ...(amountFilter && { amount: amountFilter }),
+    };
+
+    // Add search filter if provided
     if (search) {
       const amountFromSearch = parseSearchAmount(search);
       where.OR = [
@@ -46,37 +56,58 @@ export async function GET(request: Request) {
         { category: { name: { contains: search, mode: 'insensitive' } } },
         { account: { name: { contains: search, mode: 'insensitive' } } },
         ...(amountFromSearch !== null ? [{ amount: amountEqualsRange(amountFromSearch) }] : []),
-      ];
+      ] as Prisma.TransactionWhereInput['OR'];
     }
 
-    const transactions = await prisma.transaction.findMany({
+    // Get total count for pagination (efficient count query)
+    const totalTransactions = await prisma.transaction.count({ where });
+
+    // Pagination parameters
+    const limitParam = searchParams.get('limit');
+    const offsetParam = searchParams.get('offset');
+    const limit = limitParam ? parseInt(limitParam) : 10;
+    const offset = offsetParam ? parseInt(offsetParam) : 0;
+
+    // Fetch transactions for aggregations (without pagination, minimal fields for performance)
+    const transactionsForAggregation = await prisma.transaction.findMany({
+      where,
+      select: {
+        id: true,
+        date: true,
+        type: true,
+        amount: true,
+        description: true,
+        isRecurring: true,
+        account: { select: { id: true, name: true, color: true } },
+        category: { select: { id: true, name: true, color: true, parentId: true } },
+      },
+      orderBy: { date: 'desc' },
+    });
+
+    // Fetch paginated transactions with full details for the transaction list
+    const paginatedTransactions = await prisma.transaction.findMany({
       where,
       include: {
         account: { select: { id: true, name: true, color: true, initialBalance: true } },
         category: { select: { id: true, name: true, color: true, icon: true, parentId: true } },
       },
       orderBy: { date: 'desc' },
+      skip: offset,
+      take: limit,
     });
 
     const categoryContext = buildCategoryContext(allCategories);
 
-    const totalIncome = transactions
+    // Calculate totals from aggregation data
+    const totalIncome = transactionsForAggregation
       .filter((t) => t.type === 'INCOME')
       .reduce((sum, t) => sum + t.amount, 0);
 
-    const totalExpenses = transactions
+    const totalExpenses = transactionsForAggregation
       .filter((t) => t.type === 'EXPENSE')
       .reduce((sum, t) => sum + t.amount, 0);
 
-    // Pagination for recent transactions list
-    const limitParam = searchParams.get('limit');
-    const offsetParam = searchParams.get('offset');
-    const limit = limitParam ? parseInt(limitParam) : 10;
-    const offset = offsetParam ? parseInt(offsetParam) : 0;
-    const totalTransactions = transactions.length;
-    const paginatedTransactions = transactions.slice(offset, offset + limit);
-
-    // Optimize: Get accounts and calculate balances in a single query
+    // Get accounts and calculate balances
     const accounts = await prisma.account.findMany({
       where: { isActive: true },
       include: {
@@ -113,20 +144,21 @@ export async function GET(request: Request) {
       balances[account.id] = account.initialBalance + income - expenses;
     }
 
-    const monthlyData = getMonthlyData(transactions);
+    const monthlyData = getMonthlyData(transactionsForAggregation);
 
-    const expenseCategoryData = getCategoryData(transactions, 'EXPENSE', categoryContext);
-    const incomeCategoryData = getCategoryData(transactions, 'INCOME', categoryContext);
-    const merchantData = getMerchantData(transactions);
-    const accountDistribution = getAccountDistribution(transactions);
-    const recurringVsOneTime = getRecurringVsOneTime(transactions);
-    const weekdayPattern = getWeekdayPattern(transactions);
-    const subcategoryData = getSubcategoryData(transactions, 'EXPENSE', categoryContext);
-    const parentCategoryBreakdown = getParentCategoryBreakdown(transactions, 'EXPENSE', categoryContext);
+    const expenseCategoryData = getCategoryData(transactionsForAggregation, 'EXPENSE', categoryContext);
+    const incomeCategoryData = getCategoryData(transactionsForAggregation, 'INCOME', categoryContext);
+    const merchantData = getMerchantData(transactionsForAggregation);
+    const accountDistribution = getAccountDistribution(transactionsForAggregation);
+    const recurringVsOneTime = getRecurringVsOneTime(transactionsForAggregation);
+    const weekdayPattern = getWeekdayPattern(transactionsForAggregation);
+    const subcategoryData = getSubcategoryData(transactionsForAggregation, 'EXPENSE', categoryContext);
+    const parentCategoryBreakdown = getParentCategoryBreakdown(transactionsForAggregation, 'EXPENSE', categoryContext);
 
-    const balanceTrend = getBalanceTrend(accounts, transactions);
-    const spendingPace = getSpendingPaceData(transactions);
-    const cashFlowSummary = getCashFlowSummaryData(transactions);
+    // For balance trend, use allTransactions which has the correct shape (accountId field)
+    const balanceTrend = getBalanceTrend(accounts, allTransactions);
+    const spendingPace = getSpendingPaceData(transactionsForAggregation);
+    const cashFlowSummary = getCashFlowSummaryData(transactionsForAggregation);
     const netWorthSummary = getNetWorthSummaryData(accounts, allTransactions, balances);
 
     return NextResponse.json({
@@ -553,7 +585,7 @@ function getParentCategoryBreakdown(
 
 function getBalanceTrend(
   accounts: { id: string; initialBalance: number }[],
-  transactions: { accountId: string; date: Date; type: string; amount: number }[]
+  transactions: { account?: { id: string }; accountId?: string; date: Date; type: string; amount: number }[]
 ) {
   const monthlyBalances = new Map<string, number>();
   const sortedTransactions = [...transactions].sort(

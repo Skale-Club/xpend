@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { TransactionType } from '@/generated/prisma/client';
+import { TransactionType } from '@/generated/prisma';
 import { prisma } from '@/lib/db';
 import { validateQueryParams, ValidationError } from '@/lib/validation';
 import { amountEqualsRange, parseSearchAmount } from '@/lib/searchAmount';

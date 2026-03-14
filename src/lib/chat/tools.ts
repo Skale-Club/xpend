@@ -1,7 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
-import type { Prisma, TransactionType } from '@/generated/prisma/client';
+import type { Prisma, TransactionType } from '@/generated/prisma';
 
 export const getTransactions = tool({
   description:
