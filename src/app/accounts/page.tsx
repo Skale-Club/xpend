@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { Plus } from 'lucide-react';
 import { AccountList, AccountForm, AccountFormData } from '@/components/accounts';
-import { Account } from '@/types';
-import { useToast, Loader } from '@/components/ui';
+import { Account, ACCOUNT_TYPE_LABELS } from '@/types';
+import { useToast, Loader, Button } from '@/components/ui';
+import { formatCurrency } from '@/lib/utils';
+import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -12,6 +15,7 @@ export default function AccountsPage() {
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const toast = useToast();
+  const { hideSensitiveValues } = useSensitiveValues();
 
   const fetchAccounts = useCallback(async () => {
     setIsLoading(true);
@@ -88,6 +92,21 @@ export default function AccountsPage() {
     }
   };
 
+  // Compute stats
+  const activeAccounts = accounts.filter(a => a.isActive);
+  const totalBalance = accounts.reduce((sum, a) => {
+    const balance = balances[a.id] ?? a.initialBalance;
+    return sum + balance;
+  }, 0);
+  const positiveBalance = accounts.reduce((sum, a) => {
+    const balance = balances[a.id] ?? a.initialBalance;
+    return balance > 0 ? sum + balance : sum;
+  }, 0);
+  const negativeBalance = accounts.reduce((sum, a) => {
+    const balance = balances[a.id] ?? a.initialBalance;
+    return balance < 0 ? sum + balance : sum;
+  }, 0);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -98,9 +117,42 @@ export default function AccountsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
-        <p className="text-gray-500 mt-1">Manage your bank accounts and cards</p>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Accounts</h1>
+          <p className="text-gray-600 dark:text-gray-400">Manage your bank accounts and cards</p>
+        </div>
+        <Button onClick={handleAddAccount}>
+          <Plus className="w-5 h-5 mr-2" />
+          Add Account
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
+          <p className="text-sm text-gray-600 dark:text-gray-400">Total Accounts</p>
+          <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{activeAccounts.length}</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
+          <p className="text-sm text-gray-600 dark:text-gray-400">Net Balance</p>
+          <p className={`text-2xl font-bold ${totalBalance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+            {formatCurrency(totalBalance, { hideSensitiveValues })}
+          </p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
+          <p className="text-sm text-gray-600 dark:text-gray-400">Assets</p>
+          <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+            {formatCurrency(positiveBalance, { hideSensitiveValues })}
+          </p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
+          <p className="text-sm text-gray-600 dark:text-gray-400">Liabilities</p>
+          <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+            {formatCurrency(Math.abs(negativeBalance), { hideSensitiveValues })}
+          </p>
+        </div>
       </div>
 
       <AccountList

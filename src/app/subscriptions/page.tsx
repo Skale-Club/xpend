@@ -1,793 +1,660 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
-import { useToast, Loader, Modal, Button } from '@/components/ui';
+import {
+  CheckCircle2,
+  ExternalLink,
+  FolderOpen,
+  Landmark,
+  PauseCircle,
+  Pencil,
+  PlayCircle,
+  Plus,
+  Repeat2,
+  Trash2,
+} from 'lucide-react';
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  Input,
+  Loader,
+  Modal,
+  Select,
+  useToast,
+} from '@/components/ui';
 import { BillingCycle } from '@/generated/prisma';
 
-// Types
 interface Subscription {
-    id: string;
-    name: string;
-    logo: string | null;
-    price: number;
-    currency: string;
-    billingCycle: BillingCycle;
-    frequency: number;
-    nextPayment: string;
-    autoRenew: boolean;
-    inactive: boolean;
-    url: string | null;
-    notes: string | null;
-    categoryId: string | null;
-    accountId: string | null;
-    replacementId: string | null;
-    createdAt: string;
-    updatedAt: string;
-    category?: { id: string; name: string; color: string } | null;
-    account?: { id: string; name: string; type: string } | null;
+  id: string;
+  name: string;
+  logo: string | null;
+  price: number;
+  currency: string;
+  billingCycle: BillingCycle;
+  frequency: number;
+  nextPayment: string;
+  autoRenew: boolean;
+  inactive: boolean;
+  url: string | null;
+  notes: string | null;
+  categoryId: string | null;
+  accountId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  category?: { id: string; name: string; color: string } | null;
+  account?: { id: string; name: string; type: string } | null;
 }
 
 interface SubscriptionStats {
-    activeSubscriptions: number;
-    inactiveSubscriptions: number;
-    totalMonthlyCost: number;
-    totalYearlyCost: number;
-    mostExpensive: { name: string; monthlyPrice: number } | null;
-    totalSavings: number;
+  activeSubscriptions: number;
+  inactiveSubscriptions: number;
+  totalMonthlyCost: number;
+  totalYearlyCost: number;
+  mostExpensive: { name: string; monthlyPrice: number } | null;
+  totalSavings: number;
 }
 
 interface Category {
-    id: string;
-    name: string;
-    color: string;
+  id: string;
+  name: string;
+  color: string;
 }
 
 interface Account {
-    id: string;
-    name: string;
-    type: string;
+  id: string;
+  name: string;
+  type: string;
 }
 
-// Helper to format billing cycle
-function formatBillingCycle(cycle: BillingCycle, frequency: number): string {
-    const cycleNames: Record<BillingCycle, string> = {
-        DAILY: frequency === 1 ? 'Daily' : `Every ${frequency} days`,
-        WEEKLY: frequency === 1 ? 'Weekly' : `Every ${frequency} weeks`,
-        MONTHLY: frequency === 1 ? 'Monthly' : `Every ${frequency} months`,
-        YEARLY: frequency === 1 ? 'Yearly' : `Every ${frequency} years`,
+interface SubscriptionFormValues {
+  name: string;
+  logo: string;
+  price: number;
+  currency: string;
+  billingCycle: BillingCycle;
+  frequency: number;
+  nextPayment: string;
+  autoRenew: boolean;
+  inactive: boolean;
+  url: string;
+  notes: string;
+  categoryId: string;
+  accountId: string;
+}
+
+const billingCycleOptions = [
+  { value: 'DAILY', label: 'Daily' },
+  { value: 'WEEKLY', label: 'Weekly' },
+  { value: 'MONTHLY', label: 'Monthly' },
+  { value: 'YEARLY', label: 'Yearly' },
+];
+
+const currencyOptions = [
+  { value: 'USD', label: 'USD' },
+  { value: 'EUR', label: 'EUR' },
+  { value: 'GBP', label: 'GBP' },
+  { value: 'BRL', label: 'BRL' },
+  { value: 'CAD', label: 'CAD' },
+  { value: 'AUD', label: 'AUD' },
+];
+
+function formatBillingCycle(cycle: BillingCycle, frequency: number) {
+  const cycleNames: Record<BillingCycle, string> = {
+    DAILY: frequency === 1 ? 'Daily' : `Every ${frequency} days`,
+    WEEKLY: frequency === 1 ? 'Weekly' : `Every ${frequency} weeks`,
+    MONTHLY: frequency === 1 ? 'Monthly' : `Every ${frequency} months`,
+    YEARLY: frequency === 1 ? 'Yearly' : `Every ${frequency} years`,
+  };
+
+  return cycleNames[cycle];
+}
+
+function formatCurrency(amount: number, currency = 'USD') {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+  }).format(amount);
+}
+
+function formatDate(dateString: string) {
+  const date = new Date(dateString);
+  const now = new Date();
+
+  return date.toLocaleDateString('en-US', {
+    timeZone: 'UTC',
+    month: 'short',
+    day: 'numeric',
+    year: date.getUTCFullYear() === now.getFullYear() ? undefined : 'numeric',
+  });
+}
+
+function getDaysUntilPayment(dateString: string) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const utcDate = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+  const utcNow = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.ceil((utcDate - utcNow) / (1000 * 60 * 60 * 24));
+}
+
+function getDueMeta(dateString: string) {
+  const daysUntil = getDaysUntilPayment(dateString);
+
+  if (daysUntil < 0) {
+    return {
+      label: `${Math.abs(daysUntil)} days overdue`,
+      dateLabel: `Was due ${formatDate(dateString)}`,
+      accent: 'bg-red-500',
+      badge: 'bg-red-50 text-red-700 ring-red-200',
+      text: 'text-red-600',
     };
-    return cycleNames[cycle];
-}
+  }
 
-// Helper to format currency
-function formatCurrency(amount: number, currency: string = 'USD'): string {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency,
-    }).format(amount);
-}
+  if (daysUntil === 0) {
+    return {
+      label: 'Due today',
+      dateLabel: formatDate(dateString),
+      accent: 'bg-amber-500',
+      badge: 'bg-amber-50 text-amber-700 ring-amber-200',
+      text: 'text-amber-600',
+    };
+  }
 
-// Helper to format date
-function formatDate(dateString: string): string {
-    const date = new Date(dateString);
-    const now = new Date();
-    const isCurrentYear = date.getUTCFullYear() === now.getFullYear();
+  if (daysUntil <= 7) {
+    return {
+      label: daysUntil === 1 ? 'Due tomorrow' : `Due in ${daysUntil} days`,
+      dateLabel: formatDate(dateString),
+      accent: 'bg-amber-500',
+      badge: 'bg-amber-50 text-amber-700 ring-amber-200',
+      text: 'text-amber-600',
+    };
+  }
 
-    return date.toLocaleDateString('en-US', {
-        timeZone: 'UTC',
-        month: 'short',
-        day: 'numeric',
-        year: isCurrentYear ? undefined : 'numeric',
-    });
-}
-
-// Helper to get days until payment
-function getDaysUntilPayment(dateString: string): number {
-    const date = new Date(dateString);
-    const now = new Date();
-    const utcDate = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-    const utcNow = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-    const diffTime = utcDate - utcNow;
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return {
+    label: `Due ${formatDate(dateString)}`,
+    dateLabel: formatDate(dateString),
+    accent: 'bg-blue-500',
+    badge: 'bg-blue-50 text-blue-700 ring-blue-200',
+    text: 'text-gray-500',
+  };
 }
 
 export default function SubscriptionsPage() {
-    const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-    const [stats, setStats] = useState<SubscriptionStats | null>(null);
-    const [categories, setCategories] = useState<Category[]>([]);
-    const [accounts, setAccounts] = useState<Account[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isFormOpen, setIsFormOpen] = useState(false);
-    const [editingSubscription, setEditingSubscription] = useState<Subscription | null>(null);
-    const [filterInactive, setFilterInactive] = useState<string>('all');
-    const [filterCategory, setFilterCategory] = useState<string>('');
-    const [sortBy, setSortBy] = useState<string>('nextPayment');
-    const toast = useToast();
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [stats, setStats] = useState<SubscriptionStats | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingSubscription, setEditingSubscription] = useState<Subscription | null>(null);
+  const [filterInactive, setFilterInactive] = useState('all');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [sortBy, setSortBy] = useState('nextPayment');
+  const toast = useToast();
 
-    const fetchData = useCallback(async () => {
-        setIsLoading(true);
-        try {
-            // Fetch subscriptions with stats
-            const params = new URLSearchParams();
-            params.set('stats', 'true');
-            params.set('sort', sortBy);
-            if (filterInactive !== 'all') {
-                params.set('inactive', filterInactive);
-            }
-            if (filterCategory) {
-                params.set('categoryId', filterCategory);
-            }
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.set('stats', 'true');
+      params.set('sort', sortBy);
+      if (filterInactive !== 'all') params.set('inactive', filterInactive);
+      if (filterCategory) params.set('categoryId', filterCategory);
 
-            const subsRes = await fetch(`/api/subscriptions?${params.toString()}`);
-            const subsData = await subsRes.json();
-            setSubscriptions(subsData.subscriptions || []);
-            setStats(subsData.stats);
+      const subsRes = await fetch(`/api/subscriptions?${params.toString()}`);
+      const subsData = await subsRes.json();
+      setSubscriptions(subsData.subscriptions || []);
+      setStats(subsData.stats);
 
-            // Fetch categories
-            const catRes = await fetch('/api/categories');
-            const catData = await catRes.json();
-            setCategories(catData.categories || catData || []);
+      const catRes = await fetch('/api/categories');
+      const catData = await catRes.json();
+      setCategories(catData.categories || catData || []);
 
-            // Fetch accounts
-            const accRes = await fetch('/api/accounts');
-            const accData = await accRes.json();
-            setAccounts(accData);
-        } catch (error) {
-            console.error('Failed to fetch data:', error);
-            toast.error('Failed to load subscriptions. Please try again.');
-        } finally {
-            setIsLoading(false);
-        }
-    }, [sortBy, filterInactive, filterCategory, toast]);
-
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
-
-    const handleAddSubscription = () => {
-        setEditingSubscription(null);
-        setIsFormOpen(true);
-    };
-
-    const handleEditSubscription = (subscription: Subscription) => {
-        setEditingSubscription(subscription);
-        setIsFormOpen(true);
-    };
-
-    const handleDeleteSubscription = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this subscription?')) return;
-
-        try {
-            const res = await fetch(`/api/subscriptions/${id}`, { method: 'DELETE' });
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || 'Failed to delete subscription');
-            }
-            toast.success('Subscription deleted successfully');
-            fetchData();
-        } catch (error) {
-            console.error('Failed to delete subscription:', error);
-            toast.error(error instanceof Error ? error.message : 'Failed to delete subscription');
-        }
-    };
-
-    const handleToggleInactive = async (subscription: Subscription) => {
-        try {
-            const res = await fetch(`/api/subscriptions/${subscription.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ inactive: !subscription.inactive }),
-            });
-            if (!res.ok) throw new Error('Failed to update subscription');
-            toast.success(subscription.inactive ? 'Subscription activated' : 'Subscription deactivated');
-            fetchData();
-        } catch (error) {
-            console.error('Failed to toggle subscription:', error);
-            toast.error('Failed to update subscription');
-        }
-    };
-
-    const handleMarkAsPaid = async (subscription: Subscription) => {
-        try {
-            // Calculate next payment date
-            const currentNextPayment = new Date(subscription.nextPayment);
-            const nextDate = new Date(currentNextPayment);
-
-            switch (subscription.billingCycle) {
-                case 'DAILY':
-                    nextDate.setUTCDate(nextDate.getUTCDate() + subscription.frequency);
-                    break;
-                case 'WEEKLY':
-                    nextDate.setUTCDate(nextDate.getUTCDate() + (7 * subscription.frequency));
-                    break;
-                case 'MONTHLY':
-                    nextDate.setUTCMonth(nextDate.getUTCMonth() + subscription.frequency);
-                    break;
-                case 'YEARLY':
-                    nextDate.setUTCFullYear(nextDate.getUTCFullYear() + subscription.frequency);
-                    break;
-            }
-
-            const res = await fetch(`/api/subscriptions/${subscription.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nextPayment: nextDate.toISOString().split('T')[0] }),
-            });
-
-            if (!res.ok) throw new Error('Failed to update subscription');
-            
-            toast.success('Marked as paid! Next payment date updated.');
-            fetchData();
-        } catch (error) {
-            console.error('Failed to mark as paid:', error);
-            toast.error('Failed to update subscription');
-        }
-    };
-
-    const handleSubmit = async (formData: Record<string, unknown>) => {
-        try {
-            const res = editingSubscription
-                ? await fetch(`/api/subscriptions/${editingSubscription.id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData),
-                })
-                : await fetch('/api/subscriptions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData),
-                });
-
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.error || 'Failed to save subscription');
-            }
-
-            toast.success(editingSubscription ? 'Subscription updated' : 'Subscription created');
-            setIsFormOpen(false);
-            fetchData();
-        } catch (error) {
-            console.error('Failed to save subscription:', error);
-            toast.error(error instanceof Error ? error.message : 'Failed to save subscription');
-        }
-    };
-
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center h-64">
-                <Loader size={80} />
-            </div>
-        );
+      const accRes = await fetch('/api/accounts');
+      const accData = await accRes.json();
+      setAccounts(Array.isArray(accData) ? accData : []);
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+      toast.error('Failed to load subscriptions. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
+  }, [filterCategory, filterInactive, sortBy, toast]);
 
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleAddSubscription = () => {
+    setEditingSubscription(null);
+    setIsFormOpen(true);
+  };
+
+  const handleEditSubscription = (subscription: Subscription) => {
+    setEditingSubscription(subscription);
+    setIsFormOpen(true);
+  };
+
+  const handleDeleteSubscription = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this subscription?')) return;
+
+    try {
+      const res = await fetch(`/api/subscriptions/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to delete subscription');
+      }
+      toast.success('Subscription deleted successfully');
+      fetchData();
+    } catch (error) {
+      console.error('Failed to delete subscription:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to delete subscription');
+    }
+  };
+
+  const handleToggleInactive = async (subscription: Subscription) => {
+    try {
+      const res = await fetch(`/api/subscriptions/${subscription.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inactive: !subscription.inactive }),
+      });
+      if (!res.ok) throw new Error('Failed to update subscription');
+      toast.success(subscription.inactive ? 'Subscription activated' : 'Subscription deactivated');
+      fetchData();
+    } catch (error) {
+      console.error('Failed to toggle subscription:', error);
+      toast.error('Failed to update subscription');
+    }
+  };
+
+  const handleMarkAsPaid = async (subscription: Subscription) => {
+    try {
+      const nextDate = new Date(subscription.nextPayment);
+      switch (subscription.billingCycle) {
+        case 'DAILY':
+          nextDate.setUTCDate(nextDate.getUTCDate() + subscription.frequency);
+          break;
+        case 'WEEKLY':
+          nextDate.setUTCDate(nextDate.getUTCDate() + 7 * subscription.frequency);
+          break;
+        case 'MONTHLY':
+          nextDate.setUTCMonth(nextDate.getUTCMonth() + subscription.frequency);
+          break;
+        case 'YEARLY':
+          nextDate.setUTCFullYear(nextDate.getUTCFullYear() + subscription.frequency);
+          break;
+      }
+
+      const res = await fetch(`/api/subscriptions/${subscription.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nextPayment: nextDate.toISOString().split('T')[0] }),
+      });
+      if (!res.ok) throw new Error('Failed to update subscription');
+      toast.success('Marked as paid. Next payment date updated.');
+      fetchData();
+    } catch (error) {
+      console.error('Failed to mark as paid:', error);
+      toast.error('Failed to update subscription');
+    }
+  };
+
+  const handleSubmit = async (formData: SubscriptionFormValues) => {
+    const payload = {
+      ...formData,
+      categoryId: formData.categoryId || null,
+      accountId: formData.accountId || null,
+    };
+
+    try {
+      const res = editingSubscription
+        ? await fetch(`/api/subscriptions/${editingSubscription.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+        : await fetch('/api/subscriptions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to save subscription');
+      }
+
+      toast.success(editingSubscription ? 'Subscription updated' : 'Subscription created');
+      setIsFormOpen(false);
+      fetchData();
+    } catch (error) {
+      console.error('Failed to save subscription:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to save subscription');
+    }
+  };
+
+  const hasCustomFilters = filterInactive !== 'all' || Boolean(filterCategory) || sortBy !== 'nextPayment';
+
+  if (isLoading) {
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Subscriptions</h1>
-                    <p className="text-gray-600 dark:text-gray-400">Track your recurring payments and subscriptions</p>
-                </div>
-                <Button onClick={handleAddSubscription}>
-                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Subscription
-                </Button>
-            </div>
-
-            {/* Stats Cards */}
-            {stats && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Active</p>
-                        <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.activeSubscriptions}</p>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Monthly Cost</p>
-                        <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(stats.totalMonthlyCost)}</p>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Yearly Cost</p>
-                        <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{formatCurrency(stats.totalYearlyCost)}</p>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Savings (Inactive)</p>
-                        <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(stats.totalSavings)}</p>
-                        <p className="text-xs text-gray-500">{stats.inactiveSubscriptions} inactive</p>
-                    </div>
-                </div>
-            )}
-
-            {/* Most Expensive */}
-            {stats?.mostExpensive && (
-                <div className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-lg p-4 border border-orange-200 dark:border-orange-800">
-                    <p className="text-sm text-orange-800 dark:text-orange-300">💰 Most Expensive</p>
-                    <p className="text-lg font-semibold text-orange-900 dark:text-orange-200">
-                        {stats.mostExpensive.name} — {formatCurrency(stats.mostExpensive.monthlyPrice)}/month
-                    </p>
-                </div>
-            )}
-
-            {/* Filters */}
-            <div className="flex flex-wrap gap-4 bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
-                <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-600 dark:text-gray-400">Status:</label>
-                    <select
-                        value={filterInactive}
-                        onChange={(e) => setFilterInactive(e.target.value)}
-                        className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm dark:bg-gray-700 dark:text-white"
-                    >
-                        <option value="all">All</option>
-                        <option value="false">Active Only</option>
-                        <option value="true">Inactive Only</option>
-                    </select>
-                </div>
-                <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-600 dark:text-gray-400">Category:</label>
-                    <select
-                        value={filterCategory}
-                        onChange={(e) => setFilterCategory(e.target.value)}
-                        className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm dark:bg-gray-700 dark:text-white"
-                    >
-                        <option value="">All Categories</option>
-                        {categories.map((cat) => (
-                            <option key={cat.id} value={cat.id}>{cat.name}</option>
-                        ))}
-                    </select>
-                </div>
-                <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-600 dark:text-gray-400">Sort by:</label>
-                    <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm dark:bg-gray-700 dark:text-white"
-                    >
-                        <option value="nextPayment">Next Payment</option>
-                        <option value="price">Price (High to Low)</option>
-                        <option value="name">Name</option>
-                    </select>
-                </div>
-            </div>
-
-            {/* Subscriptions List */}
-            {subscriptions.length === 0 ? (
-                <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow">
-                    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                    <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No subscriptions</h3>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by adding your first subscription.</p>
-                    <div className="mt-6">
-                        <Button onClick={handleAddSubscription}>Add Subscription</Button>
-                    </div>
-                </div>
-            ) : (
-                <div className="space-y-3">
-                    {subscriptions.map((subscription) => {
-                        const daysUntil = getDaysUntilPayment(subscription.nextPayment);
-                        const isOverdue = daysUntil < 0;
-                        const isDueSoon = daysUntil >= 0 && daysUntil <= 7;
-
-                        return (
-                            <div
-                                key={subscription.id}
-                                className={`bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 transition-opacity ${subscription.inactive ? 'opacity-60 border-gray-400' :
-                                    isOverdue ? 'border-red-500' :
-                                        isDueSoon ? 'border-yellow-500' : 'border-blue-500'
-                                    }`}
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        {/* Logo or placeholder */}
-                                        {subscription.logo ? (
-                                            <Image
-                                                src={subscription.logo}
-                                                alt={subscription.name}
-                                                width={48}
-                                                height={48}
-                                                className="w-12 h-12 rounded-lg object-cover"
-                                            />
-                                        ) : (
-                                            <div className="w-12 h-12 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                                                <span className="text-xl font-bold text-gray-500 dark:text-gray-400">
-                                                    {subscription.name.charAt(0).toUpperCase()}
-                                                </span>
-                                            </div>
-                                        )}
-
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <h3 className={`font-semibold ${subscription.inactive ? 'text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>
-                                                    {subscription.name}
-                                                </h3>
-                                                {!subscription.autoRenew && (
-                                                    <span className="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded">
-                                                        Manual
-                                                    </span>
-                                                )}
-                                                {subscription.inactive && (
-                                                    <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 rounded">
-                                                        Inactive
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                                                <span>{formatBillingCycle(subscription.billingCycle, subscription.frequency)}</span>
-                                                {subscription.category && (
-                                                    <span
-                                                        className="px-2 py-0.5 rounded text-xs"
-                                                        style={{ backgroundColor: subscription.category.color + '20', color: subscription.category.color }}
-                                                    >
-                                                        {subscription.category.name}
-                                                    </span>
-                                                )}
-                                                {subscription.account && (
-                                                    <span className="text-xs">{subscription.account.name}</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-6">
-                                        {/* Price */}
-                                        <div className="text-right">
-                                            <p className="font-bold text-lg text-gray-900 dark:text-white">
-                                                {formatCurrency(subscription.price, subscription.currency)}
-                                            </p>
-                                            <p className={`text-sm ${isOverdue ? 'text-red-600 dark:text-red-400' : isDueSoon ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-500'}`}>
-                                                {isOverdue ? `${Math.abs(daysUntil)} days overdue` :
-                                                    daysUntil === 0 ? 'Due today' :
-                                                        daysUntil === 1 ? 'Due tomorrow' :
-                                                            formatDate(subscription.nextPayment)}
-                                            </p>
-                                        </div>
-
-                                        {/* Actions */}
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                onClick={() => handleMarkAsPaid(subscription)}
-                                                className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
-                                                title="Mark as Paid"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                            </button>
-                                            <button
-                                                onClick={() => handleToggleInactive(subscription)}
-                                                className={`p-2 rounded-lg transition-colors ${subscription.inactive
-                                                    ? 'text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
-                                                    : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                                    }`}
-                                                title={subscription.inactive ? 'Activate' : 'Deactivate'}
-                                            >
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    {subscription.inactive ? (
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                    ) : (
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                                    )}
-                                                </svg>
-                                            </button>
-                                            <button
-                                                onClick={() => handleEditSubscription(subscription)}
-                                                className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                                                title="Edit"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                </svg>
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteSubscription(subscription.id)}
-                                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                                                title="Delete"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Notes */}
-                                {subscription.notes && (
-                                    <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">{subscription.notes}</p>
-                                    </div>
-                                )}
-
-                                {/* URL */}
-                                {subscription.url && (
-                                    <a
-                                        href={subscription.url.startsWith('http') ? subscription.url : `https://${subscription.url}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                        </svg>
-                                        Visit
-                                    </a>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-
-            {/* Add/Edit Modal */}
-            <Modal
-                isOpen={isFormOpen}
-                onClose={() => setIsFormOpen(false)}
-                title={editingSubscription ? 'Edit Subscription' : 'Add Subscription'}
-            >
-                <SubscriptionForm
-                    subscription={editingSubscription}
-                    categories={categories}
-                    accounts={accounts}
-                    onSubmit={handleSubmit}
-                    onCancel={() => setIsFormOpen(false)}
-                />
-            </Modal>
-        </div>
+      <div className="flex h-64 items-center justify-center">
+        <Loader size={80} />
+      </div>
     );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Subscriptions</h1>
+          <p className="mt-1 text-gray-500">Track recurring payments, renewals, and paused services.</p>
+        </div>
+        <Button onClick={handleAddSubscription}>
+          <Plus className="mr-2 h-5 w-5" />
+          Add Subscription
+        </Button>
+      </div>
+
+      {stats && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Card><CardContent className="space-y-2"><p className="text-sm text-gray-500">Active subscriptions</p><p className="text-2xl font-bold text-gray-900">{stats.activeSubscriptions}</p><p className="text-xs text-gray-500">{stats.inactiveSubscriptions} inactive</p></CardContent></Card>
+          <Card><CardContent className="space-y-2"><p className="text-sm text-gray-500">Monthly spend</p><p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalMonthlyCost)}</p><p className="text-xs text-gray-500">Estimated recurring monthly cost</p></CardContent></Card>
+          <Card><CardContent className="space-y-2"><p className="text-sm text-gray-500">Yearly projection</p><p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalYearlyCost)}</p><p className="text-xs text-gray-500">Based on current active subscriptions</p></CardContent></Card>
+          <Card><CardContent className="space-y-2"><p className="text-sm text-gray-500">Paused savings</p><p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalSavings)}</p><p className="text-xs text-gray-500">Potential savings from inactive services</p></CardContent></Card>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <Card className="overflow-hidden border-orange-100 bg-gradient-to-r from-orange-50 via-white to-rose-50">
+          <CardContent className="space-y-4 p-5">
+            <p className="text-sm font-medium text-orange-700">Subscription spotlight</p>
+            {stats?.mostExpensive ? (
+              <>
+                <h2 className="text-2xl font-semibold text-gray-900">{stats.mostExpensive.name}</h2>
+                <p className="text-sm text-gray-600">
+                  Highest monthly commitment at <span className="font-semibold text-gray-900">{formatCurrency(stats.mostExpensive.monthlyPrice)}</span> per month.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl font-semibold text-gray-900">No subscriptions yet</h2>
+                <p className="text-sm text-gray-600">Create your first subscription to start tracking renewals.</p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader title="Filters" subtitle="Refine the list by status, category, or sort order." />
+          <CardContent className="space-y-4">
+            <Select
+              label="Status"
+              value={filterInactive}
+              onChange={(event) => setFilterInactive(event.target.value)}
+              options={[
+                { value: 'all', label: 'All subscriptions' },
+                { value: 'false', label: 'Active only' },
+                { value: 'true', label: 'Inactive only' },
+              ]}
+            />
+            <Select
+              label="Category"
+              value={filterCategory}
+              onChange={(event) => setFilterCategory(event.target.value)}
+              options={[{ value: '', label: 'All categories' }, ...categories.map((category) => ({ value: category.id, label: category.name }))]}
+            />
+            <Select
+              label="Sort by"
+              value={sortBy}
+              onChange={(event) => setSortBy(event.target.value)}
+              options={[
+                { value: 'nextPayment', label: 'Next payment' },
+                { value: 'price', label: 'Price (high to low)' },
+                { value: 'name', label: 'Name' },
+              ]}
+            />
+            {hasCustomFilters && (
+              <div className="flex justify-end">
+                <Button variant="ghost" onClick={() => { setFilterInactive('all'); setFilterCategory(''); setSortBy('nextPayment'); }}>
+                  Reset view
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader
+          title="All Subscriptions"
+          subtitle={stats ? `${subscriptions.length} shown, ${stats.activeSubscriptions} active, ${stats.inactiveSubscriptions} inactive` : `${subscriptions.length} shown`}
+        />
+        <CardContent className="p-0">
+          {subscriptions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+              <div className="rounded-full bg-gray-100 p-4">
+                <Repeat2 className="h-8 w-8 text-gray-400" />
+              </div>
+              <h3 className="mt-4 text-base font-semibold text-gray-900">No subscriptions found</h3>
+              <p className="mt-2 max-w-md text-sm text-gray-500">Add your first subscription or adjust the current filters to see matching services.</p>
+              <Button className="mt-6" onClick={handleAddSubscription}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Subscription
+              </Button>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {subscriptions.map((subscription) => {
+                const dueMeta = getDueMeta(subscription.nextPayment);
+                const accent = subscription.inactive ? 'bg-gray-300' : dueMeta.accent;
+
+                return (
+                  <div key={subscription.id} className="p-4 md:p-5">
+                    <div className="flex gap-4">
+                      <div className={`hidden w-1 shrink-0 rounded-full md:block ${accent}`} />
+                      <div className="flex min-w-0 flex-1 flex-col gap-4">
+                        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                          <div className="flex min-w-0 items-start gap-4">
+                            {subscription.logo ? (
+                              <Image src={subscription.logo} alt={subscription.name} width={56} height={56} className="h-14 w-14 rounded-xl border border-gray-200 object-cover" />
+                            ) : (
+                              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gray-100 text-lg font-semibold text-gray-500">
+                                {subscription.name.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+
+                            <div className="min-w-0 space-y-3">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h3 className={`text-lg font-semibold ${subscription.inactive ? 'text-gray-500 line-through' : 'text-gray-900'}`}>{subscription.name}</h3>
+                                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${subscription.inactive ? 'bg-gray-100 text-gray-600 ring-gray-200' : dueMeta.badge}`}>
+                                  {subscription.inactive ? 'Inactive' : dueMeta.label}
+                                </span>
+                                {!subscription.autoRenew && (
+                                  <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-200">
+                                    Manual renewal
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex flex-wrap gap-2 text-sm">
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-200">
+                                  <Repeat2 className="h-3.5 w-3.5" />
+                                  {formatBillingCycle(subscription.billingCycle, subscription.frequency)}
+                                </span>
+                                {subscription.category && (
+                                  <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium" style={{ backgroundColor: `${subscription.category.color}18`, color: subscription.category.color }}>
+                                    <FolderOpen className="h-3.5 w-3.5" />
+                                    {subscription.category.name}
+                                  </span>
+                                )}
+                                {subscription.account && (
+                                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-200">
+                                    <Landmark className="h-3.5 w-3.5" />
+                                    {subscription.account.name}
+                                  </span>
+                                )}
+                              </div>
+
+                              {subscription.notes && <p className="max-w-2xl text-sm leading-6 text-gray-600">{subscription.notes}</p>}
+
+                              {subscription.url && (
+                                <a
+                                  href={subscription.url.startsWith('http') ? subscription.url : `https://${subscription.url}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                  Visit website
+                                </a>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col gap-4 xl:items-end">
+                            <div className="space-y-1 text-left xl:text-right">
+                              <p className="text-2xl font-semibold text-gray-900">{formatCurrency(subscription.price, subscription.currency)}</p>
+                              <p className={`text-sm font-medium ${subscription.inactive ? 'text-gray-500' : dueMeta.text}`}>
+                                {subscription.inactive ? `Next payment ${formatDate(subscription.nextPayment)}` : dueMeta.label}
+                              </p>
+                              <p className="text-sm text-gray-500">{subscription.inactive ? formatDate(subscription.nextPayment) : dueMeta.dateLabel}</p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              <Button type="button" variant="outline" size="sm" onClick={() => handleMarkAsPaid(subscription)} disabled={subscription.inactive} className="gap-1.5">
+                                <CheckCircle2 className="h-4 w-4" />
+                                Mark Paid
+                              </Button>
+                              <Button type="button" variant="ghost" size="sm" onClick={() => handleToggleInactive(subscription)} className="gap-1.5">
+                                {subscription.inactive ? <PlayCircle className="h-4 w-4" /> : <PauseCircle className="h-4 w-4" />}
+                                {subscription.inactive ? 'Activate' : 'Pause'}
+                              </Button>
+                              <Button type="button" variant="ghost" size="sm" onClick={() => handleEditSubscription(subscription)} className="gap-1.5">
+                                <Pencil className="h-4 w-4" />
+                                Edit
+                              </Button>
+                              <Button type="button" variant="ghost" size="sm" onClick={() => handleDeleteSubscription(subscription.id)} className="gap-1.5 text-red-600 hover:bg-red-50 hover:text-red-700 focus:ring-red-500">
+                                <Trash2 className="h-4 w-4" />
+                                Delete
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Modal isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} title={editingSubscription ? 'Edit Subscription' : 'Add Subscription'} size="lg">
+        <SubscriptionForm subscription={editingSubscription} categories={categories} accounts={accounts} onSubmit={handleSubmit} onCancel={() => setIsFormOpen(false)} />
+      </Modal>
+    </div>
+  );
 }
 
-// Subscription Form Component
 function SubscriptionForm({
-    subscription,
-    categories,
-    accounts,
-    onSubmit,
-    onCancel,
+  subscription,
+  categories,
+  accounts,
+  onSubmit,
+  onCancel,
 }: {
-    subscription: Subscription | null;
-    categories: Category[];
-    accounts: Account[];
-    onSubmit: (data: Record<string, unknown>) => void;
-    onCancel: () => void;
+  subscription: Subscription | null;
+  categories: Category[];
+  accounts: Account[];
+  onSubmit: (data: SubscriptionFormValues) => Promise<void>;
+  onCancel: () => void;
 }) {
-    const [formData, setFormData] = useState<Record<string, unknown>>({
-        name: subscription?.name || '',
-        logo: subscription?.logo || '',
-        price: subscription?.price || 0,
-        currency: subscription?.currency || 'USD',
-        billingCycle: subscription?.billingCycle || 'MONTHLY',
-        frequency: subscription?.frequency || 1,
-        nextPayment: subscription?.nextPayment ? subscription.nextPayment.slice(0, 10) : new Date().toISOString().slice(0, 10),
-        autoRenew: subscription?.autoRenew !== false,
-        inactive: subscription?.inactive || false,
-        url: subscription?.url || '',
-        notes: subscription?.notes || '',
-        categoryId: subscription?.categoryId || '',
-        accountId: subscription?.accountId || '',
-    });
-    const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState<SubscriptionFormValues>({
+    name: subscription?.name || '',
+    logo: subscription?.logo || '',
+    price: subscription?.price || 0,
+    currency: subscription?.currency || 'USD',
+    billingCycle: subscription?.billingCycle || 'MONTHLY',
+    frequency: subscription?.frequency || 1,
+    nextPayment: subscription?.nextPayment ? subscription.nextPayment.slice(0, 10) : new Date().toISOString().slice(0, 10),
+    autoRenew: subscription?.autoRenew !== false,
+    inactive: subscription?.inactive || false,
+    url: subscription?.url || '',
+    notes: subscription?.notes || '',
+    categoryId: subscription?.categoryId || '',
+    accountId: subscription?.accountId || '',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-        try {
-            await onSubmit({
-                ...formData,
-                price: Number(formData.price),
-                frequency: Number(formData.frequency),
-                categoryId: formData.categoryId || null,
-                accountId: formData.accountId || null,
-            });
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await onSubmit(formData);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Name *
-                </label>
-                <input
-                    type="text"
-                    value={formData.name as string}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                    required
-                />
-            </div>
+  return (
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Input label="Name *" value={formData.name} onChange={(event) => setFormData({ ...formData, name: event.target.value })} required />
+        <Input label="Logo URL" type="url" value={formData.logo} onChange={(event) => setFormData({ ...formData, logo: event.target.value })} placeholder="https://example.com/logo.png" />
+      </div>
 
-            {/* Logo URL */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Logo URL
-                </label>
-                <input
-                    type="url"
-                    value={formData.logo as string}
-                    onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
-                    placeholder="https://example.com/logo.png"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                />
-            </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <Input label="Price *" type="number" step="0.01" min="0" value={formData.price} onChange={(event) => setFormData({ ...formData, price: Number.parseFloat(event.target.value) || 0 })} required />
+        <Select label="Currency" value={formData.currency} onChange={(event) => setFormData({ ...formData, currency: event.target.value })} options={currencyOptions} />
+        <Input label="Next Payment Date *" type="date" value={formData.nextPayment} onChange={(event) => setFormData({ ...formData, nextPayment: event.target.value })} required />
+      </div>
 
-            {/* Price and Currency */}
-            <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Price *
-                    </label>
-                    <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.price as number}
-                        onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                        required
-                    />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Currency
-                    </label>
-                    <select
-                        value={formData.currency as string}
-                        onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                    >
-                        <option value="USD">USD</option>
-                        <option value="EUR">EUR</option>
-                        <option value="GBP">GBP</option>
-                        <option value="BRL">BRL</option>
-                        <option value="CAD">CAD</option>
-                        <option value="AUD">AUD</option>
-                    </select>
-                </div>
-            </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Select label="Billing Cycle" value={formData.billingCycle} onChange={(event) => setFormData({ ...formData, billingCycle: event.target.value as BillingCycle })} options={billingCycleOptions} />
+        <Input label="Frequency" type="number" min="1" max="366" value={formData.frequency} onChange={(event) => setFormData({ ...formData, frequency: Number.parseInt(event.target.value, 10) || 1 })} helperText="Use 1 for every cycle, 2 for every other cycle, and so on." />
+      </div>
 
-            {/* Billing Cycle */}
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Billing Cycle
-                    </label>
-                    <select
-                        value={formData.billingCycle as string}
-                        onChange={(e) => setFormData({ ...formData, billingCycle: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                    >
-                        <option value="DAILY">Daily</option>
-                        <option value="WEEKLY">Weekly</option>
-                        <option value="MONTHLY">Monthly</option>
-                        <option value="YEARLY">Yearly</option>
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Every X periods
-                    </label>
-                    <input
-                        type="number"
-                        min="1"
-                        max="366"
-                        value={formData.frequency as number}
-                        onChange={(e) => setFormData({ ...formData, frequency: parseInt(e.target.value) || 1 })}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                    />
-                </div>
-            </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Select label="Category" value={formData.categoryId} onChange={(event) => setFormData({ ...formData, categoryId: event.target.value })} options={[{ value: '', label: 'No category' }, ...categories.map((category) => ({ value: category.id, label: category.name }))]} />
+        <Select label="Payment Account" value={formData.accountId} onChange={(event) => setFormData({ ...formData, accountId: event.target.value })} options={[{ value: '', label: 'No account' }, ...accounts.map((account) => ({ value: account.id, label: account.name }))]} />
+      </div>
 
-            {/* Next Payment */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Next Payment Date *
-                </label>
-                <input
-                    type="date"
-                    value={formData.nextPayment as string}
-                    onChange={(e) => setFormData({ ...formData, nextPayment: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                    required
-                />
-            </div>
+      <Input label="Website URL" value={formData.url} onChange={(event) => setFormData({ ...formData, url: event.target.value })} placeholder="example.com" />
 
-            {/* Category and Account */}
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Category
-                    </label>
-                    <select
-                        value={formData.categoryId as string}
-                        onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                    >
-                        <option value="">No Category</option>
-                        {categories.map((cat) => (
-                            <option key={cat.id} value={cat.id}>{cat.name}</option>
-                        ))}
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Payment Account
-                    </label>
-                    <select
-                        value={formData.accountId as string}
-                        onChange={(e) => setFormData({ ...formData, accountId: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                    >
-                        <option value="">No Account</option>
-                        {accounts.map((acc) => (
-                            <option key={acc.id} value={acc.id}>{acc.name}</option>
-                        ))}
-                    </select>
-                </div>
-            </div>
+      <div>
+        <label className="mb-1 block text-sm font-medium text-gray-700">Notes</label>
+        <textarea
+          value={formData.notes}
+          onChange={(event) => setFormData({ ...formData, notes: event.target.value })}
+          rows={3}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Optional context about the subscription or billing details"
+        />
+      </div>
 
-            {/* URL */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Website URL
-                </label>
-                <input
-                    type="text"
-                    value={formData.url as string}
-                    onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                    placeholder="example.com"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                />
-            </div>
+      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+        <p className="text-sm font-medium text-gray-900">Subscription Behavior</p>
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:gap-6">
+          <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" checked={formData.autoRenew} onChange={(event) => setFormData({ ...formData, autoRenew: event.target.checked })} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+            Auto-renew enabled
+          </label>
+          <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" checked={formData.inactive} onChange={(event) => setFormData({ ...formData, inactive: event.target.checked })} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+            Mark as inactive
+          </label>
+        </div>
+      </div>
 
-            {/* Notes */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Notes
-                </label>
-                <textarea
-                    value={formData.notes as string}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                />
-            </div>
-
-            {/* Checkboxes */}
-            <div className="flex gap-6">
-                <label className="flex items-center gap-2">
-                    <input
-                        type="checkbox"
-                        checked={formData.autoRenew as boolean}
-                        onChange={(e) => setFormData({ ...formData, autoRenew: e.target.checked })}
-                        className="rounded border-gray-300"
-                    />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Auto-renew</span>
-                </label>
-                <label className="flex items-center gap-2">
-                    <input
-                        type="checkbox"
-                        checked={formData.inactive as boolean}
-                        onChange={(e) => setFormData({ ...formData, inactive: e.target.checked })}
-                        className="rounded border-gray-300"
-                    />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">Inactive</span>
-                </label>
-            </div>
-
-            {/* Actions */}
-            <div className="flex justify-end gap-3 pt-4">
-                <Button variant="secondary" onClick={onCancel} type="button">
-                    Cancel
-                </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? 'Saving...' : subscription ? 'Update' : 'Create'}
-                </Button>
-            </div>
-        </form>
-    );
+      <div className="flex justify-end gap-3 pt-2">
+        <Button variant="secondary" onClick={onCancel} type="button">Cancel</Button>
+        <Button type="submit" isLoading={isSubmitting}>{subscription ? 'Update Subscription' : 'Create Subscription'}</Button>
+      </div>
+    </form>
+  );
 }
