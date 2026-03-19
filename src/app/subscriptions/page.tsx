@@ -27,7 +27,7 @@ import {
   Select,
   useToast,
 } from '@/components/ui';
-import { BillingCycle } from '@/generated/prisma';
+import type { BillingCycle } from '@/generated/prisma';
 
 interface Subscription {
   id: string;

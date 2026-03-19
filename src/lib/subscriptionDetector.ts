@@ -23,7 +23,7 @@ export interface DetectionResult {
   markedInactive: number;
 }
 
-const MIN_OCCURRENCES = 3;
+const MIN_OCCURRENCES = 2;
 const AMOUNT_TOLERANCE = 0.10; // 10% tolerance on amount variation
 const INTERVAL_TOLERANCE = 0.20; // 20% tolerance on interval regularity
 const REGULARITY_THRESHOLD = 0.70; // 70% of intervals must be within tolerance
@@ -31,24 +31,78 @@ const INACTIVE_MULTIPLIER = 1.5; // 1.5x billing cycle without transaction = ina
 
 /**
  * Normalize a transaction description for grouping.
- * Lowercases, trims, and removes trailing IDs/numbers that banks append.
+ * Strips bank-specific noise (reference IDs, dates, locations, transaction prefixes)
+ * to group the same merchant across different transactions.
  */
 export function normalizeDescription(desc: string): string {
-  let normalized = desc.toLowerCase().trim();
+  let n = desc.toLowerCase().trim();
 
-  // Remove trailing reference numbers like *12345, #12345, REF12345
-  normalized = normalized.replace(/[\s]*[*#]\s*\d+$/g, '');
+  // Step 1: Remove common US bank transaction prefixes
+  n = n.replace(/^(checkcard|mobile purchase|purchase|debit card|pos|ach|recurring|preauthorized)\s+/i, '');
 
-  // Remove trailing pure numeric sequences (6+ digits, likely reference IDs)
-  normalized = normalized.replace(/\s+\d{6,}$/g, '');
+  // Step 2: Remove 4-digit MMDD date prefix (e.g., "0221 " after removing CHECKCARD)
+  n = n.replace(/^\d{4}\s+/, '');
 
-  // Remove trailing dates in common formats (dd/mm, mm/dd, dd-mm)
-  normalized = normalized.replace(/\s+\d{1,2}[/-]\d{1,2}(\/\d{2,4})?$/g, '');
+  // Step 3: Remove inline dates like 02/24, 01-06, 02/24/2026
+  n = n.replace(/\b\d{1,2}[/-]\d{1,2}([/-]\d{2,4})?\b/g, '');
 
-  // Collapse multiple spaces
-  normalized = normalized.replace(/\s+/g, ' ').trim();
+  // Step 4: Remove #-prefixed reference numbers (e.g., #000030462, #337968, #2384, #1940)
+  n = n.replace(/#\d+/g, '');
 
-  return normalized;
+  // Step 5: Remove *-prefixed IDs (e.g., *12345, *BE0Q17N32)
+  n = n.replace(/\*\s*[\w]+/g, '');
+
+  // Step 6: Remove Conf# references (Zelle)
+  n = n.replace(/\bconf#?\s*\w+/gi, '');
+
+  // Step 7: Remove long alphanumeric IDs (10+ chars, mixed letters+digits like 24765016053656798862013)
+  n = n.replace(/\b[a-z0-9]*\d[a-z0-9]*[a-z][a-z0-9]*\b/gi, (match) => {
+    // Only remove if 10+ chars and has both letters and digits
+    if (match.length >= 10 && /\d/.test(match) && /[a-z]/i.test(match)) return '';
+    return match;
+  });
+
+  // Step 8: Remove pure numeric sequences of 5+ digits (transaction/store IDs)
+  n = n.replace(/\b\d{5,}\b/g, '');
+
+  // Step 9: Remove phone numbers (e.g., 650-2530000, 508-628-0288, 401-868-2000)
+  n = n.replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '');
+
+  // Step 10: Handle Zelle transfers — keep recipient name
+  n = n.replace(/^zelle payment to\s+/i, 'zelle ');
+
+  // Step 11: Remove Wells Fargo/ACH specific patterns
+  n = n.replace(/\bdes:\w+/gi, '');
+  n = n.replace(/\bid:\w+/gi, '');
+  n = n.replace(/\bindn:[\w\s]+?\bco\b/gi, '');
+  n = n.replace(/\bppd\b|\bweb\b/gi, '');
+
+  // Step 12: Remove "RECURRING" suffix
+  n = n.replace(/\brecurring\b/gi, '');
+
+  // Step 13: Remove trailing US city + 2-letter state ONLY at end of string
+  // Match pattern: "WORD(S) XX" at end where XX is 2 letters
+  n = n.replace(/\s+[a-z]+\s+[a-z]{2}\s*$/i, '');
+
+  // Step 14: Remove small standalone numbers (1-4 digits) that are store/location codes
+  // But keep numbers that are part of brand names (e.g., "7-eleven")
+  n = n.replace(/(?<![a-z-])\b\d{1,4}\b(?![a-z-])/g, '');
+
+  // Step 15: Collapse spaces and trim
+  n = n.replace(/\s+/g, ' ').trim();
+
+  // Step 16: If result is too short (< 3 chars), it's probably over-normalized
+  // Fall back to a simpler normalization
+  if (n.length < 3) {
+    n = desc.toLowerCase().trim();
+    // Just remove the basic prefix and trailing long numbers
+    n = n.replace(/^(checkcard|mobile purchase|purchase|debit card|pos)\s+\d{4}\s+/i, '');
+    n = n.replace(/\b\d{10,}\b/g, '');
+    n = n.replace(/#\d+/g, '');
+    n = n.replace(/\s+/g, ' ').trim();
+  }
+
+  return n;
 }
 
 /**

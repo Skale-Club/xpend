@@ -35,10 +35,10 @@ export function AccountList({ accounts, balances, onAddAccount, onEditAccount, o
 
   if (accounts.length === 0) {
     return (
-      <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow">
+      <div className="text-center py-12 bg-white rounded-lg shadow">
         <CircleDollarSign className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No accounts</h3>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by adding your first account.</p>
+        <h3 className="mt-2 text-sm font-medium text-gray-900">No accounts</h3>
+        <p className="mt-1 text-sm text-gray-500">Get started by adding your first account.</p>
         <div className="mt-6">
           <Button onClick={onAddAccount}>Add Account</Button>
         </div>
@@ -57,7 +57,7 @@ export function AccountList({ accounts, balances, onAddAccount, onEditAccount, o
           return (
             <div
               key={account.id}
-              className={`bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 transition-opacity ${
+              className={`bg-white rounded-lg shadow p-4 border-l-4 transition-opacity ${
                 isInactive ? 'opacity-60 border-gray-400' :
                 balance < 0 ? 'border-red-500' :
                 'border-blue-500'
@@ -75,18 +75,18 @@ export function AccountList({ accounts, balances, onAddAccount, onEditAccount, o
 
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className={`font-semibold ${isInactive ? 'text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>
+                      <h3 className={`font-semibold ${isInactive ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
                         {account.name}
                       </h3>
                       {isInactive && (
-                        <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 rounded">
+                        <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
                           Inactive
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                    <div className="flex items-center gap-3 text-sm text-gray-600">
                       {account.bank && <span>{account.bank}</span>}
-                      <span className="px-2 py-0.5 rounded text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+                      <span className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">
                         {ACCOUNT_TYPE_LABELS[account.type]}
                       </span>
                     </div>
@@ -96,24 +96,24 @@ export function AccountList({ accounts, balances, onAddAccount, onEditAccount, o
                 <div className="flex items-center gap-6">
                   {/* Balance */}
                   <div className="text-right">
-                    <p className={`font-bold text-lg ${balance >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-600 dark:text-red-400'}`}>
+                    <p className={`font-bold text-lg ${balance >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
                       {formatCurrency(balance, { hideSensitiveValues })}
                     </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Current Balance</p>
+                    <p className="text-sm text-gray-500">Current Balance</p>
                   </div>
 
                   {/* Actions */}
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => onEditAccount(account)}
-                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       title="Edit"
                     >
                       <Edit className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => setDeleteModalOpen(account.id)}
-                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       title="Delete"
                     >
                       <Trash2 className="w-5 h-5" />
@@ -132,7 +132,7 @@ export function AccountList({ accounts, balances, onAddAccount, onEditAccount, o
         title="Delete Account"
         size="sm"
       >
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
+        <p className="text-gray-600 mb-4">
           Are you sure you want to delete this account? All associated transactions will also be deleted.
         </p>
         <div className="flex gap-2 justify-end">

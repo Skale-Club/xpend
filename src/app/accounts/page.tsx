@@ -120,8 +120,8 @@ export default function AccountsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Accounts</h1>
-          <p className="text-gray-600 dark:text-gray-400">Manage your bank accounts and cards</p>
+          <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
+          <p className="text-gray-600">Manage your bank accounts and cards</p>
         </div>
         <Button onClick={handleAddAccount}>
           <Plus className="w-5 h-5 mr-2" />
@@ -131,25 +131,25 @@ export default function AccountsPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
-          <p className="text-sm text-gray-600 dark:text-gray-400">Total Accounts</p>
-          <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{activeAccounts.length}</p>
+        <div className="bg-white rounded-lg p-4 shadow">
+          <p className="text-sm text-gray-600">Total Accounts</p>
+          <p className="text-2xl font-bold text-blue-600">{activeAccounts.length}</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
-          <p className="text-sm text-gray-600 dark:text-gray-400">Net Balance</p>
-          <p className={`text-2xl font-bold ${totalBalance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+        <div className="bg-white rounded-lg p-4 shadow">
+          <p className="text-sm text-gray-600">Net Balance</p>
+          <p className={`text-2xl font-bold ${totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
             {formatCurrency(totalBalance, { hideSensitiveValues })}
           </p>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
-          <p className="text-sm text-gray-600 dark:text-gray-400">Assets</p>
-          <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+        <div className="bg-white rounded-lg p-4 shadow">
+          <p className="text-sm text-gray-600">Assets</p>
+          <p className="text-2xl font-bold text-emerald-600">
             {formatCurrency(positiveBalance, { hideSensitiveValues })}
           </p>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
-          <p className="text-sm text-gray-600 dark:text-gray-400">Liabilities</p>
-          <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+        <div className="bg-white rounded-lg p-4 shadow">
+          <p className="text-sm text-gray-600">Liabilities</p>
+          <p className="text-2xl font-bold text-red-600">
             {formatCurrency(Math.abs(negativeBalance), { hideSensitiveValues })}
           </p>
         </div>
