@@ -39,10 +39,13 @@ export async function GET(request: Request) {
         const sort = searchParams.get('sort') || 'nextPayment';
         const includeStats = searchParams.get('stats') === 'true';
 
+        const source = searchParams.get('source');
+
         // Build where clause
         const where: {
             inactive?: boolean;
             categoryId?: string;
+            source?: string;
         } = {};
 
         if (inactive !== null) {
@@ -50,6 +53,9 @@ export async function GET(request: Request) {
         }
         if (categoryId) {
             where.categoryId = categoryId;
+        }
+        if (source) {
+            where.source = source;
         }
 
         // Build orderBy

@@ -132,11 +132,21 @@ model Subscription {
   accountId       String?
   account         Account?     @relation(fields: [accountId], references: [id], onDelete: SetNull)
   replacementId   String?      // ID of subscription that replaced this one
+
+  // Auto-detection fields
+  source         String    @default("manual")  // "manual" | "detected"
+  matchPattern   String?                       // Normalized description used for matching
+  lastSeenDate   DateTime?                     // Most recent matching transaction date
+  firstSeenDate  DateTime?                     // Earliest matching transaction date
+  occurrences    Int       @default(0)         // Number of matched transactions
+  avgAmount      Float?                        // Average amount across matched transactions
+
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
-  
+
   @@index([nextPayment])
   @@index([inactive])
+  @@index([matchPattern])
 }
 
 model Settings {

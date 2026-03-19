@@ -5,6 +5,7 @@ import { parsePDF } from '@/lib/pdfParser';
 import { validateStatementUpload, ValidationError } from '@/lib/validation';
 import { createClient } from '@supabase/supabase-js';
 import { batchCategorize } from '@/lib/autoCategorize';
+import { detectAndUpsertSubscriptions } from '@/lib/subscriptionDetector';
 
 export async function POST(request: Request) {
   try {
@@ -191,6 +192,11 @@ export async function POST(request: Request) {
     const createdCount = await prisma.transaction.count({
       where: { statementId: statement.id },
     });
+
+    // Trigger subscription detection in background (non-blocking)
+    detectAndUpsertSubscriptions(accountId).catch((err) =>
+      console.error('Background subscription detection failed:', err)
+    );
 
     return NextResponse.json({
       statement,

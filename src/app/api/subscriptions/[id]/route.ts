@@ -60,6 +60,12 @@ export async function PUT(
         if (body.categoryId !== undefined) updateData.categoryId = body.categoryId || null;
         if (body.accountId !== undefined) updateData.accountId = body.accountId || null;
         if (body.replacementId !== undefined) updateData.replacementId = body.replacementId || null;
+        if (body.source !== undefined) updateData.source = body.source;
+        if (body.matchPattern !== undefined) updateData.matchPattern = body.matchPattern || null;
+        if (body.lastSeenDate !== undefined) updateData.lastSeenDate = body.lastSeenDate ? new Date(body.lastSeenDate) : null;
+        if (body.firstSeenDate !== undefined) updateData.firstSeenDate = body.firstSeenDate ? new Date(body.firstSeenDate) : null;
+        if (body.occurrences !== undefined) updateData.occurrences = body.occurrences;
+        if (body.avgAmount !== undefined) updateData.avgAmount = body.avgAmount;
 
         const subscription = await prisma.subscription.update({
             where: { id },
