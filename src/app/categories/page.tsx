@@ -10,6 +10,7 @@ import { Category } from '@/types';
 import { CATEGORY_ICONS, getCategoryIcon } from '@/lib/categoryIcons';
 import { formatCurrency } from '@/lib/utils';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
+import { readArrayResponse } from '@/lib/http';
 
 interface CategoryWithChildren extends Category {
     children?: CategoryWithChildren[];
@@ -75,7 +76,7 @@ export default function CategoriesPage() {
     const fetchCategories = useCallback(async () => {
         try {
             const res = await fetch('/api/categories');
-            const data = await res.json();
+            const data = await readArrayResponse<CategoryWithChildren>(res, 'Categories');
 
             // Build tree structure
             const categoryMap = new Map<string, CategoryWithChildren>();
@@ -115,6 +116,7 @@ export default function CategoriesPage() {
             setCategories(rootCategories);
         } catch (error) {
             console.error('Failed to fetch categories:', error);
+            setCategories([]);
         } finally {
             setIsLoading(false);
         }

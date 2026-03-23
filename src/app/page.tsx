@@ -20,6 +20,7 @@ import { buildDistributionTemplateItems, categorySummaryToDistribution } from '@
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 import { getCategoryIcon } from '@/lib/categoryIcons';
+import { readArrayResponse, readObjectResponse } from '@/lib/http';
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -69,9 +70,9 @@ export default function DashboardPage() {
       ]);
 
       const [dashboardData, accountsData, categoriesData] = await Promise.all([
-        dashboardRes.json(),
-        accountsRes.json(),
-        categoriesRes.json(),
+        readObjectResponse<DashboardData>(dashboardRes, 'Dashboard data'),
+        readArrayResponse<Account>(accountsRes, 'Accounts'),
+        readArrayResponse<Category>(categoriesRes, 'Categories'),
       ]);
 
       setData(dashboardData);

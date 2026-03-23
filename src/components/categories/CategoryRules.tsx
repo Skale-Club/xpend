@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, Modal, Input, Button, Select, Pagination
 import { getCategoryIcon } from '@/lib/categoryIcons';
 import { CategoryTreeSelector } from './CategoryTreeSelector';
 import React from 'react';
+import { readArrayResponse } from '@/lib/http';
 
 interface CategorizationRule {
     id: string;
@@ -57,12 +58,16 @@ export function CategoryRules() {
                 fetch('/api/categorization-rules'),
                 fetch('/api/categories'),
             ]);
-            const rulesData = await rulesRes.json();
-            const categoriesData = await categoriesRes.json();
+            const [rulesData, categoriesData] = await Promise.all([
+                readArrayResponse<CategorizationRule>(rulesRes, 'Categorization rules'),
+                readArrayResponse<Category>(categoriesRes, 'Categories'),
+            ]);
             setRules(rulesData);
             setCategories(categoriesData);
         } catch (error) {
             console.error('Failed to fetch data:', error);
+            setRules([]);
+            setCategories([]);
         } finally {
             setIsLoading(false);
         }

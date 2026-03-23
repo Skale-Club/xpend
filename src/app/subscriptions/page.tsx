@@ -28,6 +28,7 @@ import {
   useToast,
 } from '@/components/ui';
 import type { BillingCycle } from '@/generated/prisma';
+import { readArrayResponse, readObjectResponse } from '@/lib/http';
 
 interface Subscription {
   id: string;
@@ -63,6 +64,11 @@ interface SubscriptionStats {
   totalYearlyCost: number;
   mostExpensive: { name: string; monthlyPrice: number } | null;
   totalSavings: number;
+}
+
+interface SubscriptionListResponse {
+  subscriptions?: Subscription[];
+  stats?: SubscriptionStats | null;
 }
 
 interface Category {
@@ -215,17 +221,17 @@ export default function SubscriptionsPage() {
       if (filterSource) params.set('source', filterSource);
 
       const subsRes = await fetch(`/api/subscriptions?${params.toString()}`);
-      const subsData = await subsRes.json();
-      setSubscriptions(subsData.subscriptions || []);
-      setStats(subsData.stats);
+      const subsData = await readObjectResponse<SubscriptionListResponse>(subsRes, 'Subscriptions');
+      setSubscriptions(Array.isArray(subsData?.subscriptions) ? subsData.subscriptions : []);
+      setStats(subsData?.stats ?? null);
 
       const catRes = await fetch('/api/categories');
-      const catData = await catRes.json();
-      setCategories(catData.categories || catData || []);
+      const catData = await readArrayResponse<Category>(catRes, 'Categories');
+      setCategories(catData);
 
       const accRes = await fetch('/api/accounts');
-      const accData = await accRes.json();
-      setAccounts(Array.isArray(accData) ? accData : []);
+      const accData = await readArrayResponse<Account>(accRes, 'Accounts');
+      setAccounts(accData);
     } catch (error) {
       console.error('Failed to fetch data:', error);
       toast.error('Failed to load subscriptions. Please try again.');
