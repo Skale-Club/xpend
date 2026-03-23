@@ -221,7 +221,7 @@ export default function DashboardPage() {
 
   if (isLoading && !data) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center min-h-[50vh] w-full">
         <Loader size={80} />
       </div>
     );

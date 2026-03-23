@@ -499,7 +499,7 @@ export default function SubscriptionsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
+      <div className="flex items-center justify-center min-h-[50vh] w-full">
         <Loader size={80} />
       </div>
     );

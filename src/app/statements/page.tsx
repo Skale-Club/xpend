@@ -99,7 +99,7 @@ export default function StatementsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center min-h-[50vh] w-full">
         <Loader size={80} />
       </div>
     );
@@ -152,7 +152,7 @@ export default function StatementsPage() {
 
       {selectedAccountId && (
         isStatementsLoading ? (
-          <div className="flex items-center justify-center h-64">
+          <div className="flex items-center justify-center min-h-[50vh] w-full">
             <Loader size={80} />
           </div>
         ) : (

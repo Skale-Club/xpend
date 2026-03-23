@@ -728,7 +728,7 @@ export default function ReportsPage() {
 
   if (isLoading && !data) {
     return (
-      <div className="flex min-h-[calc(100dvh-10rem)] items-center justify-center">
+      <div className="flex items-center justify-center min-h-[50vh] w-full">
         <Loader size={80} />
       </div>
     );
