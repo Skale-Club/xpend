@@ -106,7 +106,7 @@ export function AuthGate({ children }: AuthGateProps) {
             <div className="mb-6 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
               <div className="flex items-center gap-2 font-medium">
                 <ShieldCheck className="h-4 w-4" />
-                Supabase Auth sign-in
+                Secure sign-in
               </div>
             </div>
 
