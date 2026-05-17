@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Plus } from 'lucide-react';
 import { AccountList, AccountForm, AccountFormData } from '@/components/accounts';
-import { Account, ACCOUNT_TYPE_LABELS } from '@/types';
+import { Account } from '@/types';
 import { useToast, Loader, Button } from '@/components/ui';
 import { formatCurrency } from '@/lib/utils';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';

@@ -119,7 +119,7 @@ export function SpendingPaceCard({ data }: SpendingPaceCardProps) {
                 tickFormatter={(value) => formatCompactCurrency(Number(value), hideSensitiveValues)}
               />
               <Tooltip
-                formatter={(value: any, name: any) => [
+                formatter={(value: number | string, name: string) => [
                   formatCurrency(Number(value), { hideSensitiveValues, maximumFractionDigits: 0 }),
                   name === 'currentMonth' ? data.currentMonthLabel : data.previousMonthLabel,
                 ]}

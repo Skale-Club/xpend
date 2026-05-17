@@ -30,7 +30,7 @@ export default function TransactionsPage() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [limit, setLimit] = useState(50);
+  const [limit] = useState(50);
   const [totalCount, setTotalCount] = useState(0);
 
   const fetchData = useCallback(async (options?: { silent?: boolean; page?: number }) => {

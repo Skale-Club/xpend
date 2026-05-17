@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Plus, Edit2, Trash2, Tag, Search, ArrowUpDown, ChevronDown, ChevronRight, CornerDownRight } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, ArrowUpDown, ChevronDown, ChevronRight, CornerDownRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, Modal, Input, Button, Select, Pagination, Loader } from '@/components/ui';
 import { getCategoryIcon } from '@/lib/categoryIcons';
 import { CategoryTreeSelector } from './CategoryTreeSelector';
@@ -123,7 +123,10 @@ export function CategoryRules() {
 
     // Flatten for pagination but keep structure for rendering
     const flattenedView = useMemo(() => {
-        const items: any[] = [];
+        const items: (
+            | { type: 'header'; category: Category; count: number }
+            | { type: 'rule'; rule: CategorizationRule }
+        )[] = [];
         groupedAndFilteredRules.forEach(group => {
             items.push({ type: 'header', category: group.category, count: group.rules.length });
             if (expandedCategories.has(group.category.id) || searchQuery) {
@@ -266,11 +269,11 @@ export function CategoryRules() {
                         </div>
                     ) : flattenedView.length === 0 ? (
                         <div className="p-8 text-center text-gray-500">
-                            <p>No rules found matching "{searchQuery}"</p>
+                            <p>No rules found matching &quot;{searchQuery}&quot;</p>
                         </div>
                     ) : (
                         <div className="divide-y divide-gray-100">
-                            {paginatedItems.map((item, index) => {
+                            {paginatedItems.map((item) => {
                                 if (item.type === 'header') {
                                     const cat = item.category;
                                     const isExpanded = expandedCategories.has(cat.id) || !!searchQuery;

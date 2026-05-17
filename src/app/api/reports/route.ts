@@ -5,6 +5,25 @@ import { validateQueryParams, ValidationError } from '@/lib/validation';
 import { amountEqualsRange, parseSearchAmount } from '@/lib/searchAmount';
 import { expandCategoryIdsWithDescendants } from '@/lib/categoryDescendants';
 
+/** Shape of a node in the hierarchical category breakdown tree. */
+interface CategoryNode {
+  id: string;
+  name: string;
+  color: string;
+  amount: number;
+  count: number;
+  percentage: number;
+  transactions: {
+    id: string;
+    description: string;
+    amount: number;
+    date: Date;
+    type: TransactionType;
+    category: { id: string; name: string; color: string; icon: string | null } | null;
+  }[];
+  subcategories: CategoryNode[];
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -142,7 +161,7 @@ export async function GET(request: Request) {
     const categoriesMap = new Map(allCategories.map(c => [c.id, c]));
 
     // Map to hold nodes. Key is category id (or 'uncategorized')
-    const nodeMap = new Map<string, any>();
+    const nodeMap = new Map<string, CategoryNode>();
 
     // Helper to get or create a node
     const getOrCreateNode = (id: string, name: string, color: string) => {
@@ -180,11 +199,11 @@ export async function GET(request: Request) {
 
     // Sort transactions within each node
     for (const node of nodeMap.values()) {
-      node.transactions.sort((a: any, b: any) => b.amount - a.amount);
+      node.transactions.sort((a, b) => b.amount - a.amount);
     }
 
     // Second pass: build hierarchy and bubble up totals
-    const rootNodes: any[] = [];
+    const rootNodes: CategoryNode[] = [];
 
     // Process categories (that we actually have in the nodeMap or in allCategories)
     // We need to iterate over all nodes we created and put them in their parent
@@ -233,8 +252,8 @@ export async function GET(request: Request) {
     }
 
     // Recursive function to calculate totals and percentages
-    const calculateTotals = (node: any) => {
-      let totalAmount = node.transactions.reduce((sum: number, t: any) => sum + t.amount, 0);
+    const calculateTotals = (node: CategoryNode) => {
+      let totalAmount = node.transactions.reduce((sum, t) => sum + t.amount, 0);
       let totalCount = node.transactions.length;
 
       for (const sub of node.subcategories) {
@@ -248,7 +267,7 @@ export async function GET(request: Request) {
       node.percentage = totalAmount > 0 ? (node.amount / (totalAmount > 0 ? totalAmount : 1)) : 0; // Temp percentage
 
       // Sort subcategories by amount
-      node.subcategories.sort((a: any, b: any) => b.amount - a.amount);
+      node.subcategories.sort((a, b) => b.amount - a.amount);
     };
 
     for (const root of rootNodes) {
@@ -256,7 +275,7 @@ export async function GET(request: Request) {
     }
 
     // Now set the correct percentages based on the GLOBAL totalAmount
-    const setPercentages = (node: any) => {
+    const setPercentages = (node: CategoryNode) => {
       node.percentage = totalAmount > 0 ? (node.amount / totalAmount) * 100 : 0;
       for (const sub of node.subcategories) {
         setPercentages(sub);
@@ -498,10 +517,10 @@ function getWeekdayPattern(transactions: { amount: number; date: Date }[]) {
     .sort((a, b) => b.amount - a.amount);
 }
 
-function getSubcategoryData(categoryBreakdown: any[]) {
-  const subcategories: any[] = [];
+function getSubcategoryData(categoryBreakdown: CategoryNode[]) {
+  const subcategories: { name: string; amount: number; color: string; count: number; percentage: number }[] = [];
 
-  function extractSubcategories(node: any) {
+  function extractSubcategories(node: CategoryNode) {
     if (node.subcategories && node.subcategories.length > 0) {
       for (const sub of node.subcategories) {
         subcategories.push({

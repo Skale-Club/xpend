@@ -160,11 +160,11 @@ function CategoryRow({
   onCancelDescriptionEdit,
   formatAmount,
 }: {
-  node: any,
+  node: CategoryReportNode,
   level?: number,
   expandedIds: Set<string>,
   toggleExpanded: (id: string) => void,
-  onEditTransactionCategory: (tx: any) => void,
+  onEditTransactionCategory: (tx: CategoryTransaction) => void,
   editingDescriptionId: string | null,
   tempDescription: string,
   onStartDescriptionEdit: (id: string, currentDescription: string) => void,
@@ -210,7 +210,7 @@ function CategoryRow({
         </td>
       </tr>
 
-      {isExpanded && node.subcategories?.map((sub: any) => (
+      {isExpanded && node.subcategories?.map((sub) => (
         <CategoryRow
           key={sub.id}
           node={sub}
@@ -234,7 +234,7 @@ function CategoryRow({
             <div className="py-3 overflow-y-auto" style={{ paddingLeft: `${(level + 1) * 1.5 + 1.5}rem`, paddingRight: '1rem' }}>
               <table className="w-full text-sm">
                 <tbody>
-                  {node.transactions.map((tx: any) => (
+                  {node.transactions.map((tx) => (
                     <tr key={tx.id} className="border-b border-gray-100/50 last:border-0 hover:bg-white transition-colors">
                       <td className="py-2 text-gray-500 whitespace-nowrap w-24">
                         {formatDate(tx.date)}
@@ -517,7 +517,7 @@ export default function ReportsPage() {
     setSelectedMerchantCategory('');
   };
 
-  const openTransactionCategorize = (tx: any) => {
+  const openTransactionCategorize = (tx: CategoryTransaction) => {
     setTransactionToCategorize(tx);
     setSelectedTransactionCategory(tx.category?.id || '');
   };
