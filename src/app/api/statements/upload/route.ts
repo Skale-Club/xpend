@@ -67,17 +67,10 @@ export async function POST(request: Request) {
       }
     }
 
-    const existingStatement = await prisma.statement.findUnique({
-      where: {
-        accountId_month_year: { accountId, month, year },
-      },
-    });
-
-    if (existingStatement) {
-      await prisma.transaction.deleteMany({
-        where: { statementId: existingStatement.id },
-      });
-    }
+    // NOTE: We do NOT delete existing transactions on re-upload.
+    // Instead we use a merge strategy below: only insert parsed rows that do not
+    // match an existing transaction by (date, amount, description). This preserves
+    // any categoryId, notes, and isRecurring edits the user made on prior transactions.
 
     let transactions: { date: Date; description: string; amount: number; type: 'INCOME' | 'EXPENSE'; categoryId?: string | null }[] = [];
     let parseMessage: string | undefined;
@@ -123,6 +116,10 @@ export async function POST(request: Request) {
       const startDate = new Date(year, month - 1, 1);
       const endDate = new Date(year, month, 0, 23, 59, 59);
 
+      // Include ALL transactions for this account+month — including any already linked
+      // to this statement from a previous upload. This ensures re-uploading the same
+      // statement skips already-imported rows instead of creating duplicates, and
+      // preserves user edits (categoryId, notes, isRecurring) on existing transactions.
       const existingTransactions = await prisma.transaction.findMany({
         where: {
           accountId,
@@ -130,7 +127,6 @@ export async function POST(request: Request) {
             gte: startDate,
             lte: endDate,
           },
-          statementId: { not: statement.id }, // Exclude current statement's transactions
         },
         select: {
           date: true,
