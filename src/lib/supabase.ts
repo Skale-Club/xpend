@@ -1,9 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// This file exists only to export the Database type consumed by supabaseBrowser.ts.
+// The hand-written types below are intentionally kept minimal — they cover only the
+// tables that the Supabase JS Auth client touches. The full schema lives in
+// prisma/schema.prisma (source of truth). Do not use this for DB queries.
 
 export type Json =
   | string
