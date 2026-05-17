@@ -166,7 +166,7 @@ export async function GET(request: Request) {
     // Helper to get or create a node
     const getOrCreateNode = (id: string, name: string, color: string) => {
       if (!nodeMap.has(id)) {
-        nodeMap.set(id, { id, name, color, amount: 0, count: 0, transactions: [], subcategories: [] });
+        nodeMap.set(id, { id, name, color, amount: 0, count: 0, percentage: 0, transactions: [], subcategories: [] });
       }
       return nodeMap.get(id)!;
     };

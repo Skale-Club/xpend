@@ -164,7 +164,7 @@ function CategoryRow({
   level?: number,
   expandedIds: Set<string>,
   toggleExpanded: (id: string) => void,
-  onEditTransactionCategory: (tx: CategoryTransaction) => void,
+  onEditTransactionCategory: (tx: { id: string; description: string; type: 'INCOME' | 'EXPENSE' | 'TRANSFER'; category?: { id: string; name: string; color: string; icon?: string | null } | null }) => void,
   editingDescriptionId: string | null,
   tempDescription: string,
   onStartDescriptionEdit: (id: string, currentDescription: string) => void,
@@ -517,7 +517,7 @@ export default function ReportsPage() {
     setSelectedMerchantCategory('');
   };
 
-  const openTransactionCategorize = (tx: CategoryTransaction) => {
+  const openTransactionCategorize = (tx: { id: string; description: string; type: 'INCOME' | 'EXPENSE' | 'TRANSFER'; category?: { id: string; name: string; color: string; icon?: string | null } | null }) => {
     setTransactionToCategorize(tx);
     setSelectedTransactionCategory(tx.category?.id || '');
   };
