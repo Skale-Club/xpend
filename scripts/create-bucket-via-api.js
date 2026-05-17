@@ -33,9 +33,9 @@ async function createStatementsBucket() {
     return;
   }
 
-  // Create the bucket
+  // Create the bucket (private — files require signed URLs for access)
   const { data, error } = await supabase.storage.createBucket('statements', {
-    public: true,
+    public: false,
     fileSizeLimit: 52428800, // 50MB
     allowedMimeTypes: ['text/csv', 'application/pdf']
   });
