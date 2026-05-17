@@ -56,12 +56,10 @@ export async function POST(request: Request) {
           console.error('Supabase storage upload error:', uploadError);
           // Continue without file URL if upload fails
         } else if (uploadData) {
-          // Get public URL
-          const { data: urlData } = supabase.storage
-            .from('statements')
-            .getPublicUrl(filePath);
-
-          fileUrl = urlData.publicUrl;
+          // Store the storage path (not a public URL — bucket is private).
+          // Callers that need to view the file should call
+          // GET /api/statements/[id]/signed-url to get a fresh short-lived URL.
+          fileUrl = uploadData.path;
         }
       } catch (storageError) {
         console.error('Storage error:', storageError);
