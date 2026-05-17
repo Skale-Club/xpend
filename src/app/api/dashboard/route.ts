@@ -65,8 +65,8 @@ export async function GET(request: Request) {
     // Pagination parameters
     const limitParam = searchParams.get('limit');
     const offsetParam = searchParams.get('offset');
-    const limit = limitParam ? parseInt(limitParam) : 10;
-    const offset = offsetParam ? parseInt(offsetParam) : 0;
+    const limit = limitParam ? parseInt(limitParam, 10) : 10;
+    const offset = offsetParam ? parseInt(offsetParam, 10) : 0;
 
     // Fetch transactions for aggregations (without pagination, minimal fields for performance)
     const transactionsForAggregation = await prisma.transaction.findMany({
@@ -284,12 +284,12 @@ function getMonthlyData(transactions: { date: Date; type: string; amount: number
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, data]) => {
       const [year, month] = key.split('-');
-      const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleString('default', {
+      const monthName = new Date(parseInt(year, 10), parseInt(month, 10) - 1).toLocaleString('default', {
         month: 'short',
       });
       return {
         month: monthName,
-        year: parseInt(year),
+        year: parseInt(year, 10),
         income: data.income,
         expenses: data.expenses,
         balance: data.income - data.expenses,
@@ -613,7 +613,7 @@ function getBalanceTrend(
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, balance]) => {
       const [year, month] = key.split('-');
-      const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleString('default', {
+      const monthName = new Date(parseInt(year, 10), parseInt(month, 10) - 1).toLocaleString('default', {
         month: 'short',
       });
       return {

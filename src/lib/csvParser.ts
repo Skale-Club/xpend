@@ -214,23 +214,23 @@ function parseDate(value: string): Date | null {
   const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
   if (dmyMatch) {
     const [, day, month, year] = dmyMatch;
-    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    return new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
   }
 
   // Try MM/DD/YYYY or MM-DD-YYYY (US format)
   const mdyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
   if (mdyMatch) {
     const [, month, day, year] = mdyMatch;
-    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    return new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
   }
 
   // Try DD/MM/YY or DD-MM-YY
   const dmyShortMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})$/);
   if (dmyShortMatch) {
     const [, day, month, yearShort] = dmyShortMatch;
-    const year = parseInt(yearShort);
+    const year = parseInt(yearShort, 10);
     const fullYear = year > 50 ? 1900 + year : 2000 + year;
-    return new Date(fullYear, parseInt(month) - 1, parseInt(day));
+    return new Date(fullYear, parseInt(month, 10) - 1, parseInt(day, 10));
   }
 
   return null;

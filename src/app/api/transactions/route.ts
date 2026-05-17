@@ -67,8 +67,8 @@ export async function GET(request: Request) {
     const totalCount = await prisma.transaction.count({ where });
 
     // Apply pagination
-    const pageLimit = limit ? parseInt(limit) : 50;
-    const pageOffset = offset ? parseInt(offset) : 0;
+    const pageLimit = limit ? parseInt(limit, 10) : 50;
+    const pageOffset = offset ? parseInt(offset, 10) : 0;
 
     const transactions = await prisma.transaction.findMany({
       where,

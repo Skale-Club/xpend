@@ -9,7 +9,7 @@ export async function GET(request: Request) {
 
     const where: { accountId?: string; year?: number } = {};
     if (accountId) where.accountId = accountId;
-    if (year) where.year = parseInt(year);
+    if (year) where.year = parseInt(year, 10);
 
     const statements = await prisma.statement.findMany({
       where,
