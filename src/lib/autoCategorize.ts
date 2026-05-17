@@ -97,9 +97,10 @@ export async function suggestByAI(
     categories: { id: string; name: string }[]
 ): Promise<CategorizationResult | null> {
     try {
-        // Get API key from settings
+        // Get API key and model from settings
         const settings = await prisma.settings.findUnique({
             where: { id: 'default' },
+            select: { geminiApiKey: true, geminiChatModel: true },
         });
 
         if (!settings?.geminiApiKey) {
@@ -107,7 +108,7 @@ export async function suggestByAI(
         }
 
         const genAI = new GoogleGenerativeAI(settings.geminiApiKey);
-        const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
+        const model = genAI.getGenerativeModel({ model: settings.geminiChatModel || 'gemini-2.5-flash' });
 
         const categoryList = categories.map((c) => c.name).join(', ');
 
