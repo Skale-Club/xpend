@@ -22,37 +22,47 @@ A Next.js-based spending tracker that allows users to:
 - **Date Handling**: date-fns 4.1.0
 
 ### Backend
-- **Database**: SQLite (via Prisma)
-- **ORM**: Prisma 7.4.2 with LibSQL adapter
+- **Database**: PostgreSQL via Supabase (cloud-hosted)
+- **ORM**: Prisma 7.4.2 with `@prisma/adapter-pg` (PrismaPg adapter)
 - **API Routes**: Next.js App Router API routes
 - **File Parsing**: PapaParse (CSV), custom PDF parser
 - **AI**: Google Generative AI (Gemini) for categorization
 
-### Alternative Backend
-- **Supabase Support**: Dual implementation with Supabase as alternative to SQLite
-- Supabase routes available at `/api/supabase/*`
-- Can self-host Supabase with Docker (see [SELF_HOSTED.md](SELF_HOSTED.md))
+### Supabase Services Used
+- **Auth**: Supabase Auth (email/password) — enforced via middleware on all `/api/*` routes
+- **Storage**: Supabase Storage (`statements` bucket, private) — bank statement files
+- **Database**: Supabase-hosted PostgreSQL accessed directly via Prisma (not via Supabase JS client)
+
+> Note: There is no `/api/supabase/*` route directory. Supabase is not used as a query layer — Prisma handles all DB queries.
 
 ## Architecture
 
 ### Directory Structure
 
 ```
-spending-tracking/
+xpend/
 ├── src/
 │   ├── app/                    # Next.js App Router pages
 │   │   ├── accounts/           # Accounts management page
 │   │   ├── statements/         # Statement upload/management page
 │   │   ├── transactions/       # Transaction list/detail page
-│   │   ├── settings/           # App settings (Gemini API key)
-│   │   ├── api/                # API routes (Prisma/SQLite)
+│   │   ├── reports/            # Analytics and reporting page
+│   │   ├── subscriptions/      # Subscription detection page
+│   │   ├── settings/           # App settings (Gemini API key, model)
+│   │   ├── api/                # API routes (all backed by Prisma/PostgreSQL)
 │   │   │   ├── accounts/
 │   │   │   ├── categories/
 │   │   │   ├── transactions/
 │   │   │   ├── statements/
+│   │   │   │   ├── [id]/
+│   │   │   │   │   ├── signed-url/  # GET: returns 7-day signed URL for private file
+│   │   │   │   │   └── categorize/
+│   │   │   │   └── upload/
 │   │   │   ├── dashboard/
-│   │   │   └── supabase/       # Alternative Supabase API routes
-│   │   ├── layout.tsx          # Root layout with sidebar
+│   │   │   ├── reports/
+│   │   │   ├── subscriptions/
+│   │   │   └── chat/
+│   │   ├── layout.tsx          # Root layout with sidebar + AuthGate
 │   │   └── page.tsx            # Dashboard homepage
 │   ├── components/             # React components
 │   │   ├── ui/                 # Reusable UI components
@@ -60,25 +70,24 @@ spending-tracking/
 │   │   ├── statements/         # Statement upload components
 │   │   ├── transactions/       # Transaction list/filter components
 │   │   ├── dashboard/          # Charts and stats components
+│   │   ├── categories/         # Category management components
 │   │   └── layout/             # Layout components (Sidebar)
 │   ├── lib/                    # Utility libraries
-│   │   ├── db.ts              # Prisma client singleton
-│   │   ├── supabase.ts        # Supabase client
+│   │   ├── db.ts              # Prisma client singleton (PrismaPg adapter)
+│   │   ├── supabaseBrowser.ts # Supabase browser client (Auth only)
 │   │   ├── csvParser.ts       # CSV statement parser
 │   │   ├── pdfParser.ts       # PDF statement parser
+│   │   ├── autoCategorize.ts  # AI + rule-based categorization
+│   │   ├── subscriptionDetector.ts # Automatic subscription detection
 │   │   └── utils.ts           # General utilities
 │   ├── types/                  # TypeScript type definitions
 │   │   └── index.ts           # Shared types (Account, Transaction, etc.)
 │   └── generated/prisma/       # Prisma generated client (gitignored)
 ├── prisma/
-│   ├── schema.prisma          # Database schema
-│   ├── migrations/            # Migration history
-│   └── dev.db                 # SQLite database file
-├── supabase/
-│   └── schema.sql             # Supabase SQL schema
-├── docker-compose.supabase.yml # Self-hosted Supabase config
-├── SUPABASE.md                # Supabase setup guide
-├── SELF_HOSTED.md             # Self-hosted Supabase guide
+│   ├── schema.prisma          # Database schema (PostgreSQL)
+│   └── migrations/            # Migration history
+├── public/
+│   └── sw.js                  # PWA service worker
 └── README.md                  # Getting started
 ```
 
@@ -93,13 +102,13 @@ spending-tracking/
 
 2. **Statement**: Monthly statement files
    - Unique by accountId + month + year
-   - Fields: month, year, fileName, fileUrl, uploadedAt
+   - Fields: month, year, fileName, fileUrl (storage path), uploadedAt
    - Relations: account, transactions[]
 
 3. **Category**: Transaction categories (hierarchical)
-   - Fields: name, color, icon, parentId
+   - Fields: name, color, icon, parentId, budget, isSystem
    - Self-referencing: parent, children[]
-   - Relations: transactions[]
+   - Relations: transactions[], categorizationRules[]
 
 4. **Transaction**: Individual transactions
    - Types: INCOME, EXPENSE, TRANSFER
@@ -109,7 +118,13 @@ spending-tracking/
 
 5. **Settings**: Application settings
    - Single record (id: "default")
-   - Fields: geminiApiKey
+   - Fields: geminiApiKey, geminiChatModel
+
+6. **Subscription**: Detected recurring charges
+   - Fields: name, price, billingCycle, avgAmount, occurrences, source, inactive
+
+7. **CategorizationRule**: Rules for auto-categorization
+   - Fields: keywords, matchType, priority, isActive
 
 ### Key Features Implementation
 
@@ -129,9 +144,21 @@ spending-tracking/
 - Field mapping supports: English, Portuguese, Spanish headers
 
 **PDF Parser** ([src/lib/pdfParser.ts](src/lib/pdfParser.ts)):
-- Currently implemented (check file for details)
+- Uses Google Gemini AI to extract transactions from PDF bank statements
 
-#### 2. Dashboard Analytics
+**Re-upload behavior**: Re-uploading a statement for the same month merges new rows rather than deleting existing ones. Transactions already in the DB (matched by date + amount + description) are preserved with their user edits (categoryId, notes, isRecurring).
+
+#### 2. Statement File Storage
+
+Files are uploaded to Supabase Storage (`statements` bucket, **private**). The `fileUrl` column stores the storage path (not a public URL). To download a file, call:
+
+```
+GET /api/statements/{id}/signed-url
+```
+
+This returns a 7-day signed URL issued server-side with the service role key.
+
+#### 3. Dashboard Analytics
 
 **Route**: [src/app/api/dashboard/route.ts](src/app/api/dashboard/route.ts)
 
@@ -149,39 +176,33 @@ spending-tracking/
 - `BalanceTrendChart`: Line chart of running balance
 - `StatsCards`: Summary cards for key metrics
 
-#### 3. Transaction Categorization
+#### 4. Transaction Categorization
 
 **Manual Categorization**:
 - Dropdown selector in transaction list
 - Updates via PUT `/api/transactions`
 
+**Rule-based Categorization**:
+- Keyword rules stored in `CategorizationRule` table
+- Managed via Settings > Categorization Rules UI
+
 **AI Categorization** (Gemini):
 - Requires API key in Settings
-- Uses Google Generative AI to suggest categories based on description
-- Implementation in transaction upload flow
+- Uses model from `Settings.geminiChatModel` (default: `gemini-2.5-flash`)
+- Called via `suggestByAI` in `src/lib/autoCategorize.ts`
 
-#### 4. Dual Backend Support
+**Bulk categorization** trains rules from all distinct descriptions in the selected batch.
 
-**SQLite/Prisma** (Default):
-- API routes in `/api/*`
-- Database at `prisma/dev.db`
-- Prisma client at `src/lib/db.ts`
+#### 5. Subscription Detection
 
-**Supabase** (Alternative):
-- API routes in `/api/supabase/*`
-- Client at `src/lib/supabase.ts`
-- Schema at `supabase/schema.sql`
-- Supports cloud or self-hosted (see [SELF_HOSTED.md](SELF_HOSTED.md))
+Runs automatically after each statement upload. Minimum 3 occurrences required to classify a pattern as a subscription (`MIN_OCCURRENCES = 3` in `subscriptionDetector.ts`).
 
-**Switching Backends**:
-```env
-# .env
-NEXT_PUBLIC_BACKEND=supabase  # or "prisma"
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-```
+#### 6. Authentication
 
-Then update fetch calls from `/api/*` to `/api/supabase/*`
+- Supabase Auth (email/password)
+- Middleware at `middleware.ts` protects all `/api/*` routes
+- Client-side `AuthGate.tsx` wraps the app UI
+- No multi-tenant row-level isolation yet (single-user app)
 
 ## Development Workflows
 
@@ -191,11 +212,8 @@ Then update fetch calls from `/api/*` to `/api/supabase/*`
 # Install dependencies
 npm install
 
-# Generate Prisma client
+# Generate Prisma client (required after clone or schema changes)
 npx prisma generate
-
-# Run migrations (creates dev.db)
-npx prisma migrate dev
 
 # Start dev server
 npm run dev
@@ -206,8 +224,9 @@ npm run dev
 ```bash
 # 1. Update prisma/schema.prisma
 
-# 2. Create migration
-npx prisma migrate dev --name <migration_name>
+# 2. Create and apply migration
+npm run db:migrate
+# (runs: prisma migrate dev --name <migration_name>)
 
 # 3. Regenerate client
 npx prisma generate
@@ -265,13 +284,16 @@ export default function Component() {
 ## Key Files Reference
 
 ### Critical Configuration
-- [prisma/schema.prisma](prisma/schema.prisma) - Database schema definition
-- [src/lib/db.ts](src/lib/db.ts) - Prisma client configuration
+- [prisma/schema.prisma](prisma/schema.prisma) - Database schema definition (PostgreSQL)
+- [src/lib/db.ts](src/lib/db.ts) - Prisma client with PrismaPg adapter
 - [src/types/index.ts](src/types/index.ts) - TypeScript type definitions
+- [middleware.ts](middleware.ts) - Auth middleware (protects /api/*)
 - [.gitignore](.gitignore) - Git ignore rules
 
 ### Core Logic
 - [src/lib/csvParser.ts](src/lib/csvParser.ts) - CSV parsing with flexible format detection
+- [src/lib/autoCategorize.ts](src/lib/autoCategorize.ts) - Rule + AI categorization
+- [src/lib/subscriptionDetector.ts](src/lib/subscriptionDetector.ts) - Subscription detection (MIN_OCCURRENCES=3)
 - [src/app/api/dashboard/route.ts](src/app/api/dashboard/route.ts) - Dashboard analytics computation
 - [src/components/statements/TimelineUpload.tsx](src/components/statements/TimelineUpload.tsx) - Visual upload interface
 
@@ -283,16 +305,19 @@ export default function Component() {
 ## Environment Variables
 
 ```bash
+# Required: Supabase PostgreSQL connection string
+DATABASE_URL=postgresql://...
+
+# Required: Supabase project URL and anon key (Auth + Storage client-side)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+# Required for statement storage: service role key (used server-side only)
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
 # Optional: Google Gemini API for AI categorization
 # Can also be set via Settings page in UI
 GEMINI_API_KEY=your-api-key-here
-
-# Optional: Backend selection
-NEXT_PUBLIC_BACKEND=prisma  # or "supabase"
-
-# If using Supabase:
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
 ## Known Limitations & Gotchas
@@ -303,13 +328,13 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 3. **PDF Parsing**: PDF parsing may be less reliable than CSV depending on bank format
 
-4. **Duplicate Transactions**: Currently no duplicate detection - uploading the same statement twice will create duplicate transactions
+4. **Transaction Dedup**: Transaction dedup matches on exact `(date, amount, description)`. Bank descriptions sometimes vary (truncation, suffix codes) which can slip through dedup and create near-duplicates.
 
-5. **Backend Switching**: Switching between Prisma and Supabase requires manual update of fetch URLs in components
+5. **Gemini API Costs**: AI categorization uses paid Google Gemini API (though has free tier)
 
-6. **Gemini API Costs**: AI categorization uses paid Google Gemini API (though has free tier)
+6. **No Multi-tenant Isolation**: All DB rows are shared across any Supabase Auth users. Currently single-user only. A second account could read/modify all data.
 
-7. **SQLite Concurrency**: SQLite has limited concurrent write support - may need PostgreSQL for production
+7. **Float amounts**: Transaction amounts are stored as PostgreSQL `Float`. No precision loss observed in current data, but large transaction sets could drift.
 
 ## Common Tasks
 
@@ -322,44 +347,41 @@ npx prisma studio
 POST /api/categories/seed
 ```
 
-### Reset Database
+### Inspect the Database
 ```bash
-# Delete and recreate
-rm prisma/dev.db
-npx prisma migrate dev
-```
-
-### Export Data
-```bash
-# Via Prisma Studio or custom export route
 npx prisma studio
 ```
 
-### Self-Host with Supabase
-See [SELF_HOSTED.md](SELF_HOSTED.md) for Docker Compose setup
+### Reset Database (Development)
+```bash
+# Drop and recreate via Supabase dashboard, then re-run migrations
+npm run db:migrate
+```
 
 ## Future Enhancements
 
 Potential areas for improvement:
-- Duplicate transaction detection
+- Multi-user support with per-user row isolation (userId on all models, RLS policies)
+- Duplicate transaction detection using normalized descriptions
 - Recurring transaction templates
 - Budget tracking and alerts
-- Multi-user support with authentication
 - Mobile-responsive improvements
 - Export/import functionality
 - Bank API integrations (Plaid, etc.)
 - Scheduled email reports
 - Advanced filtering/search
-- Custom category hierarchies
 - Receipt attachment storage
+- Automated tests (Vitest) for csvParser, subscriptionDetector, dashboard aggregation
 
 ## Debugging Tips
 
-1. **Prisma Issues**: Check `prisma/dev.db` exists, run `npx prisma generate`
-2. **API Errors**: Check browser console and terminal logs
+1. **Prisma Issues**: Run `npx prisma generate` after any schema change
+2. **API Errors**: Check browser console and Vercel/terminal logs
 3. **CSV Parsing**: Log parsed results in `csvParser.ts` to debug field mapping
 4. **Database Inspection**: Use `npx prisma studio` to view/edit data directly
 5. **Type Errors**: Ensure Prisma client is regenerated after schema changes
+6. **Auth Issues**: Check `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in env
+7. **Storage Issues**: Check `SUPABASE_SERVICE_ROLE_KEY` — required for signed URL generation and uploads
 
 ## Resources
 
@@ -371,6 +393,6 @@ Potential areas for improvement:
 
 ---
 
-**Last Updated**: 2026-03-02
+**Last Updated**: 2026-05-17
 **Project Status**: Active Development
 **Primary Language**: TypeScript
