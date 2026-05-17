@@ -23,7 +23,7 @@ export interface DetectionResult {
   markedInactive: number;
 }
 
-const MIN_OCCURRENCES = 2;
+const MIN_OCCURRENCES = 3;
 const AMOUNT_TOLERANCE = 0.10; // 10% tolerance on amount variation
 const INTERVAL_TOLERANCE = 0.20; // 20% tolerance on interval regularity
 const REGULARITY_THRESHOLD = 0.70; // 70% of intervals must be within tolerance
