@@ -21,16 +21,23 @@ export async function POST(request: Request) {
             },
         });
 
-        // Learn from the correction if a category was assigned
+        // Learn from the correction if a category was assigned.
+        // Train on every distinct description in the batch so the rule engine
+        // generalises correctly regardless of which transaction is first.
         if (categoryId) {
-            // Get one of the transactions to learn from
-            const transaction = await prisma.transaction.findFirst({
-                where: { id: transactionIds[0] },
+            const transactions = await prisma.transaction.findMany({
+                where: { id: { in: transactionIds } },
                 select: { description: true },
             });
 
-            if (transaction) {
-                await learnFromCorrection(transaction.description, categoryId);
+            // Deduplicate by normalised description to avoid redundant rule writes
+            const seenDescriptions = new Set<string>();
+            for (const tx of transactions) {
+                const key = tx.description.trim().toLowerCase();
+                if (!seenDescriptions.has(key)) {
+                    seenDescriptions.add(key);
+                    await learnFromCorrection(tx.description, categoryId);
+                }
             }
         }
 
