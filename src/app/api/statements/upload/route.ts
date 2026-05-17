@@ -5,15 +5,15 @@ import { parsePDF } from '@/lib/pdfParser';
 import { validateStatementUpload, ValidationError } from '@/lib/validation';
 import { createClient } from '@supabase/supabase-js';
 import { batchCategorize } from '@/lib/autoCategorize';
-import { detectAndUpsertSubscriptions } from '@/lib/subscriptionDetector';
+import { detectAndUpsertSubscriptions, normalizeDescription } from '@/lib/subscriptionDetector';
 
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const accountId = formData.get('accountId') as string;
-    const month = parseInt(formData.get('month') as string);
-    const year = parseInt(formData.get('year') as string);
+    const month = parseInt(formData.get('month') as string, 10);
+    const year = parseInt(formData.get('year') as string, 10);
 
     // Validate input
     validateStatementUpload({ file, accountId, month, year });
@@ -135,13 +135,21 @@ export async function POST(request: Request) {
         },
       });
 
-      // Filter out duplicates (same date, amount, and description)
+      // Filter out duplicates. Two transactions are considered the same when they
+      // share the same date and amount AND either their raw descriptions match or
+      // their normalized descriptions match (catches minor bank-side description
+      // variations like trailing card numbers, settle-date suffixes, etc.).
       const uniqueTransactions = transactions.filter((newTx) => {
+        const newNorm = normalizeDescription(newTx.description);
         return !existingTransactions.some(
-          (existingTx) =>
-            existingTx.date.getTime() === newTx.date.getTime() &&
-            Math.abs(existingTx.amount - newTx.amount) < 0.01 && // Handle floating point comparison
-            existingTx.description.trim().toLowerCase() === newTx.description.trim().toLowerCase()
+          (existingTx) => {
+            if (existingTx.date.getTime() !== newTx.date.getTime()) return false;
+            if (Math.abs(existingTx.amount - newTx.amount) >= 0.01) return false;
+            const rawMatch = existingTx.description.trim().toLowerCase() === newTx.description.trim().toLowerCase();
+            if (rawMatch) return true;
+            const existingNorm = normalizeDescription(existingTx.description);
+            return existingNorm === newNorm && existingNorm.length > 2;
+          }
         );
       });
 
@@ -203,8 +211,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
     console.error('Upload error:', error);
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Failed to process statement'
-    }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to process statement' }, { status: 500 });
   }
 }
