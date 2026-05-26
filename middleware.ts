@@ -19,6 +19,10 @@ const PROTECTED_PAGE_PATHS = [
 
 export async function middleware(request: NextRequest) {
   if (!supabaseUrl || !supabaseAnonKey) {
+    // MCP routes use Bearer token auth — always pass through
+    if (request.nextUrl.pathname.startsWith('/api/mcp')) {
+      return NextResponse.next({ request });
+    }
     // For API routes return JSON error; for page routes do a best-effort pass-through.
     if (request.nextUrl.pathname.startsWith('/api/')) {
       return NextResponse.json(
@@ -61,6 +65,11 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (!user) {
+    // MCP routes use Bearer token auth — bypass Supabase session check
+    if (pathname.startsWith('/api/mcp')) {
+      return response;
+    }
+
     // API routes: return 401 JSON
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Button, Card, CardContent, Input, Select } from '@/components/ui';
 import { CheckCircle, Key, Loader2, XCircle } from 'lucide-react';
+import McpSettings from '@/components/settings/McpSettings';
 
 const MASKED_KEY = '*'.repeat(30);
 
@@ -286,6 +287,8 @@ export default function SettingsPage() {
           {seedMessage && <p className="mt-3 text-sm text-green-600">{seedMessage}</p>}
         </CardContent>
       </Card>
+
+      <McpSettings />
     </div>
   );
 }

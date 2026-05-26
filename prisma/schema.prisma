@@ -174,7 +174,38 @@ model ChatMessage {
   role      String   // "user" or "assistant"
   content   String
   createdAt DateTime @default(now())
-  
+
   @@index([sessionId])
+  @@index([createdAt])
+}
+
+model McpToken {
+  id           String        @id @default(cuid())
+  name         String
+  tokenHash    String        @unique
+  tokenPreview String
+  permissions  String[]
+  isActive     Boolean       @default(true)
+  lastUsedAt   DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  auditLogs    McpAuditLog[]
+
+  @@index([tokenHash])
+  @@index([isActive])
+}
+
+model McpAuditLog {
+  id         String   @id @default(cuid())
+  tokenId    String
+  token      McpToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  tool       String
+  paramsJson String?
+  outcome    String
+  errorCode  String?
+  durationMs Int
+  createdAt  DateTime @default(now())
+
+  @@index([tokenId])
   @@index([createdAt])
 }
