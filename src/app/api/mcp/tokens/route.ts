@@ -6,6 +6,7 @@ import { ALL_TOOLS } from '@/lib/mcp/tools/registry';
 export async function GET() {
   try {
     const tokens = await prisma.mcpToken.findMany({
+      where: { isActive: true },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,

@@ -6,7 +6,6 @@ import {
   CheckCircle,
   ChevronUp,
   Copy,
-  Link2,
   Loader2,
   Plus,
   RefreshCw,
@@ -79,7 +78,7 @@ export default function McpSettings() {
   const [createError, setCreateError] = useState<string | null>(null);
 
   const [freshToken, setFreshToken] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copiedItem, setCopiedItem] = useState<string | null>(null);
 
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -164,7 +163,7 @@ export default function McpSettings() {
     setActionLoading(id + ':revoke');
     try {
       await fetch(`/api/mcp/tokens/${id}`, { method: 'DELETE' });
-      await loadTokens();
+      setTokens((prev) => prev.filter((t) => t.id !== id));
     } finally {
       setActionLoading(null);
     }
@@ -182,10 +181,10 @@ export default function McpSettings() {
     }
   }
 
-  async function copyToken(value: string) {
+  async function copyText(value: string, key: string) {
     await navigator.clipboard.writeText(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedItem(key);
+    setTimeout(() => setCopiedItem(null), 2000);
   }
 
   return (
@@ -223,37 +222,72 @@ export default function McpSettings() {
 
         {freshToken && (
           <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4">
-            <div className="mb-1 flex items-center gap-2">
+            <div className="mb-2 flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-green-600" />
               <span className="text-sm font-medium text-green-800">
                 Token generated — copy it now, it will not be shown again.
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 overflow-x-auto rounded bg-green-100 p-2 text-xs text-green-900 whitespace-nowrap">
-                {freshToken}
-              </code>
-              <button
-                onClick={() => copyToken(freshToken)}
-                className="shrink-0 rounded p-1.5 text-green-700 hover:bg-green-100"
-                title="Copy token"
-              >
-                {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              </button>
-            </div>
-            <div className="mt-2 space-y-1 text-xs text-green-700">
-              <div className="flex items-center gap-2">
-                <Link2 className="h-3 w-3 shrink-0" />
-                <span><strong>Claude.ai / REST:</strong> <code className="font-mono">{origin}/api/mcp/protocol?token={freshToken.slice(0, 16)}...</code></span>
+
+            <div className="space-y-2">
+              <div>
+                <p className="mb-1 text-xs font-medium text-green-700">Token</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 overflow-x-auto rounded bg-green-100 p-2 text-xs text-green-900 whitespace-nowrap">
+                    {freshToken}
+                  </code>
+                  <button
+                    onClick={() => copyText(freshToken, 'token')}
+                    className="shrink-0 rounded p-1.5 text-green-700 hover:bg-green-100"
+                    title="Copy token"
+                  >
+                    {copiedItem === 'token' ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Link2 className="h-3 w-3 shrink-0" />
-                <span><strong>OpenAI (SSE):</strong> <code className="font-mono">{origin}/api/mcp/sse?token={freshToken.slice(0, 16)}...</code></span>
+
+              <div>
+                <p className="mb-1 text-xs font-medium text-green-700">Claude.ai URL</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 overflow-x-auto rounded bg-green-100 p-2 text-xs text-green-900 whitespace-nowrap">
+                    {origin}/api/mcp/protocol?token={freshToken}
+                  </code>
+                  <button
+                    onClick={() => copyText(`${origin}/api/mcp/protocol?token=${freshToken}`, 'claude')}
+                    className="shrink-0 rounded p-1.5 text-green-700 hover:bg-green-100"
+                    title="Copy Claude.ai URL"
+                  >
+                    {copiedItem === 'claude' ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </button>
+                </div>
+                <p className="mt-0.5 text-xs text-green-600">
+                  In Claude.ai → Settings → Integrations → Add custom connector → paste this URL. Authentication: No Auth.
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs font-medium text-green-700">OpenAI / GPT Builder URL</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 overflow-x-auto rounded bg-green-100 p-2 text-xs text-green-900 whitespace-nowrap">
+                    {origin}/api/mcp/sse?token={freshToken}
+                  </code>
+                  <button
+                    onClick={() => copyText(`${origin}/api/mcp/sse?token=${freshToken}`, 'openai')}
+                    className="shrink-0 rounded p-1.5 text-green-700 hover:bg-green-100"
+                    title="Copy OpenAI URL"
+                  >
+                    {copiedItem === 'openai' ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </button>
+                </div>
+                <p className="mt-0.5 text-xs text-green-600">
+                  In GPT Builder → Add Action → MCP Server URL → paste this URL. Authentication: No Auth.
+                </p>
               </div>
             </div>
+
             <button
               onClick={() => setFreshToken(null)}
-              className="mt-2 text-xs text-green-600 hover:text-green-700"
+              className="mt-3 text-xs text-green-600 hover:text-green-700"
             >
               Dismiss
             </button>
@@ -408,15 +442,6 @@ export default function McpSettings() {
           </div>
         )}
 
-        <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-500 space-y-1.5">
-          <div className="flex items-center gap-1.5 font-medium text-gray-700">
-            <Link2 className="h-3.5 w-3.5" />
-            How to connect
-          </div>
-          <p><strong className="text-gray-700">Claude.ai connector:</strong> use URL <code className="font-mono text-gray-700">{origin}/api/mcp/protocol?token=&lt;token&gt;</code> — Authentication: No Auth.</p>
-          <p><strong className="text-gray-700">OpenAI custom tool:</strong> use URL <code className="font-mono text-gray-700">{origin}/api/mcp/sse?token=&lt;token&gt;</code> — Authentication: No Auth.</p>
-          <p><strong className="text-gray-700">REST/programático:</strong> <code className="font-mono text-gray-700">POST {origin}/api/mcp</code> com header <code className="font-mono text-gray-700">Authorization: Bearer &lt;token&gt;</code>.</p>
-        </div>
       </CardContent>
     </Card>
   );
