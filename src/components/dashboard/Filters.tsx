@@ -128,12 +128,11 @@ export function DashboardFiltersPanel({
     <div className="space-y-4">
       <div className="sticky top-0 z-30 bg-gray-50/95 backdrop-blur-sm py-2">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4">
-          <div className="flex flex-col xl:flex-row xl:items-center gap-3">
-          {/* Primary Filters (Always Visible) */}
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto flex-1">
-            <div className="flex gap-3 w-full sm:w-auto">
+          <div className="flex flex-col gap-3">
+            {/* Row 1: Dropdowns + Search */}
+            <div className="flex flex-col sm:flex-row items-stretch gap-3">
               {/* Account Dropdown */}
-              <div className="w-1/2 sm:w-44 md:w-52 shrink-0">
+              <div className="w-full sm:w-44 md:w-48 shrink-0">
                 <Select
                   value={filters.accountIds?.[0] || ''}
                   onChange={(e) => updateFilter('accountIds', e.target.value ? [e.target.value] : undefined)}
@@ -146,7 +145,7 @@ export function DashboardFiltersPanel({
               </div>
 
               {/* Category Dropdown */}
-              <div className="relative w-1/2 sm:w-44 md:w-52 shrink-0" ref={categoryFilterRef}>
+              <div className="relative w-full sm:w-44 md:w-48 shrink-0" ref={categoryFilterRef}>
                 <button
                   type="button"
                   onClick={() => setIsCategoryFilterOpen((prev) => !prev)}
@@ -194,84 +193,67 @@ export function DashboardFiltersPanel({
                   </div>
                 )}
               </div>
+
+              {/* Search */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={localSearch}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm h-10 hover:border-gray-300"
+                />
+              </div>
             </div>
 
-            {/* Main Search */}
-            <div className="relative flex-1 w-full min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={localSearch}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm h-10 hover:border-gray-300"
-              />
-            </div>
-          </div>
+            {/* Row 2: Date shortcuts + action buttons */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Range Shortcuts */}
+              <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-lg border border-gray-100 h-9">
+                {[
+                  { label: '7D', range: 'last7Days' },
+                  { label: '30D', range: 'last30Days' },
+                  { label: 'This Month', range: 'thisMonth' },
+                  { label: 'Last Month', range: 'lastMonth' },
+                  { label: 'This Year', range: 'thisYear' },
+                ].map(({ label, range }) => (
+                  <button
+                    key={range}
+                    onClick={() => setQuickRange(range as Parameters<typeof setQuickRange>[0])}
+                    className="px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-white hover:shadow-sm rounded-md transition-all h-full flex items-center whitespace-nowrap"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
 
-          {/* Actions & More Filters */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 xl:pb-0 shrink-0">
-            {/* Range Shortcuts */}
-            <div className="hidden md:flex items-center gap-1 bg-gray-50 p-1 rounded-lg border border-gray-100 h-10">
-              <button
-                onClick={() => setQuickRange('last7Days')}
-                className="px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-white hover:shadow-sm rounded-md transition-all h-full flex items-center"
-              >
-                7D
-              </button>
-              <button
-                onClick={() => setQuickRange('last30Days')}
-                className="px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-white hover:shadow-sm rounded-md transition-all h-full flex items-center"
-              >
-                30D
-              </button>
-              <button
-                onClick={() => setQuickRange('thisMonth')}
-                className="px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-white hover:shadow-sm rounded-md transition-all h-full flex items-center"
-              >
-                This Month
-              </button>
-              <button
-                onClick={() => setQuickRange('lastMonth')}
-                className="px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-white hover:shadow-sm rounded-md transition-all h-full flex items-center"
-              >
-                Last Month
-              </button>
-              <button
-                onClick={() => setQuickRange('thisYear')}
-                className="px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-white hover:shadow-sm rounded-md transition-all h-full flex items-center"
-              >
-                This Year
-              </button>
-            </div>
-
-            <Button
-              variant="outline"
-              onClick={() => setIsExpanded(!isExpanded)}
-              className={`text-sm h-10 shrink-0 bg-white focus:ring-blue-500 focus:ring-offset-0 ${isExpanded ? 'border-blue-300 bg-blue-50 text-blue-700' : ''}`}
-            >
-              <Filter className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">More Filters</span>
-              <span className="sm:hidden">More</span>
-              {activeFilterCount > 0 && (
-                <span className="ml-2 w-5 h-5 flex items-center justify-center text-[10px] font-bold bg-blue-600 text-white rounded-full">
-                  {activeFilterCount}
-                </span>
-              )}
-              <ChevronDown className={`w-4 h-4 ml-1 sm:ml-2 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-            </Button>
-
-            {hasActiveFilters && (
               <Button
-                variant="ghost"
-                onClick={clearFilters}
-                className="text-sm h-10 shrink-0 text-gray-500 hover:text-red-600 px-2 sm:px-4"
+                variant="outline"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className={`text-sm h-9 shrink-0 bg-white focus:ring-blue-500 focus:ring-offset-0 ${isExpanded ? 'border-blue-300 bg-blue-50 text-blue-700' : ''}`}
               >
-                <X className="w-4 h-4 sm:mr-1" />
-                <span className="hidden sm:inline">Clear</span>
+                <Filter className="w-4 h-4 mr-1.5" />
+                More Filters
+                {activeFilterCount > 0 && (
+                  <span className="ml-2 w-5 h-5 flex items-center justify-center text-[10px] font-bold bg-blue-600 text-white rounded-full">
+                    {activeFilterCount}
+                  </span>
+                )}
+                <ChevronDown className={`w-4 h-4 ml-1.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
               </Button>
-            )}
-          </div>
+
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  onClick={clearFilters}
+                  className="text-sm h-9 shrink-0 text-gray-500 hover:text-red-600 px-3"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Clear
+                </Button>
+              )}
+            </div>
           </div>
 
           {isExpanded && (
