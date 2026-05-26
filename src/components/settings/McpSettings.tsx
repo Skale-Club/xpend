@@ -61,7 +61,14 @@ function ToolLabel({ name }: { name: string }) {
   );
 }
 
+function useOrigin() {
+  const [origin, setOrigin] = useState('');
+  useEffect(() => { setOrigin(window.location.origin); }, []);
+  return origin;
+}
+
 export default function McpSettings() {
+  const origin = useOrigin();
   const [tokens, setTokens] = useState<McpTokenRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -234,9 +241,15 @@ export default function McpSettings() {
                 {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </button>
             </div>
-            <div className="mt-2 flex items-center gap-2 text-xs text-green-700">
-              <Link2 className="h-3 w-3" />
-              <span>Endpoint: <code className="font-mono">POST https://your-app/api/mcp</code> with <code className="font-mono">Authorization: Bearer {freshToken.slice(0, 20)}...</code></span>
+            <div className="mt-2 space-y-1 text-xs text-green-700">
+              <div className="flex items-center gap-2">
+                <Link2 className="h-3 w-3 shrink-0" />
+                <span><strong>Claude.ai / REST:</strong> <code className="font-mono">{origin}/api/mcp/protocol?token={freshToken.slice(0, 16)}...</code></span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link2 className="h-3 w-3 shrink-0" />
+                <span><strong>OpenAI (SSE):</strong> <code className="font-mono">{origin}/api/mcp/sse?token={freshToken.slice(0, 16)}...</code></span>
+              </div>
             </div>
             <button
               onClick={() => setFreshToken(null)}
@@ -395,13 +408,14 @@ export default function McpSettings() {
           </div>
         )}
 
-        <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-500">
-          <div className="flex items-center gap-1.5 font-medium text-gray-700 mb-1">
+        <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-500 space-y-1.5">
+          <div className="flex items-center gap-1.5 font-medium text-gray-700">
             <Link2 className="h-3.5 w-3.5" />
             How to connect
           </div>
-          <p>Send requests to <code className="font-mono text-gray-700">POST /api/mcp</code> with header <code className="font-mono text-gray-700">Authorization: Bearer &lt;token&gt;</code> and body <code className="font-mono text-gray-700">{"{ \"tool\": \"...\", \"params\": {} }"}</code>.</p>
-          <p className="mt-1">Use <code className="font-mono text-gray-700">GET /api/mcp</code> to discover available tools and their parameters.</p>
+          <p><strong className="text-gray-700">Claude.ai connector:</strong> use URL <code className="font-mono text-gray-700">{origin}/api/mcp/protocol?token=&lt;token&gt;</code> — Authentication: No Auth.</p>
+          <p><strong className="text-gray-700">OpenAI custom tool:</strong> use URL <code className="font-mono text-gray-700">{origin}/api/mcp/sse?token=&lt;token&gt;</code> — Authentication: No Auth.</p>
+          <p><strong className="text-gray-700">REST/programático:</strong> <code className="font-mono text-gray-700">POST {origin}/api/mcp</code> com header <code className="font-mono text-gray-700">Authorization: Bearer &lt;token&gt;</code>.</p>
         </div>
       </CardContent>
     </Card>
