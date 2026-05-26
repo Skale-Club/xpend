@@ -117,7 +117,7 @@ function Conversation({
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.length === 0 && !isLoading ? (
           <div className="py-8 text-center text-muted-foreground">
-            <MessageSquare className="mx-auto mb-3 h-12 w-12 text-gray-300" />
+            <MessageSquare className="mx-auto mb-3 h-12 w-12 text-muted-foreground/40" />
             <p className="font-medium">Hi! I can help you understand your spending.</p>
             <p className="mt-2 text-sm">Try asking:</p>
             <ul className="mt-2 space-y-1 text-sm">
@@ -355,7 +355,7 @@ export function ChatInterface({ onClose }: ChatInterfaceProps) {
 
                   <button
                     onClick={(e) => deleteSession(session.id, e)}
-                    className="rounded p-1 opacity-0 hover:bg-gray-200 group-hover:opacity-100"
+                    className="rounded p-1 opacity-0 hover:bg-muted group-hover:opacity-100"
                   >
                     <Trash2 className="h-4 w-4 text-muted-foreground" />
                   </button>
@@ -378,7 +378,7 @@ export function ChatInterface({ onClose }: ChatInterfaceProps) {
         <>
           <div className="flex-1 p-4">
             <div className="py-8 text-center text-muted-foreground">
-              <MessageSquare className="mx-auto mb-3 h-12 w-12 text-gray-300" />
+              <MessageSquare className="mx-auto mb-3 h-12 w-12 text-muted-foreground/40" />
               <p className="font-medium">Start a new conversation</p>
               <p className="mt-2 text-sm">Send a message and I will create a new chat session.</p>
             </div>

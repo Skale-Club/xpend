@@ -86,7 +86,7 @@ export function SpendingPaceCard({ data }: SpendingPaceCardProps) {
           <div className="text-4xl font-semibold leading-none text-foreground">
             {formatCurrency(data.currentTotal, { hideSensitiveValues, maximumFractionDigits: 0 })}
           </div>
-          <div className="pb-1 text-2xl font-medium leading-none text-slate-700">{statusLabel}</div>
+          <div className="pb-1 text-2xl font-medium leading-none text-muted-foreground">{statusLabel}</div>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
@@ -104,16 +104,16 @@ export function SpendingPaceCard({ data }: SpendingPaceCardProps) {
         <div className="mt-4 h-52 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data.chartData} margin={{ top: 8, right: 8, left: 6, bottom: 0 }}>
-              <CartesianGrid stroke="#E2E8F0" strokeDasharray="3 3" vertical={false} />
+              <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
               <XAxis
                 dataKey="day"
                 ticks={axisTicks}
-                tick={{ fill: '#64748B', fontSize: 12 }}
+                tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
                 tickLine={false}
                 axisLine={false}
               />
               <YAxis
-                tick={{ fill: '#64748B', fontSize: 12 }}
+                tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(value) => formatCompactCurrency(Number(value), hideSensitiveValues)}
@@ -125,14 +125,17 @@ export function SpendingPaceCard({ data }: SpendingPaceCardProps) {
                 ]}
                 labelFormatter={(label) => `Day ${label}`}
                 contentStyle={{
-                  borderRadius: '0.75rem',
-                  border: '1px solid #E2E8F0',
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  color: 'var(--foreground)',
+                  fontSize: '13px',
                 }}
               />
               <Line
                 type="monotone"
                 dataKey="previousMonth"
-                stroke="#9CA3AF"
+                stroke="var(--muted-foreground)"
                 strokeWidth={2}
                 strokeDasharray="5 5"
                 dot={false}
@@ -141,12 +144,12 @@ export function SpendingPaceCard({ data }: SpendingPaceCardProps) {
               <Line
                 type="monotone"
                 dataKey="currentMonth"
-                stroke="#22C55E"
+                stroke="var(--chart-2)"
                 strokeWidth={2.5}
                 connectNulls={false}
                 dot={({ cx, cy, payload }) =>
                   payload.day === data.currentComparableDay && payload.currentMonth !== null ? (
-                    <circle cx={cx} cy={cy} r={5} fill="#22C55E" stroke="#fff" strokeWidth={2} />
+                    <circle cx={cx} cy={cy} r={5} fill="var(--chart-2)" stroke="var(--card)" strokeWidth={2} />
                   ) : (
                     <></>
                   )
@@ -162,7 +165,7 @@ export function SpendingPaceCard({ data }: SpendingPaceCardProps) {
             {data.currentMonthLabel}
           </div>
           <div className="inline-flex items-center gap-1.5">
-            <span className="h-0.5 w-6 border-t border-dashed border-slate-400" />
+            <span className="h-0.5 w-6 border-t border-dashed border-muted-foreground/40" />
             {data.previousMonthLabel}
           </div>
         </div>

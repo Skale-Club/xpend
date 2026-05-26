@@ -55,13 +55,13 @@ export function NetWorthCard({ data }: NetWorthCardProps) {
                 <Tooltip
                   formatter={(value) => formatCurrency(Number(value), { hideSensitiveValues })}
                   labelFormatter={(label) => `${label}`}
-                  contentStyle={{ borderRadius: '0.75rem', border: '1px solid #E2E8F0' }}
+                  contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--foreground)', fontSize: '13px' }}
                 />
-                <Line type="monotone" dataKey="value" stroke="#60A5FA" strokeWidth={2.5} dot={false} />
+                <Line type="monotone" dataKey="value" stroke="var(--chart-1)" strokeWidth={2.5} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-slate-400">
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
               No history available
             </div>
           )}
@@ -74,7 +74,7 @@ export function NetWorthCard({ data }: NetWorthCardProps) {
               type="button"
               onClick={() => setRange(item)}
               className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                range === item ? 'bg-accent0 text-white' : 'bg-muted text-muted-foreground hover:bg-muted'
+                range === item ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted'
               }`}
             >
               {item}

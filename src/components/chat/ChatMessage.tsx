@@ -39,7 +39,7 @@ export function ChatMessage({ message, isLoading }: ChatMessageProps) {
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
       <div
         className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
-          isUser ? 'bg-accent0 text-white' : 'bg-gray-200 text-muted-foreground'
+          isUser ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
         }`}
       >
         {isUser ? <User size={16} /> : <Bot size={16} />}
@@ -47,7 +47,7 @@ export function ChatMessage({ message, isLoading }: ChatMessageProps) {
 
       <div
         className={`flex-1 max-w-[80%] rounded-lg px-4 py-2 ${
-          isUser ? 'bg-accent0 text-white' : 'bg-muted text-foreground'
+          isUser ? 'bg-primary text-white' : 'bg-muted text-foreground'
         }`}
       >
         {isLoading ? (

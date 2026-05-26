@@ -165,7 +165,7 @@ export function CategoryTreeSelector({
                   return next;
                 });
               }}
-              className={`p-0.5 rounded shrink-0 ${normalizedSearch ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-gray-200'}`}
+              className={`p-0.5 rounded shrink-0 ${normalizedSearch ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-muted'}`}
               title={isExpanded ? 'Collapse category' : 'Expand category'}
             >
               {isExpanded ? (
@@ -187,7 +187,7 @@ export function CategoryTreeSelector({
               {isSelected ? (
                 <CheckSquare className="w-5 h-5 text-green-600 shrink-0" />
               ) : (
-                <Square className="w-5 h-5 text-gray-300 shrink-0" />
+                <Square className="w-5 h-5 text-muted-foreground/40 shrink-0" />
               )}
               <CategoryIcon className="w-4 h-4 shrink-0" style={{ color: node.color }} />
               <span className={`${isSelected ? 'text-green-900' : 'text-foreground'} truncate`}>{node.name}</span>
@@ -197,7 +197,7 @@ export function CategoryTreeSelector({
               {isSelected ? (
                 <CheckSquare className="w-5 h-5 text-green-600 shrink-0" />
               ) : (
-                <Square className="w-5 h-5 text-gray-300 shrink-0" />
+                <Square className="w-5 h-5 text-muted-foreground/40 shrink-0" />
               )}
               <CategoryIcon className="w-4 h-4 shrink-0" style={{ color: node.color }} />
               <span className={`${isSelected ? 'text-green-900' : 'text-foreground'} truncate`}>{node.name}</span>
@@ -236,7 +236,7 @@ export function CategoryTreeSelector({
             {value === '' ? (
               <CheckSquare className="w-5 h-5 text-green-600 shrink-0" />
             ) : (
-              <Square className="w-5 h-5 text-gray-300 shrink-0" />
+              <Square className="w-5 h-5 text-muted-foreground/40 shrink-0" />
             )}
             <Tag className="w-4 h-4 shrink-0 text-muted-foreground" />
             <span className={`${value === '' ? 'text-green-900' : 'text-foreground'}`}>Uncategorized</span>

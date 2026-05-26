@@ -70,7 +70,7 @@ export function TopCategoriesComparisonCard({
             <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
               Category comparison
             </div>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-muted-foreground">
               {data.currentMonthLabel} vs {data.previousMonthLabel}
             </p>
           </div>
@@ -85,7 +85,7 @@ export function TopCategoriesComparisonCard({
                       previousMonth: monthSelection.previousMonth,
                     })
                   }
-                  className="h-9 rounded-lg border border-border px-2 text-xs text-slate-700 bg-card focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="h-9 rounded-lg border border-border px-2 text-xs text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                   aria-label="Current month"
                 >
                   {monthOptions.map((option) => (
@@ -102,7 +102,7 @@ export function TopCategoriesComparisonCard({
                       previousMonth: event.target.value,
                     })
                   }
-                  className="h-9 rounded-lg border border-border px-2 text-xs text-slate-700 bg-card focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="h-9 rounded-lg border border-border px-2 text-xs text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                   aria-label="Compare month"
                 >
                   {monthOptions.map((option) => (
@@ -189,7 +189,7 @@ export function TopCategoriesComparisonCard({
                       </div>
                     </div>
                     <div className="h-2 rounded-full bg-muted">
-                      <div className="h-2 rounded-full bg-slate-400/80" style={{ width: `${previousBarWidth}%` }} />
+                      <div className="h-2 rounded-full bg-muted-foreground/40" style={{ width: `${previousBarWidth}%` }} />
                     </div>
                   </div>
                 </div>

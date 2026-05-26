@@ -232,7 +232,7 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
       case 'incomplete':
         return <AlertCircle className="w-6 h-6 text-red-400" />;
       default:
-        return <Clock className="w-6 h-6 text-gray-300" />;
+        return <Clock className="w-6 h-6 text-muted-foreground/40" />;
     }
   };
 
@@ -297,7 +297,7 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
                 >
                   {/* Current month badge */}
                   {monthData.isCurrentMonth && (
-                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
                       <Calendar className="w-3 h-3 text-white" />
                     </div>
                   )}
@@ -426,7 +426,7 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
                 {/* Progress steps */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${uploadProgress < 30 ? 'bg-blue-500' : 'bg-green-500'}`}>
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${uploadProgress < 30 ? 'bg-primary' : 'bg-success'}`}>
                       {uploadProgress < 30 ? (
                         <div className="w-2 h-2 bg-card rounded-full animate-pulse" />
                       ) : (
@@ -439,9 +439,9 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${uploadProgress < 30 ? 'bg-gray-200' : uploadProgress < 70 ? 'bg-blue-500' : 'bg-green-500'}`}>
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${uploadProgress < 30 ? 'bg-muted' : uploadProgress < 70 ? 'bg-primary' : 'bg-success'}`}>
                       {uploadProgress < 30 ? (
-                        <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                        <div className="w-2 h-2 bg-muted-foreground/40 rounded-full" />
                       ) : uploadProgress < 70 ? (
                         <div className="w-2 h-2 bg-card rounded-full animate-pulse" />
                       ) : (
@@ -454,9 +454,9 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${uploadProgress < 70 ? 'bg-gray-200' : uploadProgress < 100 ? 'bg-blue-500' : 'bg-green-500'}`}>
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${uploadProgress < 70 ? 'bg-muted' : uploadProgress < 100 ? 'bg-primary' : 'bg-success'}`}>
                       {uploadProgress < 70 ? (
-                        <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                        <div className="w-2 h-2 bg-muted-foreground/40 rounded-full" />
                       ) : uploadProgress < 100 ? (
                         <div className="w-2 h-2 bg-card rounded-full animate-pulse" />
                       ) : (
@@ -470,9 +470,9 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
                 </div>
 
                 {/* Real progress bar */}
-                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
                   <div
-                    className="h-full bg-blue-500 rounded-full transition-all duration-500 ease-out"
+                    className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
                     style={{ width: `${Math.min(uploadProgress, 100)}%` }}
                   />
                 </div>
@@ -508,7 +508,7 @@ export function TimelineYearSelector({ years, selectedYear, onSelectYear }: Time
           onClick={() => onSelectYear(year)}
           className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${selectedYear === year
             ? 'bg-blue-600 text-white'
-            : 'bg-muted text-muted-foreground hover:bg-gray-200'
+            : 'bg-muted text-muted-foreground hover:bg-muted'
             }`}
         >
           {year}

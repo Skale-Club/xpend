@@ -306,7 +306,7 @@ export function CategoryRules() {
                                     return (
                                         <div key={rule.id} className="flex items-center justify-between p-4 hover:bg-accent/30 transition-colors group">
                                             <div className="flex items-center gap-3 pl-8">
-                                                <CornerDownRight className="w-4 h-4 text-gray-300 shrink-0" />
+                                                <CornerDownRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
                                                 <div className="bg-card border border-border shadow-sm rounded px-3 py-1.5 font-mono text-sm text-foreground">
                                                     {rule.keywords}
                                                 </div>

@@ -373,7 +373,7 @@ export default function SubscriptionsPage() {
 
   const renderSubscriptionCard = (subscription: Subscription) => {
     const dueMeta = getDueMeta(subscription.nextPayment);
-    const accent = subscription.inactive ? 'bg-gray-300' : dueMeta.accent;
+    const accent = subscription.inactive ? 'bg-muted' : dueMeta.accent;
 
     return (
       <div key={subscription.id} className="p-4 md:p-5">

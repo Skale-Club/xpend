@@ -242,7 +242,7 @@ export default function CategoriesPage() {
                         {hasChildren && (
                             <button
                                 onClick={() => toggleExpand(category.id)}
-                                className="p-1 hover:bg-gray-200 rounded"
+                                className="p-1 hover:bg-muted rounded"
                             >
                                 {isExpanded ? (
                                     <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -410,7 +410,7 @@ export default function CategoriesPage() {
                                         key={color}
                                         type="button"
                                         onClick={() => setFormData({ ...formData, color })}
-                                        className={`w-8 h-8 rounded-lg border-2 transition-transform ${formData.color === color ? 'border-gray-900 scale-110' : 'border-transparent'
+                                        className={`w-8 h-8 rounded-lg border-2 transition-transform ${formData.color === color ? 'border-foreground scale-110' : 'border-transparent'
                                             }`}
                                         style={{ backgroundColor: color }}
                                     />

@@ -184,7 +184,7 @@ function CategoryRow({
       >
         <td className="px-4 py-3">
           <div className="flex items-center gap-2" style={{ paddingLeft: `${level * 1.5}rem` }}>
-            {level > 0 && <CornerDownRight className="w-3 h-3 text-gray-300 shrink-0" />}
+            {level > 0 && <CornerDownRight className="w-3 h-3 text-muted-foreground/40 shrink-0" />}
             {hasChildren ? (
               isExpanded ? (
                 <ChevronDown className="w-4 h-4 text-muted-foreground/70 shrink-0" />
@@ -294,7 +294,7 @@ function CategoryRow({
                             <button
                               type="button"
                               onClick={() => onEditTransactionCategory(tx)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs shrink-0 bg-muted text-muted-foreground hover:bg-gray-200 transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs shrink-0 bg-muted text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
                               title="Set category"
                             >
                               <Tag className="w-3.5 h-3.5" />
@@ -1067,7 +1067,7 @@ export default function ReportsPage() {
                                   <button
                                     type="button"
                                     onClick={() => openMerchantCategorize(merchant)}
-                                    className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs shrink-0 bg-muted text-muted-foreground hover:bg-gray-200 cursor-pointer transition-colors"
+                                    className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs shrink-0 bg-muted text-muted-foreground hover:bg-muted cursor-pointer transition-colors"
                                     title="Set category"
                                   >
                                     <Tag className="w-3.5 h-3.5" />
@@ -1173,7 +1173,7 @@ export default function ReportsPage() {
                             <button
                               type="button"
                               onClick={() => openTransactionCategorize(tx)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground hover:bg-gray-200 transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
                               title="Set category"
                             >
                               <Tag className="w-3.5 h-3.5" />

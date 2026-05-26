@@ -326,7 +326,7 @@ export default function McpSettings() {
                     className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
                       selectedPerms.has(tool)
                         ? 'border-violet-400 bg-violet-100 text-violet-800'
-                        : 'border-border bg-card text-muted-foreground hover:border-gray-400'
+                        : 'border-border bg-card text-muted-foreground hover:border-muted-foreground/40'
                     }`}
                   >
                     {tool}
@@ -350,7 +350,7 @@ export default function McpSettings() {
                     className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
                       selectedPerms.has(tool)
                         ? 'border-amber-400 bg-amber-100 text-amber-800'
-                        : 'border-border bg-card text-muted-foreground hover:border-gray-400'
+                        : 'border-border bg-card text-muted-foreground hover:border-muted-foreground/40'
                     }`}
                   >
                     {tool}
@@ -380,7 +380,7 @@ export default function McpSettings() {
         ) : tokens.length === 0 ? (
           <p className="text-sm text-muted-foreground">No tokens yet. Create one to allow agent access.</p>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-border">
             {tokens.map((token) => (
               <div key={token.id} className="py-3">
                 <div className="flex items-start justify-between gap-3">
