@@ -40,25 +40,25 @@ export function ExportButton({ transactions, filename = 'transactions', disabled
                         className="fixed inset-0 z-10"
                         onClick={() => setIsOpen(false)}
                     />
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+                    <div className="absolute right-0 mt-2 w-48 bg-card rounded-lg shadow-lg border border-border py-1 z-20">
                         <button
                             onClick={() => handleExport('csv')}
-                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-3"
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-muted flex items-center gap-3"
                         >
                             <FileSpreadsheet className="w-4 h-4 text-green-600" />
                             <div>
                                 <div className="font-medium">Export as CSV</div>
-                                <div className="text-xs text-gray-500">Spreadsheet format</div>
+                                <div className="text-xs text-muted-foreground">Spreadsheet format</div>
                             </div>
                         </button>
                         <button
                             onClick={() => handleExport('json')}
-                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-3"
+                            className="w-full px-4 py-2 text-left text-sm hover:bg-muted flex items-center gap-3"
                         >
                             <FileJson className="w-4 h-4 text-blue-600" />
                             <div>
                                 <div className="font-medium">Export as JSON</div>
-                                <div className="text-xs text-gray-500">Raw data format</div>
+                                <div className="text-xs text-muted-foreground">Raw data format</div>
                             </div>
                         </button>
                     </div>

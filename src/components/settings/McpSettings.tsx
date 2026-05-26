@@ -54,7 +54,7 @@ function formatDate(iso: string | null) {
 
 function ToolLabel({ name }: { name: string }) {
   return (
-    <span className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-700">
+    <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
       {name}
     </span>
   );
@@ -195,8 +195,8 @@ export default function McpSettings() {
             <ShieldCheck className="h-5 w-5 text-violet-600" />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-gray-900">MCP Agent Tokens</h3>
-            <p className="text-sm text-gray-500">
+            <h3 className="font-semibold text-foreground">MCP Agent Tokens</h3>
+            <p className="text-sm text-muted-foreground">
               Allow AI agents to access Xpend data through controlled token-based connections.
             </p>
           </div>
@@ -295,11 +295,11 @@ export default function McpSettings() {
         )}
 
         {showForm && (
-          <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
-            <h4 className="mb-3 text-sm font-semibold text-gray-800">New Token</h4>
+          <div className="mb-4 rounded-lg border border-border bg-muted p-4">
+            <h4 className="mb-3 text-sm font-semibold text-foreground">New Token</h4>
 
             <div className="mb-3">
-              <label className="mb-1 block text-xs font-medium text-gray-700">
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
                 Token name
               </label>
               <input
@@ -307,13 +307,13 @@ export default function McpSettings() {
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="e.g. Claude Desktop"
-                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                className="w-full rounded-md border border-border px-3 py-1.5 text-sm focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
               />
             </div>
 
             <div className="mb-3">
               <div className="mb-1 flex items-center justify-between">
-                <label className="text-xs font-medium text-gray-700">Read permissions</label>
+                <label className="text-xs font-medium text-muted-foreground">Read permissions</label>
                 <button onClick={selectAllRead} className="text-xs text-violet-600 hover:text-violet-700">
                   Select all
                 </button>
@@ -326,7 +326,7 @@ export default function McpSettings() {
                     className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
                       selectedPerms.has(tool)
                         ? 'border-violet-400 bg-violet-100 text-violet-800'
-                        : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
+                        : 'border-border bg-card text-muted-foreground hover:border-muted-foreground/40'
                     }`}
                   >
                     {tool}
@@ -337,7 +337,7 @@ export default function McpSettings() {
 
             <div className="mb-4">
               <div className="mb-1 flex items-center justify-between">
-                <label className="text-xs font-medium text-gray-700">Write permissions</label>
+                <label className="text-xs font-medium text-muted-foreground">Write permissions</label>
                 <button onClick={selectAllWrite} className="text-xs text-violet-600 hover:text-violet-700">
                   Select all
                 </button>
@@ -350,7 +350,7 @@ export default function McpSettings() {
                     className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
                       selectedPerms.has(tool)
                         ? 'border-amber-400 bg-amber-100 text-amber-800'
-                        : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
+                        : 'border-border bg-card text-muted-foreground hover:border-muted-foreground/40'
                     }`}
                   >
                     {tool}
@@ -373,37 +373,37 @@ export default function McpSettings() {
         )}
 
         {loading ? (
-          <div className="flex items-center gap-2 text-sm text-gray-400">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground/70">
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading tokens...
           </div>
         ) : tokens.length === 0 ? (
-          <p className="text-sm text-gray-500">No tokens yet. Create one to allow agent access.</p>
+          <p className="text-sm text-muted-foreground">No tokens yet. Create one to allow agent access.</p>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-border">
             {tokens.map((token) => (
               <div key={token.id} className="py-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-900 text-sm">{token.name}</span>
+                      <span className="font-medium text-foreground text-sm">{token.name}</span>
                       {token.isActive ? (
                         <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
                           Active
                         </span>
                       ) : (
-                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                           Revoked
                         </span>
                       )}
                     </div>
-                    <code className="mt-0.5 block text-xs text-gray-400">{token.tokenPreview}</code>
+                    <code className="mt-0.5 block text-xs text-muted-foreground/70">{token.tokenPreview}</code>
                     <div className="mt-1.5 flex flex-wrap gap-1">
                       {token.permissions.map((p) => (
                         <ToolLabel key={p} name={p} />
                       ))}
                     </div>
-                    <p className="mt-1.5 text-xs text-gray-400">
+                    <p className="mt-1.5 text-xs text-muted-foreground/70">
                       Created {formatDate(token.createdAt)} · Last used {formatDate(token.lastUsedAt)}
                     </p>
                   </div>
@@ -414,7 +414,7 @@ export default function McpSettings() {
                         onClick={() => handleRotate(token.id)}
                         disabled={actionLoading === token.id + ':rotate'}
                         title="Rotate token"
-                        className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"
+                        className="rounded p-1.5 text-muted-foreground/70 hover:bg-muted hover:text-muted-foreground disabled:opacity-50"
                       >
                         {actionLoading === token.id + ':rotate' ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -426,7 +426,7 @@ export default function McpSettings() {
                         onClick={() => handleRevoke(token.id)}
                         disabled={actionLoading === token.id + ':revoke'}
                         title="Revoke token"
-                        className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                        className="rounded p-1.5 text-muted-foreground/70 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
                       >
                         {actionLoading === token.id + ':revoke' ? (
                           <Loader2 className="h-4 w-4 animate-spin" />

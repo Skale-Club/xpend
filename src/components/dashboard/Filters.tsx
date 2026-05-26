@@ -137,54 +137,54 @@ export function DashboardFiltersPanel({
 
   return (
     <div className="space-y-3">
-      <div className="sticky top-0 z-30 bg-gray-50/95 backdrop-blur-sm py-2">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200/60 p-3 space-y-3">
+      <div className="sticky top-0 z-30 bg-muted/95 backdrop-blur-sm py-2">
+        <div className="bg-card rounded-2xl shadow-sm border border-border/60 p-3 space-y-3">
 
           {/* Row 1: Account + Category + Search */}
           <div className="flex flex-col sm:flex-row gap-2.5">
             {/* Account */}
             <div className="relative sm:w-48 shrink-0">
-              <Wallet className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Wallet className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
               <select
                 value={filters.accountIds?.[0] || ''}
                 onChange={(e) => updateFilter('accountIds', e.target.value ? [e.target.value] : undefined)}
-                className="w-full h-10 pl-9 pr-8 text-sm border border-gray-200 rounded-xl bg-white text-gray-700 appearance-none cursor-pointer hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
+                className="w-full h-10 pl-9 pr-8 text-sm border border-border rounded-xl bg-card text-muted-foreground appearance-none cursor-pointer hover:border-border focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary/50 transition-colors"
               >
                 <option value="">All Accounts</option>
                 {accounts.map((a) => (
                   <option key={a.id} value={a.id}>{a.name}</option>
                 ))}
               </select>
-              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70" />
             </div>
 
             {/* Category */}
             <div className="relative sm:w-48 shrink-0" ref={categoryFilterRef}>
-              <Tag className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 z-10" />
+              <Tag className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70 z-10" />
               <button
                 type="button"
                 onClick={() => setIsCategoryFilterOpen((prev) => !prev)}
-                className="w-full h-10 pl-9 pr-8 border border-gray-200 rounded-xl bg-white text-sm text-left flex items-center hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
+                className="w-full h-10 pl-9 pr-8 border border-border rounded-xl bg-card text-sm text-left flex items-center hover:border-border focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary/50 transition-colors"
               >
                 <span className="flex items-center gap-2 min-w-0 flex-1">
                   {selectedCategory ? (
                     <>
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: selectedCategory.color }} />
-                      <span className="truncate text-gray-700">{selectedCategory.name}</span>
+                      <span className="truncate text-muted-foreground">{selectedCategory.name}</span>
                     </>
                   ) : (
-                    <span className="text-gray-700">All Categories</span>
+                    <span className="text-muted-foreground">All Categories</span>
                   )}
                 </span>
-                <ChevronDown className={`absolute right-2.5 w-3.5 h-3.5 text-gray-400 transition-transform ${isCategoryFilterOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`absolute right-2.5 w-3.5 h-3.5 text-muted-foreground/70 transition-transform ${isCategoryFilterOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {isCategoryFilterOpen && (
-                <div className="absolute z-30 mt-2 w-[24rem] max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-xl shadow-lg p-2">
+                <div className="absolute z-30 mt-2 w-[24rem] max-w-[calc(100vw-2rem)] bg-card border border-border rounded-xl shadow-lg p-2">
                   <button
                     type="button"
                     onClick={() => { updateFilter('categoryIds', undefined); setIsCategoryFilterOpen(false); }}
-                    className={`w-full px-3 py-2 text-sm text-left rounded-lg transition-colors ${!filters.categoryIds?.[0] ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50 text-gray-700'}`}
+                    className={`w-full px-3 py-2 text-sm text-left rounded-lg transition-colors ${!filters.categoryIds?.[0] ? 'bg-accent text-accent-foreground' : 'hover:bg-muted text-muted-foreground'}`}
                   >
                     All Categories
                   </button>
@@ -208,13 +208,13 @@ export function DashboardFiltersPanel({
 
             {/* Search */}
             <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
               <input
                 type="text"
                 placeholder="Search transactions..."
                 value={localSearch}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-full h-10 pl-9 pr-4 border border-gray-200 rounded-xl bg-white text-sm text-gray-700 placeholder:text-gray-400 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
+                className="w-full h-10 pl-9 pr-4 border border-border rounded-xl bg-card text-sm text-muted-foreground placeholder:text-muted-foreground/70 hover:border-border focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary/50 transition-colors"
               />
             </div>
           </div>
@@ -232,7 +232,7 @@ export function DashboardFiltersPanel({
                     className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
                       isActive
                         ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
+                        : 'bg-muted text-muted-foreground hover:bg-muted hover:text-foreground'
                     }`}
                   >
                     {label}
@@ -246,8 +246,8 @@ export function DashboardFiltersPanel({
                 onClick={() => setIsExpanded(!isExpanded)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
                   isExpanded || activeFilterCount > 0
-                    ? 'border-blue-300 bg-blue-50 text-blue-700'
-                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                    ? 'border-primary/50 bg-accent text-accent-foreground'
+                    : 'border-border bg-card text-muted-foreground hover:border-border hover:bg-muted'
                 }`}
               >
                 <Filter className="w-3.5 h-3.5" />
@@ -272,11 +272,11 @@ export function DashboardFiltersPanel({
             </div>
           </div>
           {isExpanded && (
-            <div className="pt-3 border-t border-gray-100">
+            <div className="pt-3 border-t border-border">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 {/* Date Group */}
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <p className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider flex items-center gap-1.5">
                     <Calendar className="w-3 h-3" />
                     Custom Date Range
                   </p>
@@ -285,21 +285,21 @@ export function DashboardFiltersPanel({
                       type="date"
                       value={filters.dateFrom ? new Date(filters.dateFrom).toISOString().split('T')[0] : ''}
                       onChange={(e) => { updateFilter('dateFrom', e.target.value ? new Date(e.target.value) : undefined); setActiveRange(null); }}
-                      className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 h-10 transition-colors"
+                      className="flex-1 px-3 py-2 text-sm border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary/50 h-10 transition-colors"
                     />
-                    <ArrowRight className="w-4 h-4 text-gray-300 shrink-0" />
+                    <ArrowRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
                     <input
                       type="date"
                       value={filters.dateTo ? new Date(filters.dateTo).toISOString().split('T')[0] : ''}
                       onChange={(e) => { updateFilter('dateTo', e.target.value ? new Date(e.target.value) : undefined); setActiveRange(null); }}
-                      className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 h-10 transition-colors"
+                      className="flex-1 px-3 py-2 text-sm border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary/50 h-10 transition-colors"
                     />
                   </div>
                 </div>
 
                 {/* Transaction Type Group */}
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <p className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider flex items-center gap-1.5">
                     <Tag className="w-3 h-3" />
                     Transaction Type
                   </p>
@@ -318,30 +318,30 @@ export function DashboardFiltersPanel({
 
                 {/* Amount Group */}
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <p className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider flex items-center gap-1.5">
                     <DollarSign className="w-3 h-3" />
                     Amount Range
                   </p>
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/70 text-xs">$</span>
                       <input
                         type="number"
                         placeholder="Min"
                         value={filters.minAmount || ''}
                         onChange={(e) => updateFilter('minAmount', e.target.value ? parseFloat(e.target.value) : undefined)}
-                        className="w-full pl-6 pr-2 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 h-10 transition-colors"
+                        className="w-full pl-6 pr-2 py-2 text-sm border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary/50 h-10 transition-colors"
                       />
                     </div>
-                    <span className="text-gray-300 text-xs">—</span>
+                    <span className="text-muted-foreground/40 text-xs">—</span>
                     <div className="relative flex-1">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/70 text-xs">$</span>
                       <input
                         type="number"
                         placeholder="Max"
                         value={filters.maxAmount || ''}
                         onChange={(e) => updateFilter('maxAmount', e.target.value ? parseFloat(e.target.value) : undefined)}
-                        className="w-full pl-6 pr-2 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 h-10 transition-colors"
+                        className="w-full pl-6 pr-2 py-2 text-sm border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary/50 h-10 transition-colors"
                       />
                     </div>
                   </div>
@@ -355,10 +355,10 @@ export function DashboardFiltersPanel({
       {/* Filter Chips */}
       {hasActiveFilters && (
         <div className="flex flex-wrap items-center gap-2 px-1">
-          <span className="text-xs font-medium text-gray-500 mr-1">Active filters:</span>
+          <span className="text-xs font-medium text-muted-foreground mr-1">Active filters:</span>
 
           {filters.searchQuery && (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-100 text-xs font-medium">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-accent text-accent-foreground rounded-full border border-blue-100 text-xs font-medium">
               Search: &ldquo;{filters.searchQuery}&rdquo;
               <button onClick={() => removeFilter('searchQuery')} className="hover:text-blue-900">
                 <X className="w-3 h-3" />
@@ -403,9 +403,9 @@ export function DashboardFiltersPanel({
           )}
 
           {filters.transactionType && (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 text-gray-700 rounded-full border border-gray-200 text-xs font-medium">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-muted text-muted-foreground rounded-full border border-border text-xs font-medium">
               Type: {filters.transactionType.charAt(0) + filters.transactionType.slice(1).toLowerCase()}
-              <button onClick={() => removeFilter('transactionType')} className="hover:text-gray-900">
+              <button onClick={() => removeFilter('transactionType')} className="hover:text-foreground">
                 <X className="w-3 h-3" />
               </button>
             </div>

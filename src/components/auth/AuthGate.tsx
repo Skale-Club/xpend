@@ -23,36 +23,21 @@ export function AuthGate({ children }: AuthGateProps) {
 
     const initializeSession = async () => {
       const { data, error: sessionError } = await supabaseBrowser.auth.getSession();
-
-      if (!isMounted) {
-        return;
-      }
-
-      if (sessionError) {
-        setError(sessionError.message);
-      }
-
+      if (!isMounted) return;
+      if (sessionError) setError(sessionError.message);
       setIsAuthenticated(!!data.session);
       setIsReady(true);
     };
 
     initializeSession();
 
-    const {
-      data: { subscription },
-    } = supabaseBrowser.auth.onAuthStateChange((_event, session) => {
-      if (!isMounted) {
-        return;
-      }
-
+    const { data: { subscription } } = supabaseBrowser.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) return;
       setIsAuthenticated(!!session);
       setIsReady(true);
     });
 
-    return () => {
-      isMounted = false;
-      subscription.unsubscribe();
-    };
+    return () => { isMounted = false; subscription.unsubscribe(); };
   }, []);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -82,32 +67,33 @@ export function AuthGate({ children }: AuthGateProps) {
 
   if (!isReady) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       </div>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_#dbeafe,_#f8fafc_55%)] px-4 py-10">
-        <Card className="w-full max-w-md border border-blue-100 bg-white/95 shadow-2xl shadow-blue-100/60 backdrop-blur">
+      <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+        {/* Subtle gradient backdrop */}
+        <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(37,99,235,0.08),transparent)]" />
+
+        <Card className="relative w-full max-w-md shadow-xl">
           <CardContent className="p-8">
             <div className="mb-8 flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white">
-                <CircleDollarSign className="h-8 w-8" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-md shadow-primary/30">
+                <CircleDollarSign className="h-6 w-6 text-primary-foreground" />
               </div>
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">Secure Access</p>
-                <h1 className="text-3xl font-bold text-gray-900">Xpend Login</h1>
+                <p className="text-xs font-semibold uppercase tracking-widest text-primary">Xpend</p>
+                <h1 className="text-2xl font-bold text-foreground">Welcome back</h1>
               </div>
             </div>
 
-            <div className="mb-6 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-              <div className="flex items-center gap-2 font-medium">
-                <ShieldCheck className="h-4 w-4" />
-                Secure sign-in
-              </div>
+            <div className="mb-6 flex items-center gap-2 rounded-lg border border-success/20 bg-success/5 px-3 py-2.5 text-sm text-success">
+              <ShieldCheck className="h-4 w-4 flex-shrink-0" />
+              <span className="font-medium">Secured with Supabase Auth</span>
             </div>
 
             <form className="space-y-4" onSubmit={handleSubmit}>
@@ -115,20 +101,22 @@ export function AuthGate({ children }: AuthGateProps) {
                 label="Email"
                 type="email"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
+                placeholder="you@example.com"
                 required
               />
               <Input
                 label="Password"
                 type="password"
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
+                placeholder="••••••••"
                 error={error || undefined}
                 required
               />
-              <Button className="w-full" size="lg" type="submit" isLoading={isSubmitting}>
+              <Button className="w-full mt-2" size="lg" type="submit" isLoading={isSubmitting}>
                 Sign In
               </Button>
             </form>
@@ -139,9 +127,9 @@ export function AuthGate({ children }: AuthGateProps) {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-background">
       <Sidebar onLogout={handleLogout} />
-      <main className="flex-1 bg-gray-50 p-6 pt-20 lg:ml-64 lg:pt-6">
+      <main className="flex-1 min-w-0 p-6 pt-20 lg:ml-64 lg:pt-6">
         {children}
       </main>
     </div>

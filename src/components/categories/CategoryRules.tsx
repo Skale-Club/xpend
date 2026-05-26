@@ -240,15 +240,15 @@ export function CategoryRules() {
                 />
 
                 {rules.length > 0 && (
-                    <div className="p-4 border-b border-gray-100 bg-gray-50/50">
+                    <div className="p-4 border-b border-border bg-muted/50">
                         <div className="relative max-w-md">
-                            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                            <Search className="w-4 h-4 text-muted-foreground/70 absolute left-3 top-1/2 -translate-y-1/2" />
                             <input
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder="Search by keyword or category..."
-                                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                                className="w-full pl-9 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm bg-card"
                             />
                         </div>
                     </div>
@@ -256,11 +256,11 @@ export function CategoryRules() {
 
                 <CardContent className="p-0">
                     {rules.length === 0 ? (
-                        <div className="p-8 text-center text-gray-500">
-                            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <ArrowUpDown className="w-6 h-6 text-gray-400" />
+                        <div className="p-8 text-center text-muted-foreground">
+                            <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
+                                <ArrowUpDown className="w-6 h-6 text-muted-foreground/70" />
                             </div>
-                            <p className="font-medium text-gray-900">No categorization rules yet</p>
+                            <p className="font-medium text-foreground">No categorization rules yet</p>
                             <p className="text-sm mt-1 max-w-md mx-auto">Create rules to automatically categorize your transactions based on keywords found in their description.</p>
                             <Button className="mt-4" onClick={() => openEditModal()}>
                                 <Plus className="w-4 h-4 mr-2" />
@@ -268,7 +268,7 @@ export function CategoryRules() {
                             </Button>
                         </div>
                     ) : flattenedView.length === 0 ? (
-                        <div className="p-8 text-center text-gray-500">
+                        <div className="p-8 text-center text-muted-foreground">
                             <p>No rules found matching &quot;{searchQuery}&quot;</p>
                         </div>
                     ) : (
@@ -282,11 +282,11 @@ export function CategoryRules() {
                                     return (
                                         <div
                                             key={`header-${cat.id}`}
-                                            className={`flex items-center gap-3 p-3 bg-gray-50/50 cursor-pointer hover:bg-gray-100 transition-colors ${searchQuery ? 'pointer-events-none' : ''}`}
+                                            className={`flex items-center gap-3 p-3 bg-muted/50 cursor-pointer hover:bg-muted transition-colors ${searchQuery ? 'pointer-events-none' : ''}`}
                                             onClick={() => !searchQuery && toggleCategory(cat.id)}
                                         >
                                             {!searchQuery && (
-                                                isExpanded ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />
+                                                isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground/70" /> : <ChevronRight className="w-4 h-4 text-muted-foreground/70" />
                                             )}
                                             {searchQuery && <div className="w-4 h-4" />}
                                             <div
@@ -296,22 +296,22 @@ export function CategoryRules() {
                                                 <CategoryIcon className="w-4 h-4" style={{ color: cat.color }} />
                                             </div>
                                             <div className="flex-1">
-                                                <p className="font-semibold text-gray-900">{cat.name}</p>
-                                                <p className="text-xs text-gray-500">{item.count} rule{item.count !== 1 ? 's' : ''}</p>
+                                                <p className="font-semibold text-foreground">{cat.name}</p>
+                                                <p className="text-xs text-muted-foreground">{item.count} rule{item.count !== 1 ? 's' : ''}</p>
                                             </div>
                                         </div>
                                     );
                                 } else {
                                     const rule = item.rule;
                                     return (
-                                        <div key={rule.id} className="flex items-center justify-between p-4 hover:bg-blue-50/30 transition-colors group">
+                                        <div key={rule.id} className="flex items-center justify-between p-4 hover:bg-accent/30 transition-colors group">
                                             <div className="flex items-center gap-3 pl-8">
-                                                <CornerDownRight className="w-4 h-4 text-gray-300 shrink-0" />
-                                                <div className="bg-white border border-gray-200 shadow-sm rounded px-3 py-1.5 font-mono text-sm text-gray-800">
+                                                <CornerDownRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+                                                <div className="bg-card border border-border shadow-sm rounded px-3 py-1.5 font-mono text-sm text-foreground">
                                                     {rule.keywords}
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-medium text-gray-400 bg-white px-2 py-0.5 rounded border border-gray-200">
+                                                    <span className="text-xs font-medium text-muted-foreground/70 bg-card px-2 py-0.5 rounded border border-border">
                                                         {rule.matchType === 'contains' ? 'Contains' :
                                                             rule.matchType === 'exact' ? 'Exact' : 'Regex'}
                                                     </span>
@@ -325,14 +325,14 @@ export function CategoryRules() {
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button
                                                     onClick={() => openEditModal(rule)}
-                                                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-100 rounded-md transition-colors"
+                                                    className="p-1.5 text-muted-foreground/70 hover:text-primary hover:bg-blue-100 rounded-md transition-colors"
                                                     title="Edit rule"
                                                 >
                                                     <Edit2 className="w-4 h-4" />
                                                 </button>
                                                 <button
                                                     onClick={() => handleDelete(rule.id)}
-                                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-100 rounded-md transition-colors"
+                                                    className="p-1.5 text-muted-foreground/70 hover:text-red-600 hover:bg-red-100 rounded-md transition-colors"
                                                     title="Delete rule"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
@@ -346,7 +346,7 @@ export function CategoryRules() {
                     )}
 
                     {totalPages > 1 && (
-                        <div className="border-t border-gray-100 rounded-b-xl overflow-hidden">
+                        <div className="border-t border-border rounded-b-xl overflow-hidden">
                             <Pagination
                                 currentPage={currentPage}
                                 totalCount={flattenedView.length}
@@ -373,7 +373,7 @@ export function CategoryRules() {
                     />
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-muted-foreground mb-1">
                             Target Category
                         </label>
                         <CategoryTreeSelector
@@ -403,7 +403,7 @@ export function CategoryRules() {
                             placeholder="0"
                         />
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">Rules with higher priority run first. Useful for overlapping keywords.</p>
+                    <p className="text-xs text-muted-foreground mt-1">Rules with higher priority run first. Useful for overlapping keywords.</p>
 
                     <div className="flex gap-2 justify-end pt-4 border-t mt-6">
                         <Button variant="secondary" onClick={() => setEditModal(null)}>

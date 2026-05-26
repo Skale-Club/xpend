@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { X, CheckCircle, XCircle, AlertCircle, Info, RotateCcw } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -27,71 +28,56 @@ interface ToastItemProps {
 
 function ToastItem({ toast, onClose }: ToastItemProps) {
   useEffect(() => {
-    const duration = toast.duration || 5000;
-    const timer = setTimeout(() => {
-      onClose(toast.id);
-    }, duration);
-
+    const timer = setTimeout(() => onClose(toast.id), toast.duration ?? 5000);
     return () => clearTimeout(timer);
   }, [toast, onClose]);
 
   const icons = {
-    success: <CheckCircle className="w-5 h-5 text-green-600" />,
-    error: <XCircle className="w-5 h-5 text-red-600" />,
-    warning: <AlertCircle className="w-5 h-5 text-yellow-600" />,
-    info: <Info className="w-5 h-5 text-blue-600" />,
+    success: <CheckCircle className="h-4 w-4 text-success" />,
+    error:   <XCircle    className="h-4 w-4 text-destructive" />,
+    warning: <AlertCircle className="h-4 w-4 text-warning" />,
+    info:    <Info        className="h-4 w-4 text-primary" />,
   };
 
   const styles = {
-    success: 'bg-green-50 border-green-200 text-green-800',
-    error: 'bg-red-50 border-red-200 text-red-800',
-    warning: 'bg-yellow-50 border-yellow-200 text-yellow-800',
-    info: 'bg-blue-50 border-blue-200 text-blue-800',
-  };
-
-  const handleRetry = () => {
-    if (toast.onRetry) {
-      toast.onRetry();
-      onClose(toast.id);
-    }
-  };
-
-  const handleAction = () => {
-    if (toast.action) {
-      toast.action.onClick();
-      onClose(toast.id);
-    }
+    success: 'border-success/20 bg-success/5 text-foreground',
+    error:   'border-destructive/20 bg-destructive/5 text-foreground',
+    warning: 'border-warning/20 bg-warning/5 text-foreground',
+    info:    'border-primary/20 bg-primary/5 text-foreground',
   };
 
   return (
     <div
-      className={`flex items-center gap-3 min-w-80 max-w-md p-4 rounded-lg border shadow-lg animate-slide-in ${styles[toast.type]}`}
+      className={cn(
+        'flex items-center gap-3 min-w-80 max-w-md rounded-xl border bg-card px-4 py-3 shadow-lg animate-slide-in',
+        styles[toast.type],
+      )}
     >
-      {icons[toast.type]}
+      <span className="flex-shrink-0">{icons[toast.type]}</span>
       <p className="flex-1 text-sm font-medium">{toast.message}</p>
       <div className="flex items-center gap-1">
         {toast.showRetry && toast.onRetry && (
           <button
-            onClick={handleRetry}
-            className="flex items-center gap-1 px-2 py-1 text-xs font-medium hover:bg-black/10 rounded transition-colors"
+            onClick={() => { toast.onRetry?.(); onClose(toast.id); }}
+            className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium hover:bg-muted transition-colors"
           >
-            <RotateCcw className="w-3 h-3" />
+            <RotateCcw className="h-3 w-3" />
             Retry
           </button>
         )}
         {toast.action && (
           <button
-            onClick={handleAction}
-            className="px-2 py-1 text-xs font-medium hover:bg-black/10 rounded transition-colors"
+            onClick={() => { toast.action?.onClick(); onClose(toast.id); }}
+            className="rounded px-2 py-1 text-xs font-medium hover:bg-muted transition-colors"
           >
             {toast.action.label}
           </button>
         )}
         <button
           onClick={() => onClose(toast.id)}
-          className="p-1 hover:bg-black/5 rounded transition-colors"
+          className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
-          <X className="w-4 h-4" />
+          <X className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>

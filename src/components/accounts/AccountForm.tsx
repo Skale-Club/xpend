@@ -113,13 +113,13 @@ export function AccountForm({ isOpen, onClose, onSubmit, account }: AccountFormP
         />
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
+          <label className="block text-sm font-medium text-muted-foreground mb-2">Color</label>
           <div className="flex gap-2 flex-wrap">
             {COLORS.map((color) => (
               <button
                 key={color}
                 type="button"
-                className={`w-8 h-8 rounded-lg border-2 transition-transform ${formData.color === color ? 'border-gray-900 scale-110' : 'border-transparent'
+                className={`w-8 h-8 rounded-lg border-2 transition-transform ${formData.color === color ? 'border-foreground scale-110' : 'border-transparent'
                   }`}
                 style={{ backgroundColor: color }}
                 onClick={() => setFormData({ ...formData, color })}
