@@ -150,9 +150,7 @@ export function SpendingPaceCard({ data }: SpendingPaceCardProps) {
                 dot={({ cx, cy, payload }) =>
                   payload.day === data.currentComparableDay && payload.currentMonth !== null ? (
                     <circle cx={cx} cy={cy} r={5} fill="var(--chart-2)" stroke="var(--card)" strokeWidth={2} />
-                  ) : (
-                    <></>
-                  )
+                  ) : null
                 }
               />
             </LineChart>
