@@ -28,7 +28,7 @@ export function ChatInput({ onSend, isLoading, disabled }: ChatInputProps) {
     };
 
     return (
-        <div className="flex items-end gap-2 p-3 border-t border-gray-200 bg-white">
+        <div className="flex items-end gap-2 p-3 border-t border-border bg-card">
             <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -36,13 +36,13 @@ export function ChatInput({ onSend, isLoading, disabled }: ChatInputProps) {
                 placeholder="Ask about your spending..."
                 disabled={disabled || isLoading}
                 rows={1}
-                className="flex-1 resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                className="flex-1 resize-none rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent disabled:bg-muted disabled:cursor-not-allowed"
                 style={{ minHeight: '38px', maxHeight: '120px' }}
             />
             <button
                 onClick={handleSend}
                 disabled={!input.trim() || isLoading || disabled}
-                className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-500 text-white flex items-center justify-center hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                className="flex-shrink-0 w-10 h-10 rounded-lg bg-accent0 text-white flex items-center justify-center hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed transition-colors"
             >
                 {isLoading ? (
                     <Loader2 className="w-5 h-5 animate-spin" />

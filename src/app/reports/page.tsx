@@ -179,7 +179,7 @@ function CategoryRow({
   return (
     <React.Fragment>
       <tr
-        className={`hover:bg-gray-50 transition-colors ${isExpanded && level === 0 ? 'bg-blue-50/30' : ''} ${hasChildren ? 'cursor-pointer' : ''}`}
+        className={`hover:bg-muted transition-colors ${isExpanded && level === 0 ? 'bg-blue-50/30' : ''} ${hasChildren ? 'cursor-pointer' : ''}`}
         onClick={() => hasChildren && toggleExpanded(node.id)}
       >
         <td className="px-4 py-3">
@@ -187,9 +187,9 @@ function CategoryRow({
             {level > 0 && <CornerDownRight className="w-3 h-3 text-gray-300 shrink-0" />}
             {hasChildren ? (
               isExpanded ? (
-                <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+                <ChevronDown className="w-4 h-4 text-muted-foreground/70 shrink-0" />
               ) : (
-                <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+                <ChevronRight className="w-4 h-4 text-muted-foreground/70 shrink-0" />
               )
             ) : (
               <div className="w-4 h-4 shrink-0" /> // Placeholder for alignment
@@ -198,14 +198,14 @@ function CategoryRow({
               className="w-3 h-3 rounded-full shrink-0"
               style={{ backgroundColor: node.color }}
             />
-            <span className={`font-medium text-gray-900 truncate ${level > 0 ? 'text-sm' : ''}`}>{node.name}</span>
+            <span className={`font-medium text-foreground truncate ${level > 0 ? 'text-sm' : ''}`}>{node.name}</span>
           </div>
         </td>
-        <td className="px-4 py-3 text-right text-gray-500">{node.count}</td>
-        <td className="px-4 py-3 text-right font-medium text-gray-900">
+        <td className="px-4 py-3 text-right text-muted-foreground">{node.count}</td>
+        <td className="px-4 py-3 text-right font-medium text-foreground">
           {formatAmount(node.amount)}
         </td>
-        <td className="px-4 py-3 text-right text-gray-500">
+        <td className="px-4 py-3 text-right text-muted-foreground">
           {node.percentage.toFixed(1)}%
         </td>
       </tr>
@@ -230,16 +230,16 @@ function CategoryRow({
 
       {isExpanded && (!node.subcategories || node.subcategories.length === 0) && node.transactions?.length > 0 && (
         <tr>
-          <td colSpan={4} className="p-0 bg-gray-50/50 border-b border-gray-100">
+          <td colSpan={4} className="p-0 bg-muted/50 border-b border-border">
             <div className="py-3 overflow-y-auto" style={{ paddingLeft: `${(level + 1) * 1.5 + 1.5}rem`, paddingRight: '1rem' }}>
               <table className="w-full text-sm">
                 <tbody>
                   {node.transactions.map((tx) => (
-                    <tr key={tx.id} className="border-b border-gray-100/50 last:border-0 hover:bg-white transition-colors">
-                      <td className="py-2 text-gray-500 whitespace-nowrap w-24">
+                    <tr key={tx.id} className="border-b border-border/50 last:border-0 hover:bg-card transition-colors">
+                      <td className="py-2 text-muted-foreground whitespace-nowrap w-24">
                         {formatDate(tx.date)}
                       </td>
-                      <td className="py-2 text-gray-900 truncate max-w-[200px]">
+                      <td className="py-2 text-foreground truncate max-w-[200px]">
                         <div className="flex items-center justify-between gap-2 min-w-0">
                           <div className="flex items-center gap-2 min-w-0">
                             {getTypeIcon(tx.type)}
@@ -258,7 +258,7 @@ function CategoryRow({
                                     onCancelDescriptionEdit();
                                   }
                                 }}
-                                className="w-full bg-white border border-blue-300 rounded px-2 py-1 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full bg-card border border-blue-300 rounded px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                               />
                             ) : (
                               <button
@@ -294,7 +294,7 @@ function CategoryRow({
                             <button
                               type="button"
                               onClick={() => onEditTransactionCategory(tx)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs shrink-0 bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs shrink-0 bg-muted text-muted-foreground hover:bg-gray-200 transition-colors cursor-pointer"
                               title="Set category"
                             >
                               <Tag className="w-3.5 h-3.5" />
@@ -303,7 +303,7 @@ function CategoryRow({
                           )}
                         </div>
                       </td>
-                      <td className="py-2 text-right font-medium text-gray-900">
+                      <td className="py-2 text-right font-medium text-foreground">
                         {formatAmount(tx.amount)}
                       </td>
                     </tr>
@@ -653,7 +653,7 @@ export default function ReportsPage() {
     ? 'bg-green-100 text-green-600'
     : isTransfer
       ? 'bg-blue-100 text-blue-600'
-      : 'bg-red-100 text-red-600';
+      : 'bg-red-100 text-destructive';
 
   const trendModeOptions: { value: TrendMode; label: string }[] = [
     { value: 'overall', label: `${typeLabel} Over Time` },
@@ -737,8 +737,8 @@ export default function ReportsPage() {
   return (
     <div className="space-y-6 pb-12">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
-        <p className="text-gray-500 mt-1">Deep dive into your spending habits and trends</p>
+        <h1 className="text-xl font-bold tracking-tight text-foreground">Reports & Analytics</h1>
+        <p className="text-muted-foreground mt-1">Deep dive into your spending habits and trends</p>
       </div>
 
       <DashboardFiltersPanel
@@ -759,8 +759,8 @@ export default function ReportsPage() {
                     <DollarSign className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Total {typeLabel}</p>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-sm font-medium text-muted-foreground">Total {typeLabel}</p>
+                    <p className="text-xl font-bold tracking-tight text-foreground">
                       {formatAmount(data.summary.totalAmount)}
                     </p>
                   </div>
@@ -774,8 +774,8 @@ export default function ReportsPage() {
                     <Tag className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Transactions</p>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-sm font-medium text-muted-foreground">Transactions</p>
+                    <p className="text-xl font-bold tracking-tight text-foreground">
                       {data.summary.transactionCount}
                     </p>
                   </div>
@@ -789,8 +789,8 @@ export default function ReportsPage() {
                     <CreditCard className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Average Transaction</p>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-sm font-medium text-muted-foreground">Average Transaction</p>
+                    <p className="text-xl font-bold tracking-tight text-foreground">
                       {formatAmount(data.summary.averageAmount)}
                     </p>
                   </div>
@@ -810,7 +810,7 @@ export default function ReportsPage() {
                     <select
                       value={trendMode}
                       onChange={(e) => setTrendMode(e.target.value as TrendMode)}
-                      className="text-sm bg-white border border-gray-200 text-gray-700 py-1 px-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="text-sm bg-card border border-border text-muted-foreground py-1 px-2 rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     >
                       {trendModeOptions.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -821,7 +821,7 @@ export default function ReportsPage() {
                     <select
                       value={trendGranularity}
                       onChange={(e) => setTrendGranularity(e.target.value as TimeGranularity)}
-                      className="text-sm bg-white border border-gray-200 text-gray-700 py-1 px-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="text-sm bg-card border border-border text-muted-foreground py-1 px-2 rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     >
                       {trendGranularityOptions.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -835,7 +835,7 @@ export default function ReportsPage() {
                         <button
                           type="button"
                           onClick={() => setIsTrendCategoryOpen((prev) => !prev)}
-                          className="w-full h-9 px-3 border border-gray-200 rounded-lg bg-white text-sm text-left flex items-center justify-between gap-2 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full h-9 px-3 border border-border rounded-lg bg-card text-sm text-left flex items-center justify-between gap-2 hover:border-border hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
                           disabled={trendSelectableCategories.length === 0}
                         >
                           <span className="flex items-center gap-2 min-w-0">
@@ -848,16 +848,16 @@ export default function ReportsPage() {
                                 <span className="truncate">{selectedTrendCategory.name}</span>
                               </>
                             ) : (
-                              <span className="truncate text-gray-500">Select category</span>
+                              <span className="truncate text-muted-foreground">Select category</span>
                             )}
                           </span>
                           <ChevronDown
-                            className={`w-4 h-4 text-gray-500 shrink-0 transition-transform ${isTrendCategoryOpen ? 'rotate-180' : ''}`}
+                            className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${isTrendCategoryOpen ? 'rotate-180' : ''}`}
                           />
                         </button>
 
                         {isTrendCategoryOpen && (
-                          <div className="absolute right-0 z-30 mt-2 w-[24rem] max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-xl shadow-lg p-2">
+                          <div className="absolute right-0 z-30 mt-2 w-[24rem] max-w-[calc(100vw-2rem)] bg-card border border-border rounded-xl shadow-lg p-2">
                             <CategoryTreeSelector
                               categories={trendSelectableCategories}
                               value={trendCategoryId}
@@ -886,7 +886,7 @@ export default function ReportsPage() {
                     singleSeriesColor={trendCardConfig.singleSeriesColor}
                   />
                 ) : (
-                  <div className="h-[300px] flex items-center justify-center text-gray-500">
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
                     No data available for this period
                   </div>
                 )}
@@ -953,7 +953,7 @@ export default function ReportsPage() {
               <CardHeader title="Category Breakdown" subtitle="Detailed spending by category" />
               <div className="max-h-[400px] overflow-y-auto">
                 <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-gray-500 bg-gray-50 sticky top-0 border-y border-gray-100">
+                  <thead className="text-xs text-muted-foreground bg-muted sticky top-0 border-y border-border">
                     <tr>
                       <th className="px-4 py-3 font-medium">Category</th>
                       <th className="px-4 py-3 font-medium text-right">Count</th>
@@ -964,7 +964,7 @@ export default function ReportsPage() {
                   <tbody className="divide-y divide-gray-100">
                     {data.categoryBreakdown.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                        <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
                           No categories found
                         </td>
                       </tr>
@@ -996,7 +996,7 @@ export default function ReportsPage() {
               <CardHeader title="Top Merchants / Payees" subtitle="Based on transaction description" />
               <div className="max-h-[400px] overflow-y-auto overflow-x-hidden">
                 <table className="w-full table-fixed text-sm text-left">
-                  <thead className="text-xs text-gray-500 bg-gray-50 sticky top-0 border-y border-gray-100">
+                  <thead className="text-xs text-muted-foreground bg-muted sticky top-0 border-y border-border">
                     <tr>
                       <th className="px-4 py-3 font-medium">Merchant</th>
                       <th className="px-4 py-3 font-medium text-right w-20">Count</th>
@@ -1006,7 +1006,7 @@ export default function ReportsPage() {
                   <tbody className="divide-y divide-gray-100">
                     {data.merchantBreakdown.length === 0 ? (
                       <tr>
-                        <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
+                        <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
                           No merchants found
                         </td>
                       </tr>
@@ -1016,7 +1016,7 @@ export default function ReportsPage() {
                         const merchantKey = merchant.transactionIds[0] || merchant.name || `merchant-${i}`;
 
                         return (
-                          <tr key={i} className="hover:bg-gray-50">
+                          <tr key={i} className="hover:bg-muted">
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2 min-w-0 w-full">
                                 <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -1036,13 +1036,13 @@ export default function ReportsPage() {
                                           cancelMerchantNameEdit();
                                         }
                                       }}
-                                      className="w-full bg-white border border-blue-300 rounded px-2 py-1 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      className="w-full bg-card border border-blue-300 rounded px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                                     />
                                   ) : (
                                     <button
                                       type="button"
                                       onClick={() => startMerchantNameEdit(merchantKey, merchant.name || 'UNKNOWN')}
-                                      className="font-medium text-gray-900 truncate min-w-0 text-left hover:text-blue-600 transition-colors cursor-text"
+                                      className="font-medium text-foreground truncate min-w-0 text-left hover:text-blue-600 transition-colors cursor-text"
                                       title="Edit merchant name"
                                     >
                                       {merchant.name || 'UNKNOWN'}
@@ -1067,7 +1067,7 @@ export default function ReportsPage() {
                                   <button
                                     type="button"
                                     onClick={() => openMerchantCategorize(merchant)}
-                                    className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs shrink-0 bg-gray-100 text-gray-500 hover:bg-gray-200 cursor-pointer transition-colors"
+                                    className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs shrink-0 bg-muted text-muted-foreground hover:bg-gray-200 cursor-pointer transition-colors"
                                     title="Set category"
                                   >
                                     <Tag className="w-3.5 h-3.5" />
@@ -1076,8 +1076,8 @@ export default function ReportsPage() {
                                 )}
                               </div>
                             </td>
-                            <td className="px-4 py-3 text-right text-gray-500 whitespace-nowrap">{merchant.count}</td>
-                            <td className="px-4 py-3 text-right font-medium text-gray-900 whitespace-nowrap">
+                            <td className="px-4 py-3 text-right text-muted-foreground whitespace-nowrap">{merchant.count}</td>
+                            <td className="px-4 py-3 text-right font-medium text-foreground whitespace-nowrap">
                               {formatAmount(merchant.amount)}
                             </td>
                           </tr>
@@ -1095,7 +1095,7 @@ export default function ReportsPage() {
             <CardHeader title="Largest Transactions" subtitle="Top 10 highest value transactions" />
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="text-xs text-gray-500 bg-gray-50 border-y border-gray-100">
+                <thead className="text-xs text-muted-foreground bg-muted border-y border-border">
                   <tr>
                     <th className="px-4 py-3 font-medium">Date</th>
                     <th className="px-4 py-3 font-medium">Description</th>
@@ -1107,17 +1107,17 @@ export default function ReportsPage() {
                 <tbody className="divide-y divide-gray-100">
                   {data.largestTransactions.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                      <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                         No transactions found
                       </td>
                     </tr>
                   ) : (
                     data.largestTransactions.map((tx) => (
-                      <tr key={tx.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                      <tr key={tx.id} className="hover:bg-muted">
+                        <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                           {formatDate(tx.date)}
                         </td>
-                        <td className="px-4 py-3 font-medium text-gray-900">
+                        <td className="px-4 py-3 font-medium text-foreground">
                           <div className="flex items-center gap-2 min-w-0">
                             {getTypeIcon(tx.type)}
                             {editingDescriptionId === tx.id ? (
@@ -1135,7 +1135,7 @@ export default function ReportsPage() {
                                     cancelDescriptionEdit();
                                   }
                                 }}
-                                className="w-full bg-white border border-blue-300 rounded px-2 py-1 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full bg-card border border-blue-300 rounded px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                               />
                             ) : (
                               <button
@@ -1173,7 +1173,7 @@ export default function ReportsPage() {
                             <button
                               type="button"
                               onClick={() => openTransactionCategorize(tx)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground hover:bg-gray-200 transition-colors cursor-pointer"
                               title="Set category"
                             >
                               <Tag className="w-3.5 h-3.5" />
@@ -1181,10 +1181,10 @@ export default function ReportsPage() {
                             </button>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-gray-500">
+                        <td className="px-4 py-3 text-muted-foreground">
                           {tx.account?.name}
                         </td>
-                        <td className="px-4 py-3 text-right font-medium text-gray-900">
+                        <td className="px-4 py-3 text-right font-medium text-foreground">
                           {formatAmount(tx.amount)}
                         </td>
                       </tr>
@@ -1222,43 +1222,43 @@ export default function ReportsPage() {
             <Loader size={56} />
           </div>
         ) : categoryBreakdownError ? (
-          <div className="py-8 text-center text-sm text-red-600">
+          <div className="py-8 text-center text-sm text-destructive">
             {categoryBreakdownError}
           </div>
         ) : categoryBreakdownData ? (
           <div className="space-y-5">
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total</div>
-                <div className="text-base font-bold text-slate-900">
+              <div className="rounded-lg border border-border bg-muted px-3 py-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total</div>
+                <div className="text-base font-bold text-foreground">
                   {formatCurrency(categoryBreakdownData.category.total, { hideSensitiveValues })}
                 </div>
               </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Transactions</div>
-                <div className="text-base font-bold text-slate-900">{categoryBreakdownData.totalTransactions}</div>
+              <div className="rounded-lg border border-border bg-muted px-3 py-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Transactions</div>
+                <div className="text-base font-bold text-foreground">{categoryBreakdownData.totalTransactions}</div>
               </div>
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-slate-900 mb-2">Subcategories</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-2">Subcategories</h3>
               <div className="space-y-2">
                 {categoryBreakdownData.subcategories.length === 0 ? (
-                  <div className="rounded-lg border border-slate-100 px-3 py-4 text-sm text-slate-500">
+                  <div className="rounded-lg border border-border px-3 py-4 text-sm text-muted-foreground">
                     No subcategories found.
                   </div>
                 ) : (
                   categoryBreakdownData.subcategories.map((subcategory) => (
-                    <div key={subcategory.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2">
+                    <div key={subcategory.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: subcategory.color }} />
-                        <span className="text-sm text-slate-800 truncate">{subcategory.name}</span>
+                        <span className="text-sm text-foreground truncate">{subcategory.name}</span>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
-                        <span className="text-sm font-semibold text-slate-900">
+                        <span className="text-sm font-semibold text-foreground">
                           {formatCurrency(subcategory.total, { hideSensitiveValues })}
                         </span>
-                        <span className="text-xs text-slate-500 min-w-[3rem] text-right">
+                        <span className="text-xs text-muted-foreground min-w-[3rem] text-right">
                           {subcategory.percentage.toFixed(1)}%
                         </span>
                       </div>
@@ -1269,10 +1269,10 @@ export default function ReportsPage() {
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-slate-900 mb-2">Related Transactions</h3>
-              <div className="max-h-[320px] overflow-y-auto rounded-lg border border-slate-200">
+              <h3 className="text-sm font-semibold text-foreground mb-2">Related Transactions</h3>
+              <div className="max-h-[320px] overflow-y-auto rounded-lg border border-border">
                 <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-slate-500 bg-slate-50 sticky top-0 border-b border-slate-200">
+                  <thead className="text-xs text-muted-foreground bg-muted sticky top-0 border-b border-border">
                     <tr>
                       <th className="px-3 py-2 font-medium">Date</th>
                       <th className="px-3 py-2 font-medium">Description</th>
@@ -1283,15 +1283,15 @@ export default function ReportsPage() {
                   <tbody className="divide-y divide-slate-100">
                     {categoryBreakdownData.transactions.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-3 py-6 text-center text-slate-500">
+                        <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
                           No transactions found for this category.
                         </td>
                       </tr>
                     ) : (
                       categoryBreakdownData.transactions.map((transaction) => (
-                        <tr key={transaction.id} className="hover:bg-slate-50">
-                          <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{formatDate(transaction.date)}</td>
-                          <td className="px-3 py-2 text-slate-900 max-w-[220px]">
+                        <tr key={transaction.id} className="hover:bg-muted">
+                          <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{formatDate(transaction.date)}</td>
+                          <td className="px-3 py-2 text-foreground max-w-[220px]">
                             <div className="flex items-center gap-2 min-w-0">
                               {getTypeIcon(transaction.type)}
                               {editingDescriptionId === transaction.id ? (
@@ -1315,7 +1315,7 @@ export default function ReportsPage() {
                                       cancelDescriptionEdit();
                                     }
                                   }}
-                                  className="w-full bg-white border border-blue-300 rounded px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  className="w-full bg-card border border-blue-300 rounded px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                                 />
                               ) : (
                                 <button
@@ -1353,7 +1353,7 @@ export default function ReportsPage() {
                               <button
                                 type="button"
                                 onClick={() => openTransactionCategorize(transaction)}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground"
                                 title="Set category"
                               >
                                 <Tag className="w-3.5 h-3.5" />
@@ -1361,7 +1361,7 @@ export default function ReportsPage() {
                               </button>
                             )}
                           </td>
-                          <td className="px-3 py-2 text-right font-semibold text-slate-900 whitespace-nowrap">
+                          <td className="px-3 py-2 text-right font-semibold text-foreground whitespace-nowrap">
                             {formatCurrency(transaction.amount, { hideSensitiveValues })}
                           </td>
                         </tr>
@@ -1371,14 +1371,14 @@ export default function ReportsPage() {
                 </table>
               </div>
               {categoryBreakdownData.truncated && (
-                <p className="mt-2 text-xs text-slate-500">
+                <p className="mt-2 text-xs text-muted-foreground">
                   Showing the 100 most recent transactions for this category.
                 </p>
               )}
             </div>
           </div>
         ) : (
-          <div className="py-8 text-center text-sm text-slate-500">
+          <div className="py-8 text-center text-sm text-muted-foreground">
             Select a category to view details.
           </div>
         )}
@@ -1391,7 +1391,7 @@ export default function ReportsPage() {
         size="sm"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-600 line-clamp-2">
+          <p className="text-sm text-muted-foreground line-clamp-2">
             {merchantToCategorize?.name}
           </p>
           <CategoryTreeSelector
@@ -1403,7 +1403,7 @@ export default function ReportsPage() {
             includeUncategorized
             maxHeightClassName="max-h-72"
           />
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted-foreground">
             This will update {merchantToCategorize?.transactionIds.length || 0} transaction(s) from this merchant.
           </p>
           <div className="flex justify-end gap-2">
@@ -1424,7 +1424,7 @@ export default function ReportsPage() {
         size="sm"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-600 line-clamp-2">
+          <p className="text-sm text-muted-foreground line-clamp-2">
             {transactionToCategorize?.description}
           </p>
           <CategoryTreeSelector

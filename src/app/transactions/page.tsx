@@ -153,10 +153,10 @@ export default function TransactionsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
-        <p className="text-gray-500 mt-1">View and categorize all your transactions</p>
+        <h1 className="text-xl font-bold tracking-tight text-foreground">Transactions</h1>
+        <p className="text-muted-foreground mt-1">View and categorize all your transactions</p>
       </div>
 
       <DashboardFiltersPanel
@@ -189,7 +189,7 @@ export default function TransactionsPage() {
             onCategoryCreated={handleCategoryCreated}
             onBulkCategorize={handleBulkCategorize}
           />
-          <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 rounded-b-xl">
+          <div className="px-4 py-3 border-t border-border bg-muted rounded-b-xl">
             <Pagination
               currentPage={currentPage}
               totalCount={totalCount}

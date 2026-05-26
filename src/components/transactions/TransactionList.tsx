@@ -454,7 +454,7 @@ export function TransactionList({
     return (
       <div key={category.id}>
         <div
-          className={`w-full py-2.5 pr-3 flex items-center gap-3 transition-colors ${isSelected ? 'bg-green-50 hover:bg-green-50' : 'hover:bg-gray-50'
+          className={`w-full py-2.5 pr-3 flex items-center gap-3 transition-colors ${isSelected ? 'bg-green-50 hover:bg-green-50' : 'hover:bg-muted'
             }`}
           style={{ paddingLeft: `${12 + level * 20}px` }}
         >
@@ -473,13 +473,13 @@ export function TransactionList({
                   return next;
                 });
               }}
-              className={`p-0.5 rounded shrink-0 ${normalizedCategorySearch ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-gray-200'}`}
+              className={`p-0.5 rounded shrink-0 ${normalizedCategorySearch ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-muted'}`}
               title={isExpanded ? 'Collapse category' : 'Expand category'}
             >
               {isExpanded ? (
-                <ChevronDown className="w-4 h-4 text-gray-500" />
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
               ) : (
-                <ChevronRight className="w-4 h-4 text-gray-500" />
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
               )}
             </button>
           ) : (
@@ -490,10 +490,10 @@ export function TransactionList({
               {isSelected ? (
                 <CheckSquare className="w-5 h-5 text-green-600 shrink-0" />
               ) : (
-                <Square className="w-5 h-5 text-gray-300 shrink-0" />
+                <Square className="w-5 h-5 text-muted-foreground/40 shrink-0" />
               )}
               <CategoryIcon className="w-4 h-4 shrink-0" style={{ color: category.color }} />
-              <span className={`${isSelected ? 'text-green-900' : 'text-gray-800'} truncate`}>{category.name}</span>
+              <span className={`${isSelected ? 'text-green-900' : 'text-foreground'} truncate`}>{category.name}</span>
             </div>
           ) : (
             <button
@@ -504,10 +504,10 @@ export function TransactionList({
               {isSelected ? (
                 <CheckSquare className="w-5 h-5 text-green-600 shrink-0" />
               ) : (
-                <Square className="w-5 h-5 text-gray-300 shrink-0" />
+                <Square className="w-5 h-5 text-muted-foreground/40 shrink-0" />
               )}
               <CategoryIcon className="w-4 h-4 shrink-0" style={{ color: category.color }} />
-              <span className={`${isSelected ? 'text-green-900' : 'text-gray-900'} truncate`}>{category.name}</span>
+              <span className={`${isSelected ? 'text-green-900' : 'text-foreground'} truncate`}>{category.name}</span>
             </button>
           )}
         </div>
@@ -521,16 +521,16 @@ export function TransactionList({
     <>
       {/* Bulk Action Bar */}
       {selectedTransactions.size > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 flex items-center justify-between flex-wrap gap-3">
+        <div className="bg-accent border border-blue-200 rounded-lg p-3 mb-4 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-blue-700">
+            <span className="text-sm font-medium text-accent-foreground">
               {selectedTransactions.size} selected
             </span>
             <button
               onClick={clearSelection}
               className="p-1 hover:bg-blue-100 rounded"
             >
-              <X className="w-4 h-4 text-blue-600" />
+              <X className="w-4 h-4 text-primary" />
             </button>
           </div>
           <div className="flex items-center gap-2">
@@ -538,7 +538,7 @@ export function TransactionList({
               size="sm"
               variant="outline"
               onClick={() => handleBulkExport('csv')}
-              className="bg-white"
+              className="bg-card"
             >
               <Download className="w-4 h-4 mr-1" />
               Export CSV
@@ -569,25 +569,25 @@ export function TransactionList({
       <Card>
         <CardContent className="p-0">
           {transactions.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
+            <div className="p-8 text-center text-muted-foreground">
               <p>No transactions found</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
               {/* Select All Header */}
-              <div className="p-3 bg-gray-50 flex items-center gap-3">
+              <div className="p-3 bg-muted flex items-center gap-3">
                 <button
                   onClick={toggleSelectAll}
-                  className="p-1 hover:bg-gray-200 rounded"
+                  className="p-1 hover:bg-muted rounded"
                   title={selectedTransactions.size === transactions.length ? 'Deselect all' : 'Select all'}
                 >
                   {selectedTransactions.size === transactions.length ? (
-                    <CheckSquare className="w-5 h-5 text-blue-600" />
+                    <CheckSquare className="w-5 h-5 text-primary" />
                   ) : (
-                    <Square className="w-5 h-5 text-gray-400" />
+                    <Square className="w-5 h-5 text-muted-foreground/70" />
                   )}
                 </button>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-muted-foreground">
                   {selectedTransactions.size === transactions.length
                     ? 'All selected'
                     : 'Select all'}
@@ -609,7 +609,7 @@ export function TransactionList({
                 return (
                   <div
                     key={transaction.id}
-                    className={`p-4 hover:bg-gray-50 transition-colors ${selectedTransactions.has(transaction.id) ? 'bg-blue-50' : ''
+                    className={`p-4 hover:bg-muted transition-colors ${selectedTransactions.has(transaction.id) ? 'bg-accent' : ''
                       }`}
                   >
                     <div className="flex items-center justify-between gap-4">
@@ -617,16 +617,16 @@ export function TransactionList({
                         {/* Checkbox */}
                         <button
                           onClick={() => toggleSelect(transaction.id)}
-                          className="p-1 hover:bg-gray-200 rounded shrink-0"
+                          className="p-1 hover:bg-muted rounded shrink-0"
                         >
                           {selectedTransactions.has(transaction.id) ? (
-                            <CheckSquare className="w-5 h-5 text-blue-600" />
+                            <CheckSquare className="w-5 h-5 text-primary" />
                           ) : (
-                            <Square className="w-5 h-5 text-gray-400" />
+                            <Square className="w-5 h-5 text-muted-foreground/70" />
                           )}
                         </button>
 
-                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
                           {getTypeIcon(transaction.type)}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -647,11 +647,11 @@ export function TransactionList({
                                   handleDescriptionCancel();
                                 }
                               }}
-                              className="w-full font-medium text-gray-900 border-b border-blue-500 focus:outline-none bg-transparent"
+                              className="w-full font-medium text-foreground border-b border-primary focus:outline-none bg-transparent"
                             />
                           ) : (
                             <p
-                              className="font-medium text-gray-900 line-clamp-1 cursor-text hover:text-blue-600 transition-colors"
+                              className="font-medium text-foreground line-clamp-1 cursor-text hover:text-primary transition-colors"
                               onClick={() => {
                                 setEditingDescriptionId(transaction.id);
                                 setTempDescription(transaction.description);
@@ -661,7 +661,7 @@ export function TransactionList({
                             </p>
                           )}
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="text-sm text-gray-500">
+                            <span className="text-sm text-muted-foreground">
                               {formatDate(transaction.date)}
                             </span>
                             {transaction.category ? (
@@ -681,7 +681,7 @@ export function TransactionList({
                             ) : (
                               <button
                                 type="button"
-                                className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors cursor-pointer inline-flex items-center gap-1"
+                                className="px-2 py-0.5 text-xs rounded-full bg-muted text-muted-foreground hover:bg-muted transition-colors cursor-pointer inline-flex items-center gap-1"
                                 onClick={() => openCategorizeModal(transaction)}
                                 title="Set category"
                               >
@@ -694,14 +694,14 @@ export function TransactionList({
                       </div>
                       <div className="text-right">
                         <p
-                          className={`font-semibold ${transaction.type === 'INCOME' ? 'text-green-600' : 'text-gray-900'
+                          className={`font-semibold ${transaction.type === 'INCOME' ? 'text-green-600' : 'text-foreground'
                             }`}
                         >
                           {transaction.type === 'INCOME' ? '+' : '-'}
                           {formatCurrency(transaction.amount, { hideSensitiveValues })}
                         </p>
                         {transaction.account && (
-                          <p className="text-xs text-gray-500">{transaction.account.name}</p>
+                          <p className="text-xs text-muted-foreground">{transaction.account.name}</p>
                         )}
                       </div>
                     </div>
@@ -722,16 +722,16 @@ export function TransactionList({
       >
         <div className="space-y-4">
           <div className="space-y-2">
-            <p className="text-sm text-gray-600">Category</p>
+            <p className="text-sm text-muted-foreground">Category</p>
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Search className="w-4 h-4 text-muted-foreground/70 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   value={categorySearch}
                   onChange={(e) => setCategorySearch(e.target.value)}
                   placeholder="Search categories..."
-                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-9 pr-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                 />
               </div>
               <Button type="button" variant="outline" size="sm" onClick={openCreateCategory}>
@@ -741,13 +741,13 @@ export function TransactionList({
             </div>
 
             {isCreateCategoryOpen && (
-              <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3 shadow-sm">
+              <div className="rounded-xl border border-border bg-card p-4 space-y-3 shadow-sm">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Create Category</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Create Category</p>
                   <button
                     type="button"
                     onClick={closeCreateCategory}
-                    className="text-xs text-gray-500 hover:text-gray-700"
+                    className="text-xs text-muted-foreground hover:text-muted-foreground"
                   >
                     Close
                   </button>
@@ -757,18 +757,18 @@ export function TransactionList({
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
                   placeholder="Category name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent bg-card"
                 />
                 <div className="space-y-2">
-                  <p className="text-xs font-medium text-gray-500">Parent</p>
+                  <p className="text-xs font-medium text-muted-foreground">Parent</p>
                   <div className="max-h-32 overflow-y-auto pr-1">
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
                         onClick={() => setNewCategoryParentId('')}
                         className={`px-2.5 py-1.5 rounded-lg border text-sm inline-flex items-center gap-1.5 transition-colors ${newCategoryParentId === ''
-                          ? 'border-blue-500 bg-blue-50 text-blue-700'
-                          : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                          ? 'border-primary bg-accent text-accent-foreground'
+                          : 'border-border bg-card text-muted-foreground hover:bg-muted'
                           }`}
                       >
                         <Tag className="w-3.5 h-3.5" />
@@ -783,8 +783,8 @@ export function TransactionList({
                             type="button"
                             onClick={() => setNewCategoryParentId(option.id)}
                             className={`px-2.5 py-1.5 rounded-lg border text-sm inline-flex items-center gap-1.5 transition-colors ${isSelected
-                              ? 'border-blue-500 bg-blue-50 text-blue-700'
-                              : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                              ? 'border-primary bg-accent text-accent-foreground'
+                              : 'border-border bg-card text-muted-foreground hover:bg-muted'
                               }`}
                           >
                             <OptionIcon className="w-3.5 h-3.5" style={{ color: option.color }} />
@@ -809,22 +809,22 @@ export function TransactionList({
               </div>
             )}
 
-            <div className="max-h-[28rem] overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+            <div className="max-h-[28rem] overflow-y-auto border border-border rounded-lg divide-y divide-gray-100">
               {showUncategorizedOption && (
                 <button
                   type="button"
                   onClick={() => setSelectedCategory('')}
-                  className={`w-full px-3 py-2.5 flex items-center gap-3 text-left cursor-pointer transition-colors ${selectedCategory === '' ? 'bg-green-50 hover:bg-green-50' : 'hover:bg-gray-50'
+                  className={`w-full px-3 py-2.5 flex items-center gap-3 text-left cursor-pointer transition-colors ${selectedCategory === '' ? 'bg-green-50 hover:bg-green-50' : 'hover:bg-muted'
                     }`}
                 >
                   <span className="w-5 h-5 shrink-0" />
                   {selectedCategory === '' ? (
                     <CheckSquare className="w-5 h-5 text-green-600 shrink-0" />
                   ) : (
-                    <Square className="w-5 h-5 text-gray-300 shrink-0" />
+                    <Square className="w-5 h-5 text-muted-foreground/40 shrink-0" />
                   )}
-                  <Tag className="w-4 h-4 shrink-0 text-gray-500" />
-                  <span className={`${selectedCategory === '' ? 'text-green-900' : 'text-gray-900'}`}>
+                  <Tag className="w-4 h-4 shrink-0 text-muted-foreground" />
+                  <span className={`${selectedCategory === '' ? 'text-green-900' : 'text-foreground'}`}>
                     Uncategorized
                   </span>
                 </button>
@@ -833,12 +833,12 @@ export function TransactionList({
               {filteredCategoryTree.map((category) => renderCategoryOption(category))}
 
               {!showUncategorizedOption && filteredCategoryTree.length === 0 && (
-                <div className="px-3 py-8 text-center text-sm text-gray-500">
+                <div className="px-3 py-8 text-center text-sm text-muted-foreground">
                   <p>No categories found.</p>
                   <button
                     type="button"
                     onClick={openCreateCategory}
-                    className="mt-2 text-blue-600 hover:text-blue-700 font-medium"
+                    className="mt-2 text-primary hover:text-accent-foreground font-medium"
                   >
                     Create a new category
                   </button>
@@ -846,13 +846,13 @@ export function TransactionList({
               )}
             </div>
           </div>
-          <div className="rounded-lg border border-gray-200 p-3 space-y-2">
-            <label className="flex items-center gap-2 text-sm text-gray-700">
+          <div className="rounded-lg border border-border p-3 space-y-2">
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
               <input
                 type="checkbox"
                 checked={applyToSimilar}
                 onChange={(e) => setApplyToSimilar(e.target.checked)}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="rounded border-border text-primary focus:ring-ring"
               />
               Apply to similar transactions
             </label>
@@ -863,9 +863,9 @@ export function TransactionList({
                   value={similarKeyword}
                   onChange={(e) => setSimilarKeyword(e.target.value)}
                   placeholder="Keyword (e.g. xfinity)"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                 />
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   Applies to transactions containing this keyword with the same transaction type.
                   {categorizeTargetTransaction ? ` Source: "${categorizeTargetTransaction.description}"` : ''}
                 </p>
@@ -894,7 +894,7 @@ export function TransactionList({
         size="md"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Select a category to apply to all selected transactions.
           </p>
           <CategoryTreeSelector

@@ -149,7 +149,7 @@ export function CategoryTreeSelector({
       <div key={node.id}>
         <div
           className={`w-full py-2.5 pr-3 flex items-center gap-3 transition-colors ${
-            isSelected ? 'bg-green-50 hover:bg-green-50' : 'hover:bg-gray-50'
+            isSelected ? 'bg-green-50 hover:bg-green-50' : 'hover:bg-muted'
           }`}
           style={{ paddingLeft: `${12 + level * 20}px` }}
         >
@@ -169,9 +169,9 @@ export function CategoryTreeSelector({
               title={isExpanded ? 'Collapse category' : 'Expand category'}
             >
               {isExpanded ? (
-                <ChevronDown className="w-4 h-4 text-gray-500" />
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
               ) : (
-                <ChevronRight className="w-4 h-4 text-gray-500" />
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
               )}
             </button>
           ) : (
@@ -190,7 +190,7 @@ export function CategoryTreeSelector({
                 <Square className="w-5 h-5 text-gray-300 shrink-0" />
               )}
               <CategoryIcon className="w-4 h-4 shrink-0" style={{ color: node.color }} />
-              <span className={`${isSelected ? 'text-green-900' : 'text-gray-900'} truncate`}>{node.name}</span>
+              <span className={`${isSelected ? 'text-green-900' : 'text-foreground'} truncate`}>{node.name}</span>
             </button>
           ) : (
             <div className="flex-1 min-w-0 flex items-center gap-3 text-left select-none">
@@ -200,7 +200,7 @@ export function CategoryTreeSelector({
                 <Square className="w-5 h-5 text-gray-300 shrink-0" />
               )}
               <CategoryIcon className="w-4 h-4 shrink-0" style={{ color: node.color }} />
-              <span className={`${isSelected ? 'text-green-900' : 'text-gray-800'} truncate`}>{node.name}</span>
+              <span className={`${isSelected ? 'text-green-900' : 'text-foreground'} truncate`}>{node.name}</span>
             </div>
           )}
         </div>
@@ -213,23 +213,23 @@ export function CategoryTreeSelector({
   return (
     <div className="space-y-2">
       <div className="relative">
-        <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <Search className="w-4 h-4 text-muted-foreground/70 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder={searchPlaceholder}
-          className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full pl-9 pr-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
         />
       </div>
 
-      <div className={`${maxHeightClassName} overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100`}>
+      <div className={`${maxHeightClassName} overflow-y-auto border border-border rounded-lg divide-y divide-gray-100`}>
         {showUncategorized && (
           <button
             type="button"
             onClick={() => onChange('')}
             className={`w-full px-3 py-2.5 flex items-center gap-3 text-left cursor-pointer transition-colors ${
-              value === '' ? 'bg-green-50 hover:bg-green-50' : 'hover:bg-gray-50'
+              value === '' ? 'bg-green-50 hover:bg-green-50' : 'hover:bg-muted'
             }`}
           >
             <span className="w-5 h-5 shrink-0" />
@@ -238,15 +238,15 @@ export function CategoryTreeSelector({
             ) : (
               <Square className="w-5 h-5 text-gray-300 shrink-0" />
             )}
-            <Tag className="w-4 h-4 shrink-0 text-gray-500" />
-            <span className={`${value === '' ? 'text-green-900' : 'text-gray-900'}`}>Uncategorized</span>
+            <Tag className="w-4 h-4 shrink-0 text-muted-foreground" />
+            <span className={`${value === '' ? 'text-green-900' : 'text-foreground'}`}>Uncategorized</span>
           </button>
         )}
 
         {filteredTree.map((category) => renderCategory(category))}
 
         {!showUncategorized && filteredTree.length === 0 && (
-          <div className="px-3 py-8 text-center text-sm text-gray-500">
+          <div className="px-3 py-8 text-center text-sm text-muted-foreground">
             No categories found.
           </div>
         )}

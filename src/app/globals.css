@@ -1,47 +1,217 @@
 @import "tailwindcss";
 
+/* ── Design tokens ──────────────────────────────────────────────────────── */
 :root {
-  --background: #f9fafb;
-  --foreground: #171717;
+  /* Core */
+  --background: #f8fafc;
+  --foreground: #0f172a;
+
+  /* Card */
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+
+  /* Popover */
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+
+  /* Primary (blue) */
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+
+  /* Secondary */
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+
+  /* Muted */
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+
+  /* Accent */
+  --accent: #eff6ff;
+  --accent-foreground: #1d4ed8;
+
+  /* Destructive */
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  /* Success */
+  --success: #22c55e;
+  --success-foreground: #ffffff;
+
+  /* Warning */
+  --warning: #f59e0b;
+  --warning-foreground: #ffffff;
+
+  /* Border & Input */
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #2563eb;
+
+  /* Sidebar */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0f172a;
+  --sidebar-border: #e2e8f0;
+  --sidebar-accent: #eff6ff;
+  --sidebar-accent-foreground: #2563eb;
+  --sidebar-muted-foreground: #64748b;
+
+  /* Radius */
+  --radius: 0.5rem;
+
+  /* Chart colors (finance palette) */
+  --chart-1: #2563eb;
+  --chart-2: #22c55e;
+  --chart-3: #f59e0b;
+  --chart-4: #8b5cf6;
+  --chart-5: #ef4444;
+  --chart-6: #06b6d4;
+  --chart-7: #ec4899;
+  --chart-8: #84cc16;
 }
 
+.dark {
+  --background: #0f172a;
+  --foreground: #f8fafc;
+
+  --card: #1e293b;
+  --card-foreground: #f8fafc;
+
+  --popover: #1e293b;
+  --popover-foreground: #f8fafc;
+
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+
+  --secondary: #334155;
+  --secondary-foreground: #f8fafc;
+
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+
+  --accent: #1e3a5f;
+  --accent-foreground: #93c5fd;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --success: #22c55e;
+  --success-foreground: #ffffff;
+
+  --warning: #f59e0b;
+  --warning-foreground: #ffffff;
+
+  --border: #334155;
+  --input: #334155;
+  --ring: #3b82f6;
+
+  --sidebar: #1e293b;
+  --sidebar-foreground: #f8fafc;
+  --sidebar-border: #334155;
+  --sidebar-accent: #1e3a5f;
+  --sidebar-accent-foreground: #93c5fd;
+  --sidebar-muted-foreground: #94a3b8;
+
+  --chart-1: #3b82f6;
+  --chart-2: #4ade80;
+  --chart-3: #fbbf24;
+  --chart-4: #a78bfa;
+  --chart-5: #f87171;
+  --chart-6: #22d3ee;
+  --chart-7: #f472b6;
+  --chart-8: #a3e635;
+}
+
+/* ── Tailwind v4 theme mapping ───────────────────────────────────────────── */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-muted-foreground: var(--sidebar-muted-foreground);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
 }
 
-/* Disable dark mode - always use light colors */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #f9fafb;
-    --foreground: #171717;
-  }
+/* ── Base styles ─────────────────────────────────────────────────────────── */
+* {
+  border-color: var(--border);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
-/* All buttons should show pointer cursor on hover */
 button:not(:disabled) {
   cursor: pointer;
 }
 
-@keyframes slide-in {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+/* ── Scrollbar (subtle) ─────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
 }
 
+/* ── Animations ─────────────────────────────────────────────────────────── */
+@keyframes slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
 .animate-slide-in {
   animation: slide-in 0.3s ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
 }

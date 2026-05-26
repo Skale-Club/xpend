@@ -234,7 +234,7 @@ export default function CategoriesPage() {
         return (
             <div key={category.id}>
                 <div
-                    className={`flex items-center justify-between py-3 pr-3 hover:bg-gray-50 transition-colors ${level > 0 ? 'border-l-2 border-gray-200' : ''
+                    className={`flex items-center justify-between py-3 pr-3 hover:bg-muted transition-colors ${level > 0 ? 'border-l-2 border-border' : ''
                         }`}
                     style={{ paddingLeft: `${12 + level * 28}px` }}
                 >
@@ -245,9 +245,9 @@ export default function CategoriesPage() {
                                 className="p-1 hover:bg-gray-200 rounded"
                             >
                                 {isExpanded ? (
-                                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
                                 ) : (
-                                    <ChevronRight className="w-4 h-4 text-gray-500" />
+                                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
                                 )}
                             </button>
                         )}
@@ -264,9 +264,9 @@ export default function CategoriesPage() {
                         </div>
 
                         <div>
-                            <p className="font-medium text-gray-900">{category.name}</p>
+                            <p className="font-medium text-foreground">{category.name}</p>
                             {category.budget && (
-                                <p className="text-xs text-gray-500">
+                                <p className="text-xs text-muted-foreground">
                                     Budget: {formatCurrency(category.budget, { hideSensitiveValues })}/month
                                 </p>
                             )}
@@ -276,21 +276,21 @@ export default function CategoriesPage() {
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => openEditModal(undefined, category.id)}
-                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                            className="p-2 text-muted-foreground/70 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
                             title="Add subcategory"
                         >
                             <Plus className="w-4 h-4" />
                         </button>
                         <button
                             onClick={() => openEditModal(category)}
-                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                            className="p-2 text-muted-foreground/70 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
                             title="Edit category"
                         >
                             <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                             onClick={() => setDeleteModal(category)}
-                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                            className="p-2 text-muted-foreground/70 hover:text-destructive hover:bg-red-50 rounded-lg"
                             title="Delete category"
                         >
                             <Trash2 className="w-4 h-4" />
@@ -316,11 +316,11 @@ export default function CategoriesPage() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Categories</h1>
-                    <p className="text-gray-500 mt-1">Manage your transaction categories</p>
+                    <h1 className="text-xl font-bold tracking-tight text-foreground">Categories</h1>
+                    <p className="text-muted-foreground mt-1">Manage your transaction categories</p>
                 </div>
                 <Button onClick={() => openEditModal()}>
                     <Plus className="w-4 h-4 mr-2" />
@@ -333,13 +333,13 @@ export default function CategoriesPage() {
                     title="Category List"
                     subtitle="Manage your transaction categories"
                     action={
-                        <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1 shrink-0">
+                        <div className="inline-flex rounded-lg border border-border bg-muted p-1 shrink-0">
                             <button
                                 type="button"
                                 onClick={() => setActiveScope('outcome')}
                                 className={`px-3 py-1.5 text-sm rounded-md transition-colors ${activeScope === 'outcome'
-                                    ? 'bg-white text-gray-900 shadow-sm'
-                                    : 'text-gray-600 hover:text-gray-900'
+                                    ? 'bg-card text-foreground shadow-sm'
+                                    : 'text-muted-foreground hover:text-foreground'
                                     }`}
                             >
                                 Outcome
@@ -348,8 +348,8 @@ export default function CategoriesPage() {
                                 type="button"
                                 onClick={() => setActiveScope('income')}
                                 className={`px-3 py-1.5 text-sm rounded-md transition-colors ${activeScope === 'income'
-                                    ? 'bg-white text-gray-900 shadow-sm'
-                                    : 'text-gray-600 hover:text-gray-900'
+                                    ? 'bg-card text-foreground shadow-sm'
+                                    : 'text-muted-foreground hover:text-foreground'
                                     }`}
                             >
                                 Income
@@ -360,7 +360,7 @@ export default function CategoriesPage() {
                 <CardContent className="p-0">
                     <div className="divide-y divide-gray-100">
                         {visibleRootCategories.length === 0 ? (
-                            <div className="p-8 text-center text-gray-500">
+                            <div className="p-8 text-center text-muted-foreground">
                                 <p>No categories yet. Click &ldquo;Add Category&rdquo; to create one.</p>
                             </div>
                         ) : (
@@ -389,10 +389,10 @@ export default function CategoriesPage() {
                     />
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
+                        <label className="block text-sm font-medium text-muted-foreground mb-2">Color</label>
                         {formData.parentId ? (
-                            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                                <p className="text-sm text-gray-600">
+                            <div className="rounded-lg border border-border bg-muted p-3">
+                                <p className="text-sm text-muted-foreground">
                                     This subcategory inherits color from {selectedParent?.name || 'its parent'}.
                                 </p>
                                 <div className="mt-2 flex items-center gap-2">
@@ -400,7 +400,7 @@ export default function CategoriesPage() {
                                         className="w-4 h-4 rounded-full border border-white shadow-sm"
                                         style={{ backgroundColor: formData.color }}
                                     />
-                                    <span className="text-sm font-medium text-gray-700">{formData.color}</span>
+                                    <span className="text-sm font-medium text-muted-foreground">{formData.color}</span>
                                 </div>
                             </div>
                         ) : (
@@ -420,7 +420,7 @@ export default function CategoriesPage() {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Icon</label>
+                        <label className="block text-sm font-medium text-muted-foreground mb-2">Icon</label>
                         <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 border rounded-lg">
                             {CATEGORY_ICONS.map((iconName) => {
                                 const IconComponent = getCategoryIcon(iconName);
@@ -431,7 +431,7 @@ export default function CategoriesPage() {
                                         onClick={() => setFormData({ ...formData, icon: iconName })}
                                         className={`p-2 rounded-lg border transition-colors ${formData.icon === iconName
                                             ? 'border-blue-500 bg-blue-50'
-                                            : 'border-gray-200 hover:bg-gray-50'
+                                            : 'border-border hover:bg-muted'
                                             }`}
                                         title={iconName}
                                     >
@@ -443,11 +443,11 @@ export default function CategoriesPage() {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-muted-foreground mb-1">
                             Monthly Budget (optional)
                         </label>
                         <div className="relative">
-                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
                             <input
                                 type="number"
                                 value={formData.budget || ''}
@@ -458,7 +458,7 @@ export default function CategoriesPage() {
                                     })
                                 }
                                 placeholder="0.00"
-                                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full pl-9 pr-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
                             />
                         </div>
                     </div>
@@ -482,7 +482,7 @@ export default function CategoriesPage() {
                 size="sm"
             >
                 <div className="space-y-4">
-                    <p className="text-gray-600">
+                    <p className="text-muted-foreground">
                         Are you sure you want to delete &ldquo;{deleteModal?.name}&rdquo;?
                     </p>
                     {deleteModal?.children && deleteModal.children.length > 0 && (
@@ -490,7 +490,7 @@ export default function CategoriesPage() {
                             Warning: This category has {deleteModal.children.length} subcategory(ies) that will also be deleted.
                         </p>
                     )}
-                    <p className="text-gray-500 text-sm">
+                    <p className="text-muted-foreground text-sm">
                         Transactions in this category will become uncategorized.
                     </p>
                     <div className="flex gap-2 justify-end pt-4 border-t">

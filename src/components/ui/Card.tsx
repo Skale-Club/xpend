@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 
 interface CardProps {
   children: ReactNode;
@@ -6,10 +7,14 @@ interface CardProps {
   onClick?: () => void;
 }
 
-export function Card({ children, className = '', onClick }: CardProps) {
+export function Card({ children, className, onClick }: CardProps) {
   return (
     <div
-      className={`bg-white rounded-xl shadow-sm border border-gray-100 ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''} ${className}`}
+      className={cn(
+        'bg-card rounded-xl border border-border shadow-sm text-card-foreground',
+        onClick && 'cursor-pointer hover:shadow-md transition-shadow',
+        className,
+      )}
       onClick={onClick}
     >
       {children}
@@ -21,20 +26,27 @@ interface CardHeaderProps {
   title: ReactNode;
   subtitle?: ReactNode;
   action?: ReactNode;
+  className?: string;
 }
 
-export function CardHeader({ title, subtitle, action }: CardHeaderProps) {
+export function CardHeader({ title, subtitle, action, className }: CardHeaderProps) {
   return (
-    <div className="flex items-center justify-between p-4 border-b border-gray-100">
+    <div className={cn('flex items-start justify-between p-5 border-b border-border', className)}>
       <div>
-        <h3 className="font-semibold text-gray-900">{title}</h3>
-        {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
+        <h3 className="font-semibold text-foreground leading-tight">{title}</h3>
+        {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
       </div>
-      {action}
+      {action && <div className="ml-4 flex-shrink-0">{action}</div>}
     </div>
   );
 }
 
-export function CardContent({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`p-4 ${className}`}>{children}</div>;
+export function CardContent({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return <div className={cn('p-5', className)}>{children}</div>;
 }

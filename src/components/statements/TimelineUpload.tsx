@@ -217,7 +217,7 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
         return baseStyles + 'bg-red-50 border-red-300 hover:bg-red-100';
       default:
         // Idle - future month or not yet uploaded
-        return baseStyles + 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300';
+        return baseStyles + 'bg-muted border-border hover:bg-muted hover:border-border';
     }
   };
 
@@ -254,7 +254,7 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
   return (
     <div className="space-y-6">
       {/* Current month indicator */}
-      <div className="flex items-center gap-2 text-sm text-gray-600 bg-blue-50 px-4 py-2 rounded-lg border border-blue-200">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground bg-blue-50 px-4 py-2 rounded-lg border border-blue-200">
         <Calendar className="w-4 h-4 text-blue-500" />
         <span>
           <strong>Current month:</strong> {MONTH_NAMES[currentMonth - 1]} {currentYear}
@@ -265,19 +265,19 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
       <div className="flex flex-wrap gap-4 text-sm">
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-green-100 border-2 border-green-400" />
-          <span className="text-gray-600">Uploaded and complete</span>
+          <span className="text-muted-foreground">Uploaded and complete</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-red-50 border-2 border-red-300" />
-          <span className="text-gray-600">Missing info</span>
+          <span className="text-muted-foreground">Missing info</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-gray-50 border-2 border-gray-200" />
-          <span className="text-gray-600">Pending</span>
+          <div className="w-4 h-4 rounded bg-muted border-2 border-border" />
+          <span className="text-muted-foreground">Pending</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-blue-50 border-2 border-blue-200 ring-2 ring-blue-400 ring-offset-1" />
-          <span className="text-gray-600">Current month</span>
+          <span className="text-muted-foreground">Current month</span>
         </div>
       </div>
 
@@ -308,7 +308,7 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
                   </div>
 
                   {/* Month name */}
-                  <span className="font-semibold text-gray-800 text-sm">
+                  <span className="font-semibold text-foreground text-sm">
                     {MONTH_ABBREV[month - 1]}
                   </span>
 
@@ -316,7 +316,7 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
                   <span className={`text-xs mt-1 ${monthData.status === 'success' ? 'text-green-600' :
                     monthData.status === 'incomplete' ? 'text-red-500' :
                       monthData.status === 'error' ? 'text-red-600' :
-                        'text-gray-400'
+                        'text-muted-foreground/70'
                     }`}>
                     {getStatusLabel(monthData.status, monthData.isCurrentMonth)}
                   </span>
@@ -333,10 +333,10 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-foreground">
                   {MONTH_NAMES[selectedMonth - 1]} {year}
                 </h3>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   {monthStatuses[selectedMonth].statement?.uploadedAt
                     ? `Uploaded on ${new Date(monthStatuses[selectedMonth].statement!.uploadedAt!).toLocaleDateString()}`
                     : 'No file uploaded'}
@@ -344,7 +344,7 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
               </div>
               <button
                 onClick={() => setSelectedMonth(null)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-muted-foreground/70 hover:text-muted-foreground"
               >
                 ✕
               </button>
@@ -379,7 +379,7 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
                     {isCategorizing ? 'Categorizing with AI...' : 'Auto-categorize with AI'}
                   </span>
                 </button>
-                <p className="text-xs text-gray-500 text-center">
+                <p className="text-xs text-muted-foreground text-center">
                   Automatically categorize uncategorized transactions using AI
                 </p>
               </div>
@@ -399,9 +399,9 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
                     e.target.value = '';
                   }}
                 />
-                <div className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors">
-                  <Upload className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-600 font-medium">
+                <div className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-border rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                  <Upload className="w-5 h-5 text-muted-foreground" />
+                  <span className="text-muted-foreground font-medium">
                     {monthStatuses[selectedMonth].status === 'success'
                       ? 'Re-upload file'
                       : 'Upload statement'}
@@ -428,7 +428,7 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
                   <div className="flex items-center gap-3">
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center ${uploadProgress < 30 ? 'bg-blue-500' : 'bg-green-500'}`}>
                       {uploadProgress < 30 ? (
-                        <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                        <div className="w-2 h-2 bg-card rounded-full animate-pulse" />
                       ) : (
                         <Check className="w-4 h-4 text-white" />
                       )}
@@ -443,12 +443,12 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
                       {uploadProgress < 30 ? (
                         <div className="w-2 h-2 bg-gray-400 rounded-full" />
                       ) : uploadProgress < 70 ? (
-                        <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                        <div className="w-2 h-2 bg-card rounded-full animate-pulse" />
                       ) : (
                         <Check className="w-4 h-4 text-white" />
                       )}
                     </div>
-                    <span className={`text-sm ${uploadProgress < 30 ? 'text-gray-500' : uploadProgress < 70 ? 'font-medium text-blue-700' : 'text-green-700'}`}>
+                    <span className={`text-sm ${uploadProgress < 30 ? 'text-muted-foreground' : uploadProgress < 70 ? 'font-medium text-blue-700' : 'text-green-700'}`}>
                       {uploadProgress < 70 ? 'Parsing with AI...' : 'Parsing complete'}
                     </span>
                   </div>
@@ -458,12 +458,12 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
                       {uploadProgress < 70 ? (
                         <div className="w-2 h-2 bg-gray-400 rounded-full" />
                       ) : uploadProgress < 100 ? (
-                        <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                        <div className="w-2 h-2 bg-card rounded-full animate-pulse" />
                       ) : (
                         <Check className="w-4 h-4 text-white" />
                       )}
                     </div>
-                    <span className={`text-sm ${uploadProgress < 70 ? 'text-gray-500' : uploadProgress < 100 ? 'font-medium text-blue-700' : 'text-green-700'}`}>
+                    <span className={`text-sm ${uploadProgress < 70 ? 'text-muted-foreground' : uploadProgress < 100 ? 'font-medium text-blue-700' : 'text-green-700'}`}>
                       {uploadProgress < 100 ? 'Saving transactions...' : 'Transactions saved'}
                     </span>
                   </div>
@@ -477,7 +477,7 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
                   />
                 </div>
 
-                <p className="text-xs text-gray-500 text-center">
+                <p className="text-xs text-muted-foreground text-center">
                   {uploadProgress < 100 ? (
                     <>Processing... {Math.round(uploadProgress)}% complete (this may take 30-120 seconds)</>
                   ) : (
@@ -508,7 +508,7 @@ export function TimelineYearSelector({ years, selectedYear, onSelectYear }: Time
           onClick={() => onSelectYear(year)}
           className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${selectedYear === year
             ? 'bg-blue-600 text-white'
-            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            : 'bg-muted text-muted-foreground hover:bg-gray-200'
             }`}
         >
           {year}

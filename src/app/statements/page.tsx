@@ -107,14 +107,14 @@ export default function StatementsPage() {
 
   if (accounts.length === 0) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Upload Statements</h1>
-          <p className="text-gray-500 mt-1">Upload your bank statements month by month</p>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">Upload Statements</h1>
+          <p className="text-muted-foreground mt-1">Upload your bank statements month by month</p>
         </div>
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-gray-500">Please create an account first to upload statements.</p>
+            <p className="text-muted-foreground">Please create an account first to upload statements.</p>
           </CardContent>
         </Card>
       </div>
@@ -122,10 +122,10 @@ export default function StatementsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Upload Statements</h1>
-        <p className="text-gray-500 mt-1">Upload your bank statements month by month</p>
+        <h1 className="text-xl font-bold tracking-tight text-foreground">Upload Statements</h1>
+        <p className="text-muted-foreground mt-1">Upload your bank statements month by month</p>
       </div>
 
       <Card>

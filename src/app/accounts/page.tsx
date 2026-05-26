@@ -116,40 +116,40 @@ export default function AccountsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
-          <p className="text-gray-600">Manage your bank accounts and cards</p>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">Accounts</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Manage your bank accounts and cards</p>
         </div>
         <Button onClick={handleAddAccount}>
-          <Plus className="w-5 h-5 mr-2" />
+          <Plus className="h-4 w-4" />
           Add Account
         </Button>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg p-4 shadow">
-          <p className="text-sm text-gray-600">Total Accounts</p>
-          <p className="text-2xl font-bold text-blue-600">{activeAccounts.length}</p>
+        <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Accounts</p>
+          <p className="text-2xl font-bold text-primary mt-1">{activeAccounts.length}</p>
         </div>
-        <div className="bg-white rounded-lg p-4 shadow">
-          <p className="text-sm text-gray-600">Net Balance</p>
-          <p className={`text-2xl font-bold ${totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+        <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Net Balance</p>
+          <p className={`text-2xl font-bold mt-1 ${totalBalance >= 0 ? 'text-success' : 'text-destructive'}`}>
             {formatCurrency(totalBalance, { hideSensitiveValues })}
           </p>
         </div>
-        <div className="bg-white rounded-lg p-4 shadow">
-          <p className="text-sm text-gray-600">Assets</p>
-          <p className="text-2xl font-bold text-emerald-600">
+        <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Assets</p>
+          <p className="text-2xl font-bold text-success mt-1">
             {formatCurrency(positiveBalance, { hideSensitiveValues })}
           </p>
         </div>
-        <div className="bg-white rounded-lg p-4 shadow">
-          <p className="text-sm text-gray-600">Liabilities</p>
-          <p className="text-2xl font-bold text-red-600">
+        <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Liabilities</p>
+          <p className="text-2xl font-bold text-destructive mt-1">
             {formatCurrency(Math.abs(negativeBalance), { hideSensitiveValues })}
           </p>
         </div>

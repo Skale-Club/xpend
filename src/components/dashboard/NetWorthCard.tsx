@@ -28,7 +28,7 @@ export function NetWorthCard({ data }: NetWorthCardProps) {
     <Card>
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
-          <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+          <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             Net worth
           </div>
           <Link
@@ -40,11 +40,11 @@ export function NetWorthCard({ data }: NetWorthCardProps) {
           </Link>
         </div>
 
-        <div className="mt-3 text-4xl font-semibold leading-none text-slate-900">
+        <div className="mt-3 text-4xl font-semibold leading-none text-foreground">
           {formatCurrency(data.netWorth, { hideSensitiveValues })}
         </div>
 
-        <div className="mt-3 inline-flex rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500">
+        <div className="mt-3 inline-flex rounded-md bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground">
           --
         </div>
 
@@ -74,7 +74,7 @@ export function NetWorthCard({ data }: NetWorthCardProps) {
               type="button"
               onClick={() => setRange(item)}
               className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                range === item ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                range === item ? 'bg-accent0 text-white' : 'bg-muted text-muted-foreground hover:bg-muted'
               }`}
             >
               {item}

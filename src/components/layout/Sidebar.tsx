@@ -20,16 +20,18 @@ import {
   Repeat,
 } from 'lucide-react';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
+import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/layout/ThemeToggle';
 
 const navItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/reports', label: 'Reports', icon: BarChart3 },
-  { href: '/accounts', label: 'Accounts', icon: Wallet },
-  { href: '/subscriptions', label: 'Subscriptions', icon: Repeat },
-  { href: '/statements', label: 'Upload Statements', icon: Upload },
-  { href: '/transactions', label: 'Transactions', icon: List },
-  { href: '/categories', label: 'Categories', icon: Tags },
-  { href: '/settings', label: 'Settings', icon: Settings },
+  { href: '/',               label: 'Dashboard',        icon: LayoutDashboard },
+  { href: '/reports',        label: 'Reports',           icon: BarChart3 },
+  { href: '/accounts',       label: 'Accounts',          icon: Wallet },
+  { href: '/subscriptions',  label: 'Subscriptions',     icon: Repeat },
+  { href: '/statements',     label: 'Statements',        icon: Upload },
+  { href: '/transactions',   label: 'Transactions',      icon: List },
+  { href: '/categories',     label: 'Categories',        icon: Tags },
+  { href: '/settings',       label: 'Settings',          icon: Settings },
 ];
 
 interface SidebarProps {
@@ -43,56 +45,79 @@ export function Sidebar({ onLogout }: SidebarProps) {
 
   return (
     <>
+      {/* Mobile toggle button */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="fixed top-4 left-4 z-50 rounded-lg border border-gray-200 bg-white p-2 shadow-sm lg:hidden"
+        className="fixed top-4 left-4 z-50 rounded-lg border border-border bg-card p-2 shadow-sm lg:hidden"
         aria-label="Toggle menu"
       >
         {isMobileMenuOpen ? (
-          <X className="h-6 w-6 text-gray-600" />
+          <X className="h-5 w-5 text-foreground" />
         ) : (
-          <Menu className="h-6 w-6 text-gray-600" />
+          <Menu className="h-5 w-5 text-foreground" />
         )}
       </button>
 
+      {/* Mobile overlay */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
+      {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-gray-200 bg-white transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-          }`}
+        className={cn(
+          'fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-300',
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+        )}
       >
-        <div className="border-b border-gray-100 p-6">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600">
-              <CircleDollarSign className="h-6 w-6 text-white" />
+        {/* Logo */}
+        <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-4">
+          <Link href="/" className="flex items-center gap-3" onClick={() => setIsMobileMenuOpen(false)}>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-sm">
+              <CircleDollarSign className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-bold text-gray-900">Xpend</h1>
-              <p className="text-xs text-gray-500">Personal finance</p>
+              <p className="text-sm font-bold tracking-tight text-sidebar-foreground">Xpend</p>
+              <p className="text-[11px] text-sidebar-muted-foreground">Personal finance</p>
             </div>
           </Link>
         </div>
 
-        <nav className="flex-1 p-4">
-          <ul className="space-y-1">
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
+          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-muted-foreground">
+            Menu
+          </p>
+          <ul className="space-y-0.5">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
-
               return (
                 <li key={item.href}>
                   <Link
                     href={item.href}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'
-                      }`}
+                    className={cn(
+                      'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
+                      isActive
+                        ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                        : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/40 hover:text-sidebar-foreground',
+                    )}
                   >
-                    <item.icon className="h-5 w-5" />
-                    <span className="font-medium">{item.label}</span>
+                    <item.icon
+                      className={cn(
+                        'h-4 w-4 flex-shrink-0 transition-colors',
+                        isActive
+                          ? 'text-sidebar-accent-foreground'
+                          : 'text-sidebar-muted-foreground group-hover:text-sidebar-foreground',
+                      )}
+                    />
+                    {item.label}
+                    {isActive && (
+                      <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+                    )}
                   </Link>
                 </li>
               );
@@ -100,33 +125,36 @@ export function Sidebar({ onLogout }: SidebarProps) {
           </ul>
         </nav>
 
-        <div className="border-t border-gray-100 p-4">
+        {/* Footer actions */}
+        <div className="border-t border-sidebar-border px-3 py-3 space-y-0.5">
+          <ThemeToggle />
+
           <button
             type="button"
             onClick={toggleSensitiveValues}
-            className="mb-2 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-gray-600 transition-colors hover:bg-gray-50"
-            aria-label={hideSensitiveValues ? 'Show sensitive values' : 'Hide sensitive values'}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
           >
-            {hideSensitiveValues ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
-            <span className="font-medium">{hideSensitiveValues ? 'Show values' : 'Hide values'}</span>
+            {hideSensitiveValues ? (
+              <Eye className="h-4 w-4" />
+            ) : (
+              <EyeOff className="h-4 w-4" />
+            )}
+            {hideSensitiveValues ? 'Show values' : 'Hide values'}
           </button>
 
-          {onLogout ? (
+          {onLogout && (
             <button
               type="button"
-              onClick={() => {
-                setIsMobileMenuOpen(false);
-                void onLogout();
-              }}
-              className="mb-3 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-gray-600 transition-colors hover:bg-gray-50"
+              onClick={() => { setIsMobileMenuOpen(false); void onLogout(); }}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
             >
-              <LogOut className="h-5 w-5" />
-              <span className="font-medium">Logout</span>
+              <LogOut className="h-4 w-4" />
+              Logout
             </button>
-          ) : null}
+          )}
 
-          <p className="text-center text-xs text-gray-400">
-            Copyright {new Date().getFullYear()} Xpend
+          <p className="px-3 pt-2 text-center text-[10px] text-sidebar-muted-foreground">
+            © {new Date().getFullYear()} Xpend
           </p>
         </div>
       </aside>

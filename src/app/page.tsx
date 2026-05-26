@@ -230,17 +230,17 @@ export default function DashboardPage() {
   if (!data) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">Failed to load dashboard data</p>
+        <p className="text-muted-foreground">Failed to load dashboard data</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between">
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 mt-1">Overview of your spending and income</p>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Overview of your spending and income</p>
         </div>
         <ExportButton
           transactions={data.transactions.map((t) => ({
@@ -374,7 +374,7 @@ export default function DashboardPage() {
               onCategorizeByKeyword={handleCategorizeByKeyword}
               onCategoryCreated={handleCategoryCreated}
             />
-            <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 rounded-b-xl">
+            <div className="px-4 py-3 border-t border-border bg-muted rounded-b-xl">
               <Pagination
                 currentPage={currentPage}
                 totalCount={data.pagination.total}
@@ -391,7 +391,7 @@ export default function DashboardPage() {
             {data.balanceTrend.length > 0 ? (
               <BalanceTrendChart data={data.balanceTrend} />
             ) : (
-              <div className="h-[300px] flex items-center justify-center text-gray-500">
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
                 No balance data available
               </div>
             )}
@@ -415,43 +415,43 @@ export default function DashboardPage() {
             <Loader size={56} />
           </div>
         ) : categoryBreakdownError ? (
-          <div className="py-8 text-center text-sm text-red-600">
+          <div className="py-8 text-center text-sm text-destructive">
             {categoryBreakdownError}
           </div>
         ) : categoryBreakdownData ? (
           <div className="space-y-5">
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total</div>
-                <div className="text-base font-bold text-slate-900">
+              <div className="rounded-lg border border-border bg-muted px-3 py-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total</div>
+                <div className="text-base font-bold text-foreground">
                   {formatCurrency(categoryBreakdownData.category.total, { hideSensitiveValues })}
                 </div>
               </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Transactions</div>
-                <div className="text-base font-bold text-slate-900">{categoryBreakdownData.totalTransactions}</div>
+              <div className="rounded-lg border border-border bg-muted px-3 py-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Transactions</div>
+                <div className="text-base font-bold text-foreground">{categoryBreakdownData.totalTransactions}</div>
               </div>
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-slate-900 mb-2">Subcategories</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-2">Subcategories</h3>
               <div className="space-y-2">
                 {categoryBreakdownData.subcategories.length === 0 ? (
-                  <div className="rounded-lg border border-slate-100 px-3 py-4 text-sm text-slate-500">
+                  <div className="rounded-lg border border-border px-3 py-4 text-sm text-muted-foreground">
                     No subcategories found.
                   </div>
                 ) : (
                   categoryBreakdownData.subcategories.map((subcategory) => (
-                    <div key={subcategory.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2">
+                    <div key={subcategory.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: subcategory.color }} />
-                        <span className="text-sm text-slate-800 truncate">{subcategory.name}</span>
+                        <span className="text-sm text-foreground truncate">{subcategory.name}</span>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
-                        <span className="text-sm font-semibold text-slate-900">
+                        <span className="text-sm font-semibold text-foreground">
                           {formatCurrency(subcategory.total, { hideSensitiveValues })}
                         </span>
-                        <span className="text-xs text-slate-500 min-w-[3rem] text-right">
+                        <span className="text-xs text-muted-foreground min-w-[3rem] text-right">
                           {subcategory.percentage.toFixed(1)}%
                         </span>
                       </div>
@@ -462,10 +462,10 @@ export default function DashboardPage() {
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-slate-900 mb-2">Related Transactions</h3>
-              <div className="max-h-[320px] overflow-y-auto rounded-lg border border-slate-200">
+              <h3 className="text-sm font-semibold text-foreground mb-2">Related Transactions</h3>
+              <div className="max-h-[320px] overflow-y-auto rounded-lg border border-border">
                 <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-slate-500 bg-slate-50 sticky top-0 border-b border-slate-200">
+                  <thead className="text-xs text-muted-foreground bg-muted sticky top-0 border-b border-border">
                     <tr>
                       <th className="px-3 py-2 font-medium">Date</th>
                       <th className="px-3 py-2 font-medium">Description</th>
@@ -473,18 +473,18 @@ export default function DashboardPage() {
                       <th className="px-3 py-2 font-medium text-right">Amount</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-border">
                     {categoryBreakdownData.transactions.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-3 py-6 text-center text-slate-500">
+                        <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
                           No transactions found for this category.
                         </td>
                       </tr>
                     ) : (
                       categoryBreakdownData.transactions.map((transaction) => (
-                        <tr key={transaction.id} className="hover:bg-slate-50">
-                          <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{formatDate(transaction.date)}</td>
-                          <td className="px-3 py-2 text-slate-900 max-w-[220px]">
+                        <tr key={transaction.id} className="hover:bg-muted">
+                          <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{formatDate(transaction.date)}</td>
+                          <td className="px-3 py-2 text-foreground max-w-[220px]">
                             <div className="flex items-center gap-2 min-w-0">
                               {getTypeIcon(transaction.type)}
                               {editingBreakdownDescriptionId === transaction.id ? (
@@ -508,13 +508,13 @@ export default function DashboardPage() {
                                       cancelBreakdownDescriptionEdit();
                                     }
                                   }}
-                                  className="w-full bg-white border border-blue-300 rounded px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  className="w-full bg-card border border-primary/50 rounded px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                                 />
                               ) : (
                                 <button
                                   type="button"
                                   onClick={() => startBreakdownDescriptionEdit(transaction.id, transaction.description)}
-                                  className="truncate text-left hover:text-blue-600 transition-colors cursor-text"
+                                  className="truncate text-left hover:text-primary transition-colors cursor-text"
                                   title="Edit description"
                                 >
                                   {transaction.description}
@@ -546,7 +546,7 @@ export default function DashboardPage() {
                               <button
                                 type="button"
                                 onClick={() => openBreakdownTransactionCategorize(transaction)}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground"
                                 title="Set category"
                               >
                                 <Tag className="w-3.5 h-3.5" />
@@ -554,7 +554,7 @@ export default function DashboardPage() {
                               </button>
                             )}
                           </td>
-                          <td className="px-3 py-2 text-right font-semibold text-slate-900 whitespace-nowrap">
+                          <td className="px-3 py-2 text-right font-semibold text-foreground whitespace-nowrap">
                             {formatCurrency(transaction.amount, { hideSensitiveValues })}
                           </td>
                         </tr>
@@ -564,14 +564,14 @@ export default function DashboardPage() {
                 </table>
               </div>
               {categoryBreakdownData.truncated && (
-                <p className="mt-2 text-xs text-slate-500">
+                <p className="mt-2 text-xs text-muted-foreground">
                   Showing the 100 most recent transactions for this category.
                 </p>
               )}
             </div>
           </div>
         ) : (
-          <div className="py-8 text-center text-sm text-slate-500">
+          <div className="py-8 text-center text-sm text-muted-foreground">
             Select a category to view details.
           </div>
         )}
@@ -584,7 +584,7 @@ export default function DashboardPage() {
         size="sm"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-600 line-clamp-2">
+          <p className="text-sm text-muted-foreground line-clamp-2">
             {breakdownTransactionToCategorize?.description}
           </p>
           <CategoryTreeSelector

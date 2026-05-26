@@ -69,7 +69,7 @@ export function SpendingPaceCard({ data }: SpendingPaceCardProps) {
     <Card>
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
-          <div className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-widest text-slate-500">
+          <div className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             Spending pace
             <Info className="h-3.5 w-3.5" />
           </div>
@@ -83,7 +83,7 @@ export function SpendingPaceCard({ data }: SpendingPaceCardProps) {
         </div>
 
         <div className="mt-3 flex items-end gap-2">
-          <div className="text-4xl font-semibold leading-none text-slate-900">
+          <div className="text-4xl font-semibold leading-none text-foreground">
             {formatCurrency(data.currentTotal, { hideSensitiveValues, maximumFractionDigits: 0 })}
           </div>
           <div className="pb-1 text-2xl font-medium leading-none text-slate-700">{statusLabel}</div>
@@ -95,7 +95,7 @@ export function SpendingPaceCard({ data }: SpendingPaceCardProps) {
               ? 'N/A'
               : `${data.changePercentage > 0 ? '+' : ''}${data.changePercentage.toFixed(1)}%`}
           </span>
-          <span className="text-slate-500">
+          <span className="text-muted-foreground">
             vs {formatCurrency(data.previousComparableTotal, { hideSensitiveValues, maximumFractionDigits: 0 })}{' '}
             {data.previousMonthLabel}
           </span>
@@ -156,7 +156,7 @@ export function SpendingPaceCard({ data }: SpendingPaceCardProps) {
           </ResponsiveContainer>
         </div>
 
-        <div className="mt-3 flex items-center gap-5 text-xs text-slate-500">
+        <div className="mt-3 flex items-center gap-5 text-xs text-muted-foreground">
           <div className="inline-flex items-center gap-1.5">
             <span className="h-2 w-6 rounded-full bg-green-500" />
             {data.currentMonthLabel}
