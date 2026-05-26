@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Search, Filter, X, ChevronDown, Calendar, ArrowRight, Tag, DollarSign } from 'lucide-react';
+import { Search, Filter, X, ChevronDown, Calendar, ArrowRight, Tag, DollarSign, Wallet } from 'lucide-react';
 import { Button, Select } from '@/components/ui';
 import { Account, Category, DashboardFilters, TransactionType } from '@/types';
 import { CategoryTreeSelector } from '@/components/categories/CategoryTreeSelector';
@@ -24,6 +24,7 @@ export function DashboardFiltersPanel({
   const { hideSensitiveValues } = useSensitiveValues();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCategoryFilterOpen, setIsCategoryFilterOpen] = useState(false);
+  const [activeRange, setActiveRange] = useState<string | null>(null);
   const [localSearch, setLocalSearch] = useState(filters.searchQuery || '');
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const categoryFilterRef = useRef<HTMLDivElement | null>(null);
@@ -47,6 +48,7 @@ export function DashboardFiltersPanel({
   const clearFilters = () => {
     onFiltersChange({});
     setLocalSearch('');
+    setActiveRange(null);
   };
 
   const removeFilter = (key: keyof DashboardFilters) => {
@@ -56,7 +58,8 @@ export function DashboardFiltersPanel({
     if (key === 'searchQuery') setLocalSearch('');
   };
 
-  const setQuickRange = (range: 'thisMonth' | 'lastMonth' | 'thisYear' | 'last30Days' | 'last7Days' | 'last90Days') => {
+  const setQuickRange = (range: 'thisMonth' | 'lastMonth' | 'thisYear' | 'last30Days' | 'last7Days' | 'last90Days', label?: string) => {
+    setActiveRange(label ?? range);
     const now = new Date();
     let from: Date | undefined;
     let to: Date | undefined = new Date();
@@ -124,216 +127,225 @@ export function DashboardFiltersPanel({
     return () => document.removeEventListener('mousedown', handlePointerDown);
   }, [isCategoryFilterOpen]);
 
+  const SHORTCUTS = [
+    { label: '7D',        range: 'last7Days'  as const },
+    { label: '30D',       range: 'last30Days' as const },
+    { label: 'This Month', range: 'thisMonth'  as const },
+    { label: 'Last Month', range: 'lastMonth'  as const },
+    { label: 'This Year', range: 'thisYear'   as const },
+  ];
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="sticky top-0 z-30 bg-gray-50/95 backdrop-blur-sm py-2">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4">
-          <div className="flex flex-col gap-3">
-            {/* Row 1: Dropdowns + Search */}
-            <div className="flex flex-col sm:flex-row items-stretch gap-3">
-              {/* Account Dropdown */}
-              <div className="w-full sm:w-44 md:w-48 shrink-0">
-                <Select
-                  value={filters.accountIds?.[0] || ''}
-                  onChange={(e) => updateFilter('accountIds', e.target.value ? [e.target.value] : undefined)}
-                  options={[
-                    { value: '', label: 'All Accounts' },
-                    ...accounts.map((a) => ({ value: a.id, label: a.name })),
-                  ]}
-                  className="h-10 text-sm"
-                />
-              </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200/60 p-3 space-y-3">
 
-              {/* Category Dropdown */}
-              <div className="relative w-full sm:w-44 md:w-48 shrink-0" ref={categoryFilterRef}>
-                <button
-                  type="button"
-                  onClick={() => setIsCategoryFilterOpen((prev) => !prev)}
-                  className="w-full h-10 px-3 border border-gray-200 rounded-lg bg-white text-sm text-left flex items-center justify-between gap-2 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <span className="flex items-center gap-2 min-w-0">
-                    {selectedCategory ? (
-                      <>
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: selectedCategory.color }} />
-                        <span className="truncate">{selectedCategory.name}</span>
-                      </>
-                    ) : (
-                      <span className="truncate">All Categories</span>
-                    )}
-                  </span>
-                  <ChevronDown className={`w-4 h-4 text-gray-500 shrink-0 transition-transform ${isCategoryFilterOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                {isCategoryFilterOpen && (
-                  <div className="absolute z-30 mt-2 w-[24rem] max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-xl shadow-lg p-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        updateFilter('categoryIds', undefined);
-                        setIsCategoryFilterOpen(false);
-                      }}
-                      className={`w-full px-3 py-2 text-sm text-left rounded-lg transition-colors ${!filters.categoryIds?.[0] ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50 text-gray-700'}`}
-                    >
-                      All Categories
-                    </button>
-                    <div className="mt-2">
-                      <CategoryTreeSelector
-                        categories={categories}
-                        value={filters.categoryIds?.[0] || ''}
-                        onChange={(categoryId) => {
-                          updateFilter('categoryIds', categoryId ? [categoryId] : undefined);
-                          setIsCategoryFilterOpen(false);
-                        }}
-                        transactionType={filters.transactionType || null}
-                        includeUncategorized={false}
-                        allowParentSelection
-                        maxHeightClassName="max-h-72"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Search */}
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={localSearch}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm h-10 hover:border-gray-300"
-                />
-              </div>
+          {/* Row 1: Account + Category + Search */}
+          <div className="flex flex-col sm:flex-row gap-2.5">
+            {/* Account */}
+            <div className="relative sm:w-48 shrink-0">
+              <Wallet className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <select
+                value={filters.accountIds?.[0] || ''}
+                onChange={(e) => updateFilter('accountIds', e.target.value ? [e.target.value] : undefined)}
+                className="w-full h-10 pl-9 pr-8 text-sm border border-gray-200 rounded-xl bg-white text-gray-700 appearance-none cursor-pointer hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
+              >
+                <option value="">All Accounts</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
             </div>
 
-            {/* Row 2: Date shortcuts + action buttons */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Range Shortcuts */}
-              <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-lg border border-gray-100 h-9">
-                {[
-                  { label: '7D', range: 'last7Days' },
-                  { label: '30D', range: 'last30Days' },
-                  { label: 'This Month', range: 'thisMonth' },
-                  { label: 'Last Month', range: 'lastMonth' },
-                  { label: 'This Year', range: 'thisYear' },
-                ].map(({ label, range }) => (
-                  <button
-                    key={range}
-                    onClick={() => setQuickRange(range as Parameters<typeof setQuickRange>[0])}
-                    className="px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-white hover:shadow-sm rounded-md transition-all h-full flex items-center whitespace-nowrap"
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              <Button
-                variant="outline"
-                onClick={() => setIsExpanded(!isExpanded)}
-                className={`text-sm h-9 shrink-0 bg-white focus:ring-blue-500 focus:ring-offset-0 ${isExpanded ? 'border-blue-300 bg-blue-50 text-blue-700' : ''}`}
+            {/* Category */}
+            <div className="relative sm:w-48 shrink-0" ref={categoryFilterRef}>
+              <Tag className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 z-10" />
+              <button
+                type="button"
+                onClick={() => setIsCategoryFilterOpen((prev) => !prev)}
+                className="w-full h-10 pl-9 pr-8 border border-gray-200 rounded-xl bg-white text-sm text-left flex items-center hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
               >
-                <Filter className="w-4 h-4 mr-1.5" />
-                More Filters
-                {activeFilterCount > 0 && (
-                  <span className="ml-2 w-5 h-5 flex items-center justify-center text-[10px] font-bold bg-blue-600 text-white rounded-full">
-                    {activeFilterCount}
-                  </span>
-                )}
-                <ChevronDown className={`w-4 h-4 ml-1.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-              </Button>
+                <span className="flex items-center gap-2 min-w-0 flex-1">
+                  {selectedCategory ? (
+                    <>
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: selectedCategory.color }} />
+                      <span className="truncate text-gray-700">{selectedCategory.name}</span>
+                    </>
+                  ) : (
+                    <span className="text-gray-700">All Categories</span>
+                  )}
+                </span>
+                <ChevronDown className={`absolute right-2.5 w-3.5 h-3.5 text-gray-400 transition-transform ${isCategoryFilterOpen ? 'rotate-180' : ''}`} />
+              </button>
 
-              {hasActiveFilters && (
-                <Button
-                  variant="ghost"
-                  onClick={clearFilters}
-                  className="text-sm h-9 shrink-0 text-gray-500 hover:text-red-600 px-3"
-                >
-                  <X className="w-4 h-4 mr-1" />
-                  Clear
-                </Button>
+              {isCategoryFilterOpen && (
+                <div className="absolute z-30 mt-2 w-[24rem] max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-xl shadow-lg p-2">
+                  <button
+                    type="button"
+                    onClick={() => { updateFilter('categoryIds', undefined); setIsCategoryFilterOpen(false); }}
+                    className={`w-full px-3 py-2 text-sm text-left rounded-lg transition-colors ${!filters.categoryIds?.[0] ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50 text-gray-700'}`}
+                  >
+                    All Categories
+                  </button>
+                  <div className="mt-2">
+                    <CategoryTreeSelector
+                      categories={categories}
+                      value={filters.categoryIds?.[0] || ''}
+                      onChange={(categoryId) => {
+                        updateFilter('categoryIds', categoryId ? [categoryId] : undefined);
+                        setIsCategoryFilterOpen(false);
+                      }}
+                      transactionType={filters.transactionType || null}
+                      includeUncategorized={false}
+                      allowParentSelection
+                      maxHeightClassName="max-h-72"
+                    />
+                  </div>
+                </div>
               )}
+            </div>
+
+            {/* Search */}
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search transactions..."
+                value={localSearch}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="w-full h-10 pl-9 pr-4 border border-gray-200 rounded-xl bg-white text-sm text-gray-700 placeholder:text-gray-400 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
+              />
             </div>
           </div>
 
+          {/* Row 2: Date shortcuts + More Filters + Clear */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Shortcuts */}
+            <div className="flex items-center gap-1 flex-wrap">
+              {SHORTCUTS.map(({ label, range }) => {
+                const isActive = activeRange === label;
+                return (
+                  <button
+                    key={range}
+                    onClick={() => setQuickRange(range, label)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
+                      isActive
+                        ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center gap-1.5 ml-auto">
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                  isExpanded || activeFilterCount > 0
+                    ? 'border-blue-300 bg-blue-50 text-blue-700'
+                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                <Filter className="w-3.5 h-3.5" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="w-4 h-4 flex items-center justify-center text-[10px] font-bold bg-blue-600 text-white rounded-full">
+                    {activeFilterCount}
+                  </span>
+                )}
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+              </button>
+
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-all"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
           {isExpanded && (
-            <div className="mt-4 pt-4 border-t border-gray-100 animate-in slide-in-from-top-2 duration-200">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Date Group */}
-              <div className="space-y-3">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                  <Calendar className="w-3 h-3" />
-                  Custom Date Range
-                </p>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">
+            <div className="pt-3 border-t border-gray-100">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {/* Date Group */}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Calendar className="w-3 h-3" />
+                    Custom Date Range
+                  </p>
+                  <div className="flex items-center gap-2">
                     <input
                       type="date"
                       value={filters.dateFrom ? new Date(filters.dateFrom).toISOString().split('T')[0] : ''}
-                      onChange={(e) => updateFilter('dateFrom', e.target.value ? new Date(e.target.value) : undefined)}
-                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-10"
+                      onChange={(e) => { updateFilter('dateFrom', e.target.value ? new Date(e.target.value) : undefined); setActiveRange(null); }}
+                      className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 h-10 transition-colors"
                     />
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-gray-300 shrink-0" />
-                  <div className="flex-1">
+                    <ArrowRight className="w-4 h-4 text-gray-300 shrink-0" />
                     <input
                       type="date"
                       value={filters.dateTo ? new Date(filters.dateTo).toISOString().split('T')[0] : ''}
-                      onChange={(e) => updateFilter('dateTo', e.target.value ? new Date(e.target.value) : undefined)}
-                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-10"
+                      onChange={(e) => { updateFilter('dateTo', e.target.value ? new Date(e.target.value) : undefined); setActiveRange(null); }}
+                      className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 h-10 transition-colors"
                     />
                   </div>
                 </div>
-              </div>
 
-              {/* Transaction Type Group */}
-              <div className="space-y-3">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                  <Tag className="w-3 h-3" />
-                  Transaction Type
-                </p>
-                <Select
-                  value={filters.transactionType || ''}
-                  onChange={(e) => updateFilter('transactionType', e.target.value as TransactionType || undefined)}
-                  options={[
-                    { value: '', label: 'All Types' },
-                    { value: 'INCOME', label: 'Income Only' },
-                    { value: 'EXPENSE', label: 'Expenses Only' },
-                    { value: 'TRANSFER', label: 'Transfers Only' },
-                  ]}
-                  className="h-10 text-sm w-full"
-                />
-              </div>
+                {/* Transaction Type Group */}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Tag className="w-3 h-3" />
+                    Transaction Type
+                  </p>
+                  <Select
+                    value={filters.transactionType || ''}
+                    onChange={(e) => updateFilter('transactionType', e.target.value as TransactionType || undefined)}
+                    options={[
+                      { value: '', label: 'All Types' },
+                      { value: 'INCOME', label: 'Income Only' },
+                      { value: 'EXPENSE', label: 'Expenses Only' },
+                      { value: 'TRANSFER', label: 'Transfers Only' },
+                    ]}
+                    className="h-10 text-sm w-full rounded-xl"
+                  />
+                </div>
 
-              {/* Amount Group */}
-              <div className="space-y-3">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                  <DollarSign className="w-3 h-3" />
-                  Amount Range
-                </p>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
-                    <input
-                      type="number"
-                      placeholder="Min"
-                      value={filters.minAmount || ''}
-                      onChange={(e) => updateFilter('minAmount', e.target.value ? parseFloat(e.target.value) : undefined)}
-                      className="w-full pl-6 pr-2 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-10"
-                    />
-                  </div>
-                  <div className="relative flex-1">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
-                    <input
-                      type="number"
-                      placeholder="Max"
-                      value={filters.maxAmount || ''}
-                      onChange={(e) => updateFilter('maxAmount', e.target.value ? parseFloat(e.target.value) : undefined)}
-                      className="w-full pl-6 pr-2 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-10"
-                    />
+                {/* Amount Group */}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <DollarSign className="w-3 h-3" />
+                    Amount Range
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                      <input
+                        type="number"
+                        placeholder="Min"
+                        value={filters.minAmount || ''}
+                        onChange={(e) => updateFilter('minAmount', e.target.value ? parseFloat(e.target.value) : undefined)}
+                        className="w-full pl-6 pr-2 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 h-10 transition-colors"
+                      />
+                    </div>
+                    <span className="text-gray-300 text-xs">—</span>
+                    <div className="relative flex-1">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                      <input
+                        type="number"
+                        placeholder="Max"
+                        value={filters.maxAmount || ''}
+                        onChange={(e) => updateFilter('maxAmount', e.target.value ? parseFloat(e.target.value) : undefined)}
+                        className="w-full pl-6 pr-2 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 h-10 transition-colors"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
               </div>
             </div>
           )}
