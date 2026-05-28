@@ -29,6 +29,47 @@ enum BillingCycle {
   YEARLY
 }
 
+enum GoalType {
+  SAVINGS
+  TRAVEL
+  DEBT_PAYOFF
+  PURCHASE
+  EMERGENCY_FUND
+}
+
+enum GoalStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum GoalPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum GoalPlanType {
+  CONSERVATIVE
+  BALANCED
+  AGGRESSIVE
+  CUSTOM
+}
+
+enum GoalMilestoneStatus {
+  PENDING
+  REACHED
+}
+
+enum GoalScenarioType {
+  SAVINGS_RATE
+  SPENDING_CUT
+  INCOME_INCREASE
+  CUSTOM
+}
+
 model Account {
   id          String   @id @default(cuid())
   name        String
@@ -43,6 +84,8 @@ model Account {
   statements  Statement[]
   transactions Transaction[]
   subscriptions Subscription[]
+  goals       Goal[]
+  goalContributions GoalContribution[]
 }
 
 model Statement {
@@ -70,6 +113,7 @@ model Category {
   transactions Transaction[]
   subscriptions Subscription[]
   rules        CategorizationRule[]
+  goals        Goal[]
   isSystem     Boolean  @default(false)
   budget       Float?
   createdAt    DateTime @default(now())
@@ -108,7 +152,8 @@ model Transaction {
   notes         String?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
-  
+  goalContributions GoalContribution[]
+
   @@index([accountId, date])
   @@index([categoryId])
   @@index([date])
@@ -208,4 +253,103 @@ model McpAuditLog {
 
   @@index([tokenId])
   @@index([createdAt])
+}
+
+model Goal {
+  id               String       @id @default(cuid())
+  name             String
+  type             GoalType
+  status           GoalStatus   @default(ACTIVE)
+  priority         GoalPriority @default(MEDIUM)
+  targetAmount     Float        @default(0)
+  currentAmount    Float        @default(0)
+  targetDate       DateTime?
+  startDate        DateTime     @default(now())
+  // Type-specific inputs (nullable, used by calculations when present)
+  interestRate     Float?       // Annual interest rate (%) for debt payoff goals
+  minimumPayment   Float?       // Minimum monthly payment for debt payoff goals
+  monthsOfCoverage Int?         // Desired months of expenses for emergency fund goals
+  metadata         Json?        // Flexible extras (e.g. travel cost breakdown)
+  description      String?
+  aiSummary        String?
+  linkedAccountId  String?
+  linkedAccount    Account?     @relation(fields: [linkedAccountId], references: [id], onDelete: SetNull)
+  linkedCategoryId String?
+  linkedCategory   Category?    @relation(fields: [linkedCategoryId], references: [id], onDelete: SetNull)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  plans         GoalPlan[]
+  milestones    GoalMilestone[]
+  contributions GoalContribution[]
+  scenarios     GoalScenario[]
+
+  @@index([status])
+  @@index([type])
+  @@index([linkedAccountId])
+}
+
+model GoalPlan {
+  id                      String       @id @default(cuid())
+  goalId                  String
+  goal                    Goal         @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  planType                GoalPlanType
+  monthlyTarget           Float?
+  weeklyTarget            Float?
+  dailyTarget             Float?
+  projectedCompletionDate DateTime?
+  assumptionsJson         String?
+  recommendationsJson     String?
+  createdBy               String       @default("system") // "system" | "ai" | "user"
+  createdAt               DateTime     @default(now())
+
+  @@index([goalId])
+}
+
+model GoalMilestone {
+  id           String              @id @default(cuid())
+  goalId       String
+  goal         Goal                @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  title        String
+  targetAmount Float
+  targetDate   DateTime?
+  status       GoalMilestoneStatus @default(PENDING)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([goalId])
+}
+
+model GoalContribution {
+  id            String       @id @default(cuid())
+  goalId        String
+  goal          Goal         @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  amount        Float
+  date          DateTime     @default(now())
+  accountId     String?
+  account       Account?     @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  transactionId String?
+  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  note          String?
+  createdAt     DateTime     @default(now())
+
+  @@index([goalId])
+  @@index([accountId])
+}
+
+model GoalScenario {
+  id                 String           @id @default(cuid())
+  goalId             String
+  goal               Goal             @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  title              String
+  scenarioType       GoalScenarioType
+  monthlySavings     Float?
+  spendingCutsJson   String?
+  incomeIncreaseJson String?
+  projectedResult    String?
+  riskLevel          String?
+  aiExplanation      String?
+  createdAt          DateTime         @default(now())
+
+  @@index([goalId])
 }
