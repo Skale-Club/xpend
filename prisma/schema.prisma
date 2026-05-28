@@ -353,3 +353,122 @@ model GoalScenario {
 
   @@index([goalId])
 }
+
+// ---- Financial Journey Memory System ----
+// Discriminator fields (entryType, source, memoryType, status, relationshipType,
+// entityType) are stored as validated Strings rather than Prisma enums: the spec
+// uses snake_case values, there are several evolving sets, and the codebase
+// already uses Strings for similar discriminators (subscription.source, chat
+// role, audit outcome). Allowed values live in src/lib/memory/types.ts.
+//
+// Cross-entity references (relatedGoalId, relatedEntityId, sourceSessionId, etc.)
+// are plain String ids without foreign keys on purpose: memory is durable and
+// must survive deletion of the entity it describes ("archived or superseded, not
+// deleted").
+
+model FinancialJourney {
+  id           String         @id @default(cuid())
+  title        String         @default("My Financial Journey")
+  status       String         @default("active") // active | archived
+  summary      String?
+  currentFocus String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  entries      JourneyEntry[]
+}
+
+model JourneyEntry {
+  id                   String           @id @default(cuid())
+  journeyId            String
+  journey              FinancialJourney @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  entryType            String
+  title                String
+  summary              String?
+  source               String           @default("manual")
+  sourceSessionId      String?
+  relatedGoalId        String?
+  relatedPlanId        String?
+  relatedTransactionId String?
+  relatedAccountId     String?
+  importance           String           @default("medium") // low | medium | high
+  confidence           Float?
+  tags                 String[]         @default([])
+  happenedAt           DateTime         @default(now())
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@index([journeyId])
+  @@index([entryType])
+  @@index([happenedAt])
+}
+
+model ConversationMemory {
+  id                    String   @id @default(cuid())
+  sessionId             String
+  source                String   @default("chat")
+  title                 String?
+  rawSummary            String?
+  structuredSummaryJson String?
+  keyDecisionsJson      String?
+  assumptionsJson       String?
+  nextStepsJson         String?
+  relatedGoalIds        String[] @default([])
+  relatedPlanIds        String[] @default([])
+  createdAt             DateTime @default(now())
+
+  @@index([sessionId])
+}
+
+model FinancialMemory {
+  id                String            @id @default(cuid())
+  memoryType        String
+  title             String
+  content           String
+  normalizedContent String?
+  status            String            @default("active") // active | archived | superseded | rejected | needs_review
+  source            String            @default("manual")
+  sourceSessionId   String?
+  relatedEntityType String?
+  relatedEntityId   String?
+  confidence        Float?
+  priority          Int               @default(0)
+  validFrom         DateTime          @default(now())
+  validUntil        DateTime?
+  supersededById    String?
+  supersededBy      FinancialMemory?  @relation("MemorySupersede", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes        FinancialMemory[] @relation("MemorySupersede")
+  links             MemoryLink[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([memoryType])
+  @@index([status])
+  @@index([relatedEntityType, relatedEntityId])
+}
+
+model MemoryLink {
+  id               String          @id @default(cuid())
+  memoryId         String
+  memory           FinancialMemory @relation(fields: [memoryId], references: [id], onDelete: Cascade)
+  entityType       String
+  entityId         String
+  relationshipType String          @default("relates_to")
+  createdAt        DateTime        @default(now())
+
+  @@index([memoryId])
+  @@index([entityType, entityId])
+}
+
+model MemoryReviewQueue {
+  id                     String    @id @default(cuid())
+  proposedMemoryType     String
+  title                  String
+  content                String
+  extractedFromSessionId String?
+  confidence             Float?
+  status                 String    @default("pending") // pending | approved | rejected | edited
+  createdAt              DateTime  @default(now())
+  reviewedAt             DateTime?
+
+  @@index([status])
+}
