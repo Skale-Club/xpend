@@ -10,6 +10,7 @@ import {
   GoalContributionList,
   GoalAiPlanner,
   GoalPlanCard,
+  GoalScenarioList,
   normalizeStoredPlan,
   riskBadgeVariant,
 } from '@/components/goals';
@@ -280,6 +281,18 @@ export default function GoalDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Scenarios */}
+      <Card>
+        <CardContent>
+          <GoalScenarioList
+            goal={goal}
+            scenarios={goal.scenarios ?? []}
+            categories={categories}
+            onChange={fetchGoal}
+          />
+        </CardContent>
+      </Card>
 
       {/* Contributions */}
       <Card>

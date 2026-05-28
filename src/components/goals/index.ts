@@ -5,4 +5,6 @@ export { GoalContributionList } from './GoalContributionList';
 export { GoalContributionForm, type ContributionFormData } from './GoalContributionForm';
 export { GoalPlanCard, normalizeStoredPlan, type PlanView } from './GoalPlanCard';
 export { GoalAiPlanner } from './GoalAiPlanner';
+export { GoalScenarioList } from './GoalScenarioList';
+export { GoalScenarioForm, type ScenarioFormData } from './GoalScenarioForm';
 export { riskBadgeVariant, progressBarColor } from './goalDisplay';
