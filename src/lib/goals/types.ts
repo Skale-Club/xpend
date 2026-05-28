@@ -52,6 +52,24 @@ export interface Goal {
   linkedCategory?: { id: string; name: string; color: string } | null;
   contributions?: GoalContribution[];
   plans?: StoredGoalPlan[];
+  scenarios?: StoredGoalScenario[];
+}
+
+export type GoalScenarioType = 'SAVINGS_RATE' | 'SPENDING_CUT' | 'INCOME_INCREASE' | 'CUSTOM';
+
+// A scenario snapshot as stored in the database.
+export interface StoredGoalScenario {
+  id: string;
+  goalId: string;
+  title: string;
+  scenarioType: GoalScenarioType;
+  monthlySavings: number | null;
+  spendingCutsJson: string | null;
+  incomeIncreaseJson: string | null;
+  projectedResult: string | null;
+  riskLevel: string | null;
+  aiExplanation: string | null;
+  createdAt: string | Date;
 }
 
 // A plan snapshot as stored in the database (JSON fields kept as raw strings).

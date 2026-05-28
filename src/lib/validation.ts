@@ -285,6 +285,59 @@ export function validateContributionData(data: Record<string, unknown>) {
   }
 }
 
+// Goal scenario validation
+const VALID_SCENARIO_TYPES = ['SAVINGS_RATE', 'SPENDING_CUT', 'INCOME_INCREASE', 'CUSTOM'];
+
+export function validateScenarioData(data: Record<string, unknown>) {
+  const errors: string[] = [];
+
+  if (!data.title || typeof data.title !== 'string' || data.title.trim().length === 0) {
+    errors.push('Scenario title is required');
+  } else if (data.title.length > 100) {
+    errors.push('Scenario title must be less than 100 characters');
+  }
+
+  if (!data.scenarioType || !VALID_SCENARIO_TYPES.includes(data.scenarioType as string)) {
+    errors.push(`Valid scenarioType is required (${VALID_SCENARIO_TYPES.join(', ')})`);
+  }
+
+  if (data.monthlySavings !== undefined && data.monthlySavings !== null && data.monthlySavings !== '') {
+    const value = Number(data.monthlySavings);
+    if (isNaN(value) || value < 0) {
+      errors.push('monthlySavings must be a non-negative number');
+    }
+  }
+
+  const validateAdjustments = (value: unknown, label: string, keyField: string) => {
+    if (value === undefined || value === null) return;
+    if (!Array.isArray(value)) {
+      errors.push(`${label} must be an array`);
+      return;
+    }
+    for (const item of value) {
+      if (typeof item !== 'object' || item === null) {
+        errors.push(`Each ${label} entry must be an object`);
+        continue;
+      }
+      const entry = item as Record<string, unknown>;
+      if (typeof entry[keyField] !== 'string' || (entry[keyField] as string).trim().length === 0) {
+        errors.push(`Each ${label} entry needs a ${keyField}`);
+      }
+      const amount = Number(entry.amount);
+      if (isNaN(amount) || amount < 0) {
+        errors.push(`Each ${label} entry needs a non-negative amount`);
+      }
+    }
+  };
+
+  validateAdjustments(data.spendingCuts, 'spendingCuts', 'category');
+  validateAdjustments(data.incomeIncrease, 'incomeIncrease', 'source');
+
+  if (errors.length > 0) {
+    throw new ValidationError(errors.join(', '));
+  }
+}
+
 // Query parameter validation
 export function validateQueryParams(params: {
   accountId?: string | null;
