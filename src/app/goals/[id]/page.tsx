@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
-import { GoalForm, GoalFormData, GoalProgress } from '@/components/goals';
+import { GoalForm, GoalFormData, GoalProgress, GoalContributionList } from '@/components/goals';
 import { riskBadgeVariant } from '@/components/goals';
 import { Button, Badge, Loader, useToast, Card, CardContent } from '@/components/ui';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -228,6 +228,18 @@ export default function GoalDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Contributions */}
+      <Card>
+        <CardContent>
+          <GoalContributionList
+            goalId={goal.id}
+            contributions={goal.contributions ?? []}
+            accounts={accounts}
+            onChange={fetchGoal}
+          />
+        </CardContent>
+      </Card>
 
       <GoalForm
         isOpen={isFormOpen}
