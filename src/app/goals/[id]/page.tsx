@@ -11,6 +11,7 @@ import {
   GoalAiPlanner,
   GoalPlanCard,
   GoalScenarioList,
+  GoalDebtPayoff,
   normalizeStoredPlan,
   riskBadgeVariant,
 } from '@/components/goals';
@@ -253,6 +254,15 @@ export default function GoalDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Debt payoff (debt goals only) */}
+      {goal.type === 'DEBT_PAYOFF' && (
+        <Card>
+          <CardContent>
+            <GoalDebtPayoff goal={goal} />
+          </CardContent>
+        </Card>
+      )}
 
       {/* AI Planner */}
       <Card>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Plus, Target } from 'lucide-react';
-import { GoalCard, GoalForm, GoalFormData } from '@/components/goals';
+import { GoalCard, GoalForm, GoalFormData, DebtStrategyPanel } from '@/components/goals';
 import { useToast, Loader, Button } from '@/components/ui';
 import { formatCurrency } from '@/lib/utils';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
@@ -163,6 +163,11 @@ export default function GoalsPage() {
             <GoalCard key={goal.id} goal={goal} />
           ))}
         </div>
+      )}
+
+      {/* Debt strategy comparison (shown with 2+ active debt goals) */}
+      {activeGoals.filter((g) => g.type === 'DEBT_PAYOFF').length >= 2 && (
+        <DebtStrategyPanel />
       )}
 
       <GoalForm

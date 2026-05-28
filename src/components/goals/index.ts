@@ -7,4 +7,6 @@ export { GoalPlanCard, normalizeStoredPlan, type PlanView } from './GoalPlanCard
 export { GoalAiPlanner } from './GoalAiPlanner';
 export { GoalScenarioList } from './GoalScenarioList';
 export { GoalScenarioForm, type ScenarioFormData } from './GoalScenarioForm';
+export { GoalDebtPayoff, formatMonths } from './GoalDebtPayoff';
+export { DebtStrategyPanel } from './DebtStrategyPanel';
 export { riskBadgeVariant, progressBarColor } from './goalDisplay';
