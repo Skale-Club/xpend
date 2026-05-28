@@ -2,10 +2,11 @@
 
 import { DefaultChatTransport, type UIMessage } from 'ai';
 import { useChat } from '@ai-sdk/react';
-import { ChevronLeft, MessageSquare, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, MessageSquare, Plus, Trash2, Brain } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChatInput } from './ChatInput';
 import { ChatMessage } from './ChatMessage';
+import { ConversationSummary, type ConversationSummaryData } from './ConversationSummary';
 
 type ChatSession = {
   id: string;
@@ -160,6 +161,32 @@ export function ChatInterface({ onClose }: ChatInterfaceProps) {
   const [error, setError] = useState<string | null>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
   const [conversationSeed, setConversationSeed] = useState(0);
+  const [isRemembering, setIsRemembering] = useState(false);
+  const [summary, setSummary] = useState<ConversationSummaryData | null>(null);
+  const [extractedCount, setExtractedCount] = useState<number | null>(null);
+
+  // Additive: summarize the active conversation and extract durable memories
+  // into the review queue. Does not alter the chat/streaming flow.
+  const rememberConversation = useCallback(async () => {
+    if (!activeSessionId || isRemembering) return;
+    setIsRemembering(true);
+    setError(null);
+    try {
+      const summarizeRes = await fetch(`/api/chat/${activeSessionId}/summarize`, { method: 'POST' });
+      const summarizeData = await summarizeRes.json();
+      if (!summarizeRes.ok) throw new Error(summarizeData.error || 'Failed to summarize conversation');
+      setSummary(summarizeData.summary);
+
+      const extractRes = await fetch(`/api/chat/${activeSessionId}/extract-memories`, { method: 'POST' });
+      const extractData = await extractRes.json();
+      setExtractedCount(extractRes.ok ? extractData.extracted ?? 0 : 0);
+    } catch (rememberError) {
+      const message = rememberError instanceof Error ? rememberError.message : 'Failed to remember conversation';
+      setError(message);
+    } finally {
+      setIsRemembering(false);
+    }
+  }, [activeSessionId, isRemembering]);
 
   const conversationKey = useMemo(
     () => `${activeSessionId || 'empty'}-${conversationSeed}`,
@@ -304,6 +331,17 @@ export function ChatInterface({ onClose }: ChatInterfaceProps) {
         </div>
 
         <div className="flex items-center gap-1">
+          {!showHistory && activeSessionId ? (
+            <button
+              onClick={rememberConversation}
+              disabled={isRemembering}
+              className="rounded p-2 hover:bg-muted disabled:opacity-50"
+              title="Summarize & remember this conversation"
+            >
+              <Brain className={`h-4 w-4 ${isRemembering ? 'animate-pulse text-primary' : ''}`} />
+            </button>
+          ) : null}
+
           {!showHistory ? (
             <button
               onClick={async () => {
@@ -386,6 +424,17 @@ export function ChatInterface({ onClose }: ChatInterfaceProps) {
           <ChatInput onSend={handleSendWithoutSession} isLoading={isLoadingSession} />
         </>
       )}
+
+      {summary ? (
+        <ConversationSummary
+          summary={summary}
+          extractedCount={extractedCount}
+          onDismiss={() => {
+            setSummary(null);
+            setExtractedCount(null);
+          }}
+        />
+      ) : null}
 
       {error ? (
         <div className="border-t border-red-100 bg-red-50 p-3 text-sm text-red-600">

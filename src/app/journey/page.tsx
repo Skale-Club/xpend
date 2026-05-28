@@ -9,6 +9,7 @@ import {
   MemoryFormData,
   NextStepsPanel,
   JourneyTimeline,
+  MemoryReviewQueue,
 } from '@/components/journey';
 import { useToast, Loader, Button, Select } from '@/components/ui';
 import {
@@ -19,6 +20,7 @@ import {
   type FinancialJourney,
   type FinancialMemory,
   type JourneyEntry,
+  type MemoryReviewItem,
 } from '@/lib/memory/types';
 
 export default function JourneyPage() {
@@ -26,6 +28,7 @@ export default function JourneyPage() {
   const [journey, setJourney] = useState<FinancialJourney | null>(null);
   const [entries, setEntries] = useState<JourneyEntry[]>([]);
   const [memories, setMemories] = useState<FinancialMemory[]>([]);
+  const [reviewItems, setReviewItems] = useState<MemoryReviewItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editing, setEditing] = useState<FinancialMemory | null>(null);
@@ -35,14 +38,16 @@ export default function JourneyPage() {
   const fetchAll = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [journeyRes, memoriesRes] = await Promise.all([
+      const [journeyRes, memoriesRes, reviewRes] = await Promise.all([
         fetch('/api/journey'),
         fetch('/api/memories'),
+        fetch('/api/memories/review-queue'),
       ]);
       const journeyData = await journeyRes.json();
       setJourney(journeyData);
       setEntries(journeyData.entries || []);
       setMemories(await memoriesRes.json());
+      setReviewItems(await reviewRes.json());
     } catch (error) {
       console.error('Failed to load journey:', error);
       toast.error('Failed to load financial journey');
@@ -175,6 +180,8 @@ export default function JourneyPage() {
         <Stat label="Open next steps" value={openNextSteps} />
         <Stat label="Needs review" value={needsReviewCount} highlight={needsReviewCount > 0} />
       </div>
+
+      <MemoryReviewQueue items={reviewItems} onChange={fetchAll} />
 
       <NextStepsPanel memories={memories} onComplete={(m) => handleStatusChange(m, 'archived')} />
 
