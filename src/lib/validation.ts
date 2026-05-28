@@ -158,9 +158,9 @@ export function validateSettings(data: {
 
   if (data.geminiApiKey !== undefined && data.geminiApiKey !== null) {
     if (typeof data.geminiApiKey !== 'string') {
-      errors.push('Gemini API key must be a string');
+      errors.push('OpenRouter API key must be a string');
     } else if (data.geminiApiKey.trim().length < 10) {
-      errors.push('Gemini API key appears to be invalid (too short)');
+      errors.push('OpenRouter API key appears to be invalid (too short)');
     }
   }
 

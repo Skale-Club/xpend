@@ -33,7 +33,7 @@ function getMessageByCode(code: ChatErrorCode): string {
     case 'bad_request:api':
       return 'The request could not be processed. Please check your input and try again.';
     case 'bad_request:settings':
-      return 'Gemini API key not configured. Please add your API key in Settings.';
+      return 'OpenRouter API key not configured. Please add your API key in Settings.';
     case 'rate_limit:chat':
       return 'You have exceeded the allowed number of chat requests. Please try again later.';
     case 'offline:chat':

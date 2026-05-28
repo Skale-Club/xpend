@@ -17,10 +17,12 @@ export default function SettingsPage() {
   const [hasExistingKey, setHasExistingKey] = useState(false);
   const [keyPreview, setKeyPreview] = useState<string | null>(null);
 
-  const [geminiChatModel, setGeminiChatModel] = useState('gemini-2.5-flash');
+  const [geminiChatModel, setGeminiChatModel] = useState('google/gemini-2.5-flash');
   const [modelOptions, setModelOptions] = useState<{ value: string; label: string }[]>([
-    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-    { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite (Preview)' },
+    { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+    { value: 'openai/gpt-4o-mini', label: 'GPT-4o mini' },
+    { value: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
+    { value: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B' },
   ]);
   const [isSavingModel, setIsSavingModel] = useState(false);
   const [modelMessage, setModelMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -40,7 +42,7 @@ export default function SettingsPage() {
         setGeminiApiKey(MASKED_KEY);
       }
 
-      setGeminiChatModel(data.geminiChatModel || 'gemini-2.5-flash');
+      setGeminiChatModel(data.geminiChatModel || 'google/gemini-2.5-flash');
       if (Array.isArray(data.availableGeminiChatModels) && data.availableGeminiChatModels.length > 0) {
         setModelOptions(data.availableGeminiChatModels);
       }
@@ -181,7 +183,7 @@ export default function SettingsPage() {
               <Key className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900">Google Gemini</h3>
+              <h3 className="font-semibold text-gray-900">OpenRouter</h3>
               <p className="text-sm text-gray-500">
                 Configure API key and default chat model.
               </p>
@@ -208,7 +210,7 @@ export default function SettingsPage() {
           <div className="space-y-3">
             <Input
               type="password"
-              placeholder="AIzaSy..."
+              placeholder="sk-or-v1-..."
               value={geminiApiKey}
               onChange={handleApiKeyChange}
               label={hasExistingKey ? 'Update API Key' : 'New API Key'}
@@ -227,7 +229,7 @@ export default function SettingsPage() {
               </Button>
 
               <a
-                href="https://makersuite.google.com/app/apikey"
+                href="https://openrouter.ai/keys"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-blue-600 hover:text-blue-700"

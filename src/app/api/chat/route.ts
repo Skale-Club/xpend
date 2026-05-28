@@ -6,16 +6,17 @@ import {
   generateText,
   stepCountIs,
   streamText,
+  type LanguageModel,
   type UIMessage,
 } from 'ai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { prisma } from '@/lib/db';
 import { chatTools } from '@/lib/chat/tools';
 import { buildSystemPrompt } from '@/lib/chat/systemPrompt';
 import {
-  DEFAULT_GEMINI_CHAT_MODEL,
-  GEMINI_CHAT_MODEL_VALUES,
-  type GeminiChatModel,
+  DEFAULT_CHAT_MODEL,
+  CHAT_MODEL_VALUES,
+  type ChatModel,
 } from '@/lib/chat/models';
 import { ChatApiError } from '@/lib/chat/errors';
 import { checkChatRateLimit } from '@/lib/chat/rateLimit';
@@ -32,7 +33,7 @@ export const maxDuration = 60;
 const FALLBACK_SYSTEM_PROMPT = `You are a helpful financial assistant for the xpend spending tracker app. You help users understand spending, find transactions, and manage finances.\n\nBe concise, format currency with $, and use tools to retrieve real data.`;
 const TITLE_PROMPT = `Generate a short chat title (2-5 words) summarizing the user's message.\n\nOutput only the title text.`;
 
-async function getGeminiChatConfig(): Promise<{ apiKey: string | null; chatModel: string }> {
+async function getChatConfig(): Promise<{ apiKey: string | null; chatModel: string }> {
   try {
     const settings = await prisma.settings.findUnique({
       where: { id: 'default' },
@@ -47,22 +48,22 @@ async function getGeminiChatConfig(): Promise<{ apiKey: string | null; chatModel
     `;
 
     const storedModel = rows[0]?.geminiChatModel;
-    const chatModel = storedModel && GEMINI_CHAT_MODEL_VALUES.has(storedModel)
-      ? (storedModel as GeminiChatModel)
-      : DEFAULT_GEMINI_CHAT_MODEL;
+    const chatModel = storedModel && CHAT_MODEL_VALUES.has(storedModel)
+      ? (storedModel as ChatModel)
+      : DEFAULT_CHAT_MODEL;
 
     return {
       apiKey: settings?.geminiApiKey || null,
       chatModel,
     };
   } catch (error) {
-    console.error('Error fetching Gemini chat config:', error);
-    return { apiKey: null, chatModel: DEFAULT_GEMINI_CHAT_MODEL };
+    console.error('Error fetching chat config:', error);
+    return { apiKey: null, chatModel: DEFAULT_CHAT_MODEL };
   }
 }
 
 async function generateTitleForSession(
-  model: ReturnType<ReturnType<typeof createGoogleGenerativeAI>>,
+  model: LanguageModel,
   sessionId: string,
   message: UIMessage
 ): Promise<void> {
@@ -144,13 +145,13 @@ export async function POST(req: Request) {
 
     const { id: sessionId, message, messages } = body;
 
-    const { apiKey, chatModel } = await getGeminiChatConfig();
+    const { apiKey, chatModel } = await getChatConfig();
     if (!apiKey) {
       return new ChatApiError('bad_request:settings').toResponse();
     }
 
-    const google = createGoogleGenerativeAI({ apiKey });
-    const model = google(chatModel);
+    const openrouter = createOpenRouter({ apiKey });
+    const model = openrouter(chatModel);
 
     const session = await ensureSession(sessionId);
 

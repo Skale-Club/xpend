@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "predev": "prisma generate",
-    "dev": "next dev",
+    "dev": "next dev -p 6112",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
@@ -19,9 +19,8 @@
     "storage:check": "node scripts/check-bucket-status.js"
   },
   "dependencies": {
-    "@ai-sdk/google": "^3.0.43",
     "@ai-sdk/react": "^3.0.118",
-    "@google/generative-ai": "^0.24.1",
+    "@openrouter/ai-sdk-provider": "^2.9.0",
     "@prisma/adapter-pg": "^7.4.2",
     "@prisma/client": "^7.4.2",
     "@supabase/ssr": "^0.8.0",

@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import {
-    DEFAULT_GEMINI_CHAT_MODEL,
-    GEMINI_CHAT_MODELS,
-    GEMINI_CHAT_MODEL_VALUES,
+    DEFAULT_CHAT_MODEL,
+    OPENROUTER_CHAT_MODELS,
+    CHAT_MODEL_VALUES,
 } from '@/lib/chat/models';
 
-async function getStoredGeminiChatModel(): Promise<string> {
+async function getStoredChatModel(): Promise<string> {
     try {
         const rows = await prisma.$queryRaw<Array<{ geminiChatModel: string }>>`
             SELECT "geminiChatModel"
@@ -16,15 +16,15 @@ async function getStoredGeminiChatModel(): Promise<string> {
         `;
 
         const model = rows[0]?.geminiChatModel;
-        return model && GEMINI_CHAT_MODEL_VALUES.has(model)
+        return model && CHAT_MODEL_VALUES.has(model)
             ? model
-            : DEFAULT_GEMINI_CHAT_MODEL;
+            : DEFAULT_CHAT_MODEL;
     } catch {
-        return DEFAULT_GEMINI_CHAT_MODEL;
+        return DEFAULT_CHAT_MODEL;
     }
 }
 
-async function setStoredGeminiChatModel(model: string): Promise<void> {
+async function setStoredChatModel(model: string): Promise<void> {
     await prisma.$executeRaw`
         UPDATE "Settings"
         SET "geminiChatModel" = ${model},
@@ -48,7 +48,7 @@ export async function GET() {
             });
         }
 
-        const geminiChatModel = await getStoredGeminiChatModel();
+        const geminiChatModel = await getStoredChatModel();
 
         // Return settings but mask the API key for security
         return NextResponse.json({
@@ -58,7 +58,7 @@ export async function GET() {
                 ? `${settings.geminiApiKey.slice(0, 8)}...${settings.geminiApiKey.slice(-4)}`
                 : null,
             geminiChatModel,
-            availableGeminiChatModels: GEMINI_CHAT_MODELS,
+            availableGeminiChatModels: OPENROUTER_CHAT_MODELS,
         });
     } catch (error) {
         console.error('Failed to fetch settings:', error);
@@ -73,19 +73,19 @@ export async function PUT(request: Request) {
 
         // Validate API key format (basic check)
         if (geminiApiKey && typeof geminiApiKey === 'string' && geminiApiKey.trim() !== '') {
-            // Test the API key by making a simple request to Gemini
-            const isValid = await validateGeminiApiKey(geminiApiKey.trim());
+            // Test the API key by making a simple request to OpenRouter
+            const isValid = await validateOpenRouterApiKey(geminiApiKey.trim());
 
             if (!isValid) {
                 return NextResponse.json({
-                    error: 'Invalid API key. Please check your Google Gemini key.'
+                    error: 'Invalid API key. Please check your OpenRouter key.'
                 }, { status: 400 });
             }
         }
 
-        if (geminiChatModel !== undefined && !GEMINI_CHAT_MODEL_VALUES.has(geminiChatModel)) {
+        if (geminiChatModel !== undefined && !CHAT_MODEL_VALUES.has(geminiChatModel)) {
             return NextResponse.json({
-                error: 'Invalid Gemini chat model selected.'
+                error: 'Invalid chat model selected.'
             }, { status: 400 });
         }
 
@@ -101,7 +101,7 @@ export async function PUT(request: Request) {
 
         const nextGeminiChatModel =
             geminiChatModel === undefined
-                ? await getStoredGeminiChatModel()
+                ? await getStoredChatModel()
                 : geminiChatModel;
 
         const updatedSettings = await prisma.settings.upsert({
@@ -115,7 +115,7 @@ export async function PUT(request: Request) {
             },
         });
 
-        await setStoredGeminiChatModel(nextGeminiChatModel);
+        await setStoredChatModel(nextGeminiChatModel);
 
         return NextResponse.json({
             success: true,
@@ -124,7 +124,7 @@ export async function PUT(request: Request) {
                 ? `${updatedSettings.geminiApiKey.slice(0, 8)}...${updatedSettings.geminiApiKey.slice(-4)}`
                 : null,
             geminiChatModel: nextGeminiChatModel,
-            availableGeminiChatModels: GEMINI_CHAT_MODELS,
+            availableGeminiChatModels: OPENROUTER_CHAT_MODELS,
         });
     } catch (error) {
         console.error('Failed to update settings:', error);
@@ -137,7 +137,7 @@ export async function PUT(request: Request) {
 }
 
 // Export the API key getter for use in other modules
-export async function getGeminiApiKey(): Promise<string | null> {
+export async function getOpenRouterApiKey(): Promise<string | null> {
     try {
         const settings = await prisma.settings.findUnique({
             where: { id: 'default' },
@@ -149,13 +149,13 @@ export async function getGeminiApiKey(): Promise<string | null> {
     }
 }
 
-// Validate API key by making a test request
-async function validateGeminiApiKey(apiKey: string): Promise<boolean> {
+// Validate API key by making a test request to OpenRouter
+async function validateOpenRouterApiKey(apiKey: string): Promise<boolean> {
     try {
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
-            { method: 'GET' }
-        );
+        const response = await fetch('https://openrouter.ai/api/v1/key', {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${apiKey}` },
+        });
         return response.ok;
     } catch {
         return false;

@@ -1,6 +1,8 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { generateText } from 'ai';
 import { prisma } from './db';
 import { batchCategorize } from './autoCategorize';
+import { DEFAULT_CHAT_MODEL } from './chat/models';
 
 export interface ParsedTransaction {
     date: Date;
@@ -10,30 +12,26 @@ export interface ParsedTransaction {
     categoryId?: string | null;
 }
 
-// Get API key from database
-async function getApiKey(): Promise<string> {
+// Get API key and configured chat model from database
+async function getOpenRouterConfig(): Promise<{ apiKey: string; model: string }> {
     const settings = await prisma.settings.findUnique({
         where: { id: 'default' },
-        select: { geminiApiKey: true },
+        select: { geminiApiKey: true, geminiChatModel: true },
     });
 
     if (!settings?.geminiApiKey) {
-        throw new Error('Gemini API key not configured. Please configure your key in Settings.');
+        throw new Error('OpenRouter API key not configured. Please configure your key in Settings.');
     }
 
-    return settings.geminiApiKey;
-}
-
-// Initialize Gemini API with key from database
-async function getGeminiClient() {
-    const apiKey = await getApiKey();
-    return new GoogleGenerativeAI(apiKey);
+    return {
+        apiKey: settings.geminiApiKey,
+        model: settings.geminiChatModel || DEFAULT_CHAT_MODEL,
+    };
 }
 
 export async function parsePDF(file: File): Promise<ParsedTransaction[]> {
-    const genAI = await getGeminiClient();
-    // Using gemini-1.5-flash for stable multimodal understanding
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const { apiKey, model: modelId } = await getOpenRouterConfig();
+    const openrouter = createOpenRouter({ apiKey });
 
     // Convert File to ArrayBuffer and then to base64
     const arrayBuffer = await file.arrayBuffer();
@@ -73,18 +71,24 @@ Return ONLY a valid JSON array with no additional text or explanation:
 If no transactions are found, return an empty array: []`;
 
     try {
-        const result = await model.generateContent([
-            {
-                inlineData: {
-                    mimeType: 'application/pdf',
-                    data: base64Data,
+        const { text } = await generateText({
+            model: openrouter(modelId, {
+                plugins: [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }],
+            }),
+            messages: [
+                {
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'file',
+                            data: base64Data,
+                            mediaType: 'application/pdf',
+                        },
+                        { type: 'text', text: prompt },
+                    ],
                 },
-            },
-            prompt,
-        ]);
-
-        const response = await result.response;
-        const text = response.text();
+            ],
+        });
 
         // Extract JSON from the response (handle markdown code blocks)
         let jsonStr = text.trim();
@@ -117,20 +121,7 @@ If no transactions are found, return an empty array: []`;
             categoryId: categorizationResults.get(index)?.categoryId || null,
         }));
     } catch (error) {
-        console.error('Error parsing PDF with Gemini:', error);
+        console.error('Error parsing PDF with OpenRouter:', error);
         throw new Error('Failed to process PDF. Please ensure the file is a valid bank statement.');
-    }
-}
-
-// Validate API key by making a test request
-export async function validateGeminiApiKey(apiKey: string): Promise<boolean> {
-    try {
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
-            { method: 'GET' }
-        );
-        return response.ok;
-    } catch {
-        return false;
     }
 }

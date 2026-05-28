@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/db';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { generateText } from 'ai';
+import { DEFAULT_CHAT_MODEL } from '@/lib/chat/models';
 
 export interface CategorizationResult {
     categoryId: string | null;
@@ -89,7 +91,7 @@ export function matchByRules(
 }
 
 /**
- * Get AI-powered category suggestion using Gemini
+ * Get AI-powered category suggestion using OpenRouter
  */
 export async function suggestByAI(
     description: string,
@@ -107,8 +109,8 @@ export async function suggestByAI(
             return null;
         }
 
-        const genAI = new GoogleGenerativeAI(settings.geminiApiKey);
-        const model = genAI.getGenerativeModel({ model: settings.geminiChatModel || 'gemini-2.5-flash' });
+        const openrouter = createOpenRouter({ apiKey: settings.geminiApiKey });
+        const model = openrouter(settings.geminiChatModel || DEFAULT_CHAT_MODEL);
 
         const categoryList = categories.map((c) => c.name).join(', ');
 
@@ -126,8 +128,8 @@ Instructions:
 
 Category:`;
 
-        const result = await model.generateContent(prompt);
-        const response = result.response.text().trim();
+        const { text } = await generateText({ model, prompt });
+        const response = text.trim();
 
         // Find matching category
         const matchedCategory = categories.find(
