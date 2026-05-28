@@ -116,8 +116,8 @@ function Conversation({
     <>
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.length === 0 && !isLoading ? (
-          <div className="py-8 text-center text-gray-500">
-            <MessageSquare className="mx-auto mb-3 h-12 w-12 text-gray-300" />
+          <div className="py-8 text-center text-muted-foreground">
+            <MessageSquare className="mx-auto mb-3 h-12 w-12 text-muted-foreground/40" />
             <p className="font-medium">Hi! I can help you understand your spending.</p>
             <p className="mt-2 text-sm">Try asking:</p>
             <ul className="mt-2 space-y-1 text-sm">
@@ -284,13 +284,13 @@ export function ChatInterface({ onClose }: ChatInterfaceProps) {
   };
 
   return (
-    <div className="flex h-full flex-col bg-white">
-      <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+    <div className="flex h-full flex-col bg-card">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           {showHistory ? (
             <button
               onClick={() => setShowHistory(false)}
-              className="rounded p-1 hover:bg-gray-100"
+              className="rounded p-1 hover:bg-muted"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
@@ -298,7 +298,7 @@ export function ChatInterface({ onClose }: ChatInterfaceProps) {
             <MessageSquare className="h-5 w-5 text-blue-500" />
           )}
 
-          <span className="font-medium text-gray-800">
+          <span className="font-medium text-foreground">
             {showHistory ? 'Chat History' : 'Financial Assistant'}
           </span>
         </div>
@@ -317,7 +317,7 @@ export function ChatInterface({ onClose }: ChatInterfaceProps) {
                   setError(message);
                 }
               }}
-              className="rounded p-2 hover:bg-gray-100"
+              className="rounded p-2 hover:bg-muted"
               title="New chat"
             >
               <Plus className="h-4 w-4" />
@@ -326,7 +326,7 @@ export function ChatInterface({ onClose }: ChatInterfaceProps) {
 
           <button
             onClick={() => setShowHistory((previous) => !previous)}
-            className={`rounded p-2 hover:bg-gray-100 ${showHistory ? 'bg-gray-100' : ''}`}
+            className={`rounded p-2 hover:bg-muted ${showHistory ? 'bg-muted' : ''}`}
             title="Chat history"
           >
             <MessageSquare className="h-4 w-4" />
@@ -337,27 +337,27 @@ export function ChatInterface({ onClose }: ChatInterfaceProps) {
       {showHistory ? (
         <div className="flex-1 overflow-y-auto">
           {sessions.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">No previous conversations</div>
+            <div className="p-4 text-center text-muted-foreground">No previous conversations</div>
           ) : (
             <div className="divide-y divide-gray-100">
               {sessions.map((session) => (
                 <button
                   key={session.id}
                   onClick={() => loadSession(session.id)}
-                  className="group flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
+                  className="group flex w-full items-center justify-between px-4 py-3 text-left hover:bg-muted"
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-gray-800">{session.title}</div>
-                    <div className="text-xs text-gray-500">
+                    <div className="truncate text-sm font-medium text-foreground">{session.title}</div>
+                    <div className="text-xs text-muted-foreground">
                       {new Date(session.updatedAt).toLocaleDateString()}
                     </div>
                   </div>
 
                   <button
                     onClick={(e) => deleteSession(session.id, e)}
-                    className="rounded p-1 opacity-0 hover:bg-gray-200 group-hover:opacity-100"
+                    className="rounded p-1 opacity-0 hover:bg-muted group-hover:opacity-100"
                   >
-                    <Trash2 className="h-4 w-4 text-gray-500" />
+                    <Trash2 className="h-4 w-4 text-muted-foreground" />
                   </button>
                 </button>
               ))}
@@ -377,8 +377,8 @@ export function ChatInterface({ onClose }: ChatInterfaceProps) {
       ) : (
         <>
           <div className="flex-1 p-4">
-            <div className="py-8 text-center text-gray-500">
-              <MessageSquare className="mx-auto mb-3 h-12 w-12 text-gray-300" />
+            <div className="py-8 text-center text-muted-foreground">
+              <MessageSquare className="mx-auto mb-3 h-12 w-12 text-muted-foreground/40" />
               <p className="font-medium">Start a new conversation</p>
               <p className="mt-2 text-sm">Send a message and I will create a new chat session.</p>
             </div>

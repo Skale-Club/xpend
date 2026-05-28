@@ -1,7 +1,6 @@
 'use client';
 
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui';
+import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Hash } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 
@@ -29,31 +28,35 @@ export function StatsCards({
       title: 'Total Income',
       value: totalIncome,
       icon: TrendingUp,
-      iconColor: 'text-green-500',
-      bgColor: 'bg-green-50',
+      iconBg: 'bg-success/10',
+      iconColor: 'text-success',
+      valueColor: 'text-success',
       change: incomeChange,
     },
     {
       title: 'Total Expenses',
       value: totalExpenses,
       icon: TrendingDown,
-      iconColor: 'text-red-500',
-      bgColor: 'bg-red-50',
+      iconBg: 'bg-destructive/10',
+      iconColor: 'text-destructive',
+      valueColor: 'text-destructive',
       change: expenseChange,
     },
     {
       title: 'Net Balance',
       value: totalBalance,
       icon: Wallet,
-      iconColor: totalBalance >= 0 ? 'text-blue-500' : 'text-red-500',
-      bgColor: totalBalance >= 0 ? 'bg-blue-50' : 'bg-red-50',
+      iconBg: totalBalance >= 0 ? 'bg-primary/10' : 'bg-destructive/10',
+      iconColor: totalBalance >= 0 ? 'text-primary' : 'text-destructive',
+      valueColor: totalBalance >= 0 ? 'text-foreground' : 'text-destructive',
     },
     {
       title: 'Transactions',
       value: transactionCount,
-      icon: ArrowUpRight,
-      iconColor: 'text-purple-500',
-      bgColor: 'bg-purple-50',
+      icon: Hash,
+      iconBg: 'bg-primary/10',
+      iconColor: 'text-primary',
+      valueColor: 'text-foreground',
       isCount: true,
     },
   ];
@@ -61,33 +64,40 @@ export function StatsCards({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {stats.map((stat) => (
-        <Card key={stat.title}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">{stat.title}</p>
-                <p className={`text-2xl font-bold mt-1 ${stat.value < 0 ? 'text-red-600' : 'text-gray-900'}`}>
-                  {stat.isCount ? stat.value : formatCurrency(stat.value, { hideSensitiveValues })}
-                </p>
-                {stat.change !== undefined && (
-                  <div className={`flex items-center gap-1 mt-1 text-sm ${
-                    stat.change >= 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {stat.change >= 0 ? (
-                      <ArrowUpRight className="w-4 h-4" />
-                    ) : (
-                      <ArrowDownRight className="w-4 h-4" />
-                    )}
-                    {Math.abs(stat.change).toFixed(1)}%
-                  </div>
-                )}
-              </div>
-              <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                <stat.icon className={`w-6 h-6 ${stat.iconColor}`} />
-              </div>
+        <div
+          key={stat.title}
+          className="bg-card rounded-xl border border-border p-5 shadow-sm"
+        >
+          <div className="flex items-start justify-between">
+            <div className="min-w-0">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {stat.title}
+              </p>
+              <p className={`text-2xl font-bold mt-2 ${stat.valueColor}`}>
+                {stat.isCount
+                  ? stat.value.toLocaleString()
+                  : formatCurrency(stat.value, { hideSensitiveValues })}
+              </p>
+              {stat.change !== undefined && (
+                <div
+                  className={`flex items-center gap-0.5 mt-1.5 text-xs font-medium ${
+                    stat.change >= 0 ? 'text-success' : 'text-destructive'
+                  }`}
+                >
+                  {stat.change >= 0 ? (
+                    <ArrowUpRight className="h-3.5 w-3.5" />
+                  ) : (
+                    <ArrowDownRight className="h-3.5 w-3.5" />
+                  )}
+                  {Math.abs(stat.change).toFixed(1)}% vs last period
+                </div>
+              )}
             </div>
-          </CardContent>
-        </Card>
+            <div className={`flex-shrink-0 rounded-lg p-2.5 ${stat.iconBg}`}>
+              <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
+            </div>
+          </div>
+        </div>
       ))}
     </div>
   );

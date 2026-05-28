@@ -4,6 +4,8 @@ export { Input } from './Input';
 export { Select } from './Select';
 export { Modal } from './Modal';
 export { Pagination } from './Pagination';
+export { Badge } from './Badge';
+export { PageHeader } from './PageHeader';
 export { ToastContainer } from './Toast';
 export { ToastProvider, useToast } from './useToast';
 export { Loader, LoaderOverlay, LoaderInline } from './Loader';

@@ -5,6 +5,7 @@ import { AuthGate } from "@/components/auth/AuthGate";
 import { ToastProvider } from "@/components/ui";
 import { ChatWidget } from "@/components/chat";
 import { SensitiveValuesProvider } from "@/components/layout/SensitiveValuesProvider";
+import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { PWARegister } from "@/components/pwa/PWARegister";
 
 const geistSans = Geist({
@@ -39,8 +40,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#2563eb",
-  colorScheme: "light",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#2563eb" },
+    { media: "(prefers-color-scheme: dark)", color: "#1e293b" },
+  ],
 };
 
 export default function RootLayout({
@@ -51,17 +54,23 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 text-gray-900`}
-        style={{ backgroundColor: "#f9fafb" }}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
         suppressHydrationWarning
       >
-        <ToastProvider>
-          <SensitiveValuesProvider>
-            <AuthGate>{children}</AuthGate>
-            <ChatWidget />
-            <PWARegister />
-          </SensitiveValuesProvider>
-        </ToastProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <ToastProvider>
+            <SensitiveValuesProvider>
+              <AuthGate>{children}</AuthGate>
+              <ChatWidget />
+              <PWARegister />
+            </SensitiveValuesProvider>
+          </ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

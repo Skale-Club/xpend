@@ -67,10 +67,10 @@ export function TopCategoriesComparisonCard({
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+            <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
               Category comparison
             </div>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-muted-foreground">
               {data.currentMonthLabel} vs {data.previousMonthLabel}
             </p>
           </div>
@@ -85,7 +85,7 @@ export function TopCategoriesComparisonCard({
                       previousMonth: monthSelection.previousMonth,
                     })
                   }
-                  className="h-9 rounded-lg border border-slate-200 px-2 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="h-9 rounded-lg border border-border px-2 text-xs text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                   aria-label="Current month"
                 >
                   {monthOptions.map((option) => (
@@ -102,7 +102,7 @@ export function TopCategoriesComparisonCard({
                       previousMonth: event.target.value,
                     })
                   }
-                  className="h-9 rounded-lg border border-slate-200 px-2 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="h-9 rounded-lg border border-border px-2 text-xs text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                   aria-label="Compare month"
                 >
                   {monthOptions.map((option) => (
@@ -125,14 +125,14 @@ export function TopCategoriesComparisonCard({
           </div>
         </div>
 
-        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] items-center gap-4 border-b border-slate-100 pb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] items-center gap-4 border-b border-border pb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           <div>Category</div>
           <div>Monthly comparison</div>
         </div>
 
         <div className="mt-1 space-y-1">
           {data.items.length === 0 ? (
-            <div className="py-6 text-sm text-slate-500">No category data for these months.</div>
+            <div className="py-6 text-sm text-muted-foreground">No category data for these months.</div>
           ) : (
             data.items.map((item) => {
               const isDecrease = item.variationPercentage !== null && item.variationPercentage < 0;
@@ -141,7 +141,7 @@ export function TopCategoriesComparisonCard({
                 ? 'bg-emerald-50 text-emerald-700'
                 : isIncrease
                   ? 'bg-rose-50 text-rose-700'
-                  : 'bg-slate-100 text-slate-600';
+                  : 'bg-muted text-muted-foreground';
               const currentBarClass = isDecrease ? 'bg-emerald-500' : 'bg-rose-500';
               const currentBarWidth =
                 maxComparisonAmount > 0
@@ -153,17 +153,17 @@ export function TopCategoriesComparisonCard({
                   : 0;
 
               return (
-                <div key={item.categoryId} className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] items-start gap-4 rounded-lg px-1 py-2 hover:bg-slate-50">
+                <div key={item.categoryId} className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] items-start gap-4 rounded-lg px-1 py-2 hover:bg-muted">
                   <div className="flex min-w-0 items-center gap-2">
                     <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
-                    <span className="truncate text-sm font-medium text-slate-800">{item.categoryName}</span>
+                    <span className="truncate text-sm font-medium text-foreground">{item.categoryName}</span>
                   </div>
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-[11px] uppercase tracking-wide text-slate-500 shrink-0">{data.currentMonthLabel}</span>
-                        <div className="text-sm font-semibold text-slate-900">
+                        <span className="text-[11px] uppercase tracking-wide text-muted-foreground shrink-0">{data.currentMonthLabel}</span>
+                        <div className="text-sm font-semibold text-foreground">
                           {formatCurrency(item.currentAmount, { hideSensitiveValues, maximumFractionDigits: 0 })}
                         </div>
                       </div>
@@ -176,20 +176,20 @@ export function TopCategoriesComparisonCard({
                         {formatVariation(item.variationPercentage)}
                       </div>
                     </div>
-                    <div className="h-2.5 rounded-full bg-slate-100">
+                    <div className="h-2.5 rounded-full bg-muted">
                       <div className={`h-2.5 rounded-full ${currentBarClass}`} style={{ width: `${currentBarWidth}%` }} />
                     </div>
 
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-[11px] uppercase tracking-wide text-slate-500 shrink-0">{data.previousMonthLabel}</span>
-                        <div className="text-sm font-medium text-slate-500">
+                        <span className="text-[11px] uppercase tracking-wide text-muted-foreground shrink-0">{data.previousMonthLabel}</span>
+                        <div className="text-sm font-medium text-muted-foreground">
                           {formatCurrency(item.previousAmount, { hideSensitiveValues, maximumFractionDigits: 0 })}
                         </div>
                       </div>
                     </div>
-                    <div className="h-2 rounded-full bg-slate-100">
-                      <div className="h-2 rounded-full bg-slate-400/80" style={{ width: `${previousBarWidth}%` }} />
+                    <div className="h-2 rounded-full bg-muted">
+                      <div className="h-2 rounded-full bg-muted-foreground/40" style={{ width: `${previousBarWidth}%` }} />
                     </div>
                   </div>
                 </div>

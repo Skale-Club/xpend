@@ -39,7 +39,7 @@ export function ChatMessage({ message, isLoading }: ChatMessageProps) {
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
       <div
         className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
-          isUser ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
+          isUser ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
         }`}
       >
         {isUser ? <User size={16} /> : <Bot size={16} />}
@@ -47,7 +47,7 @@ export function ChatMessage({ message, isLoading }: ChatMessageProps) {
 
       <div
         className={`flex-1 max-w-[80%] rounded-lg px-4 py-2 ${
-          isUser ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-800'
+          isUser ? 'bg-primary text-white' : 'bg-muted text-foreground'
         }`}
       >
         {isLoading ? (
@@ -60,14 +60,14 @@ export function ChatMessage({ message, isLoading }: ChatMessageProps) {
             {text ? <div className="whitespace-pre-wrap break-words">{text}</div> : null}
 
             {tools.length > 0 ? (
-              <div className="space-y-1 rounded-md border border-gray-300/50 bg-white/70 p-2 text-xs text-gray-700">
+              <div className="space-y-1 rounded-md border border-border/50 bg-card/70 p-2 text-xs text-muted-foreground">
                 {tools.map((toolPart, index) => {
                   const state = 'state' in toolPart ? String(toolPart.state) : 'unknown';
                   return (
                     <div key={`${message.id}-tool-${index}`} className="flex items-center gap-2">
                       <Wrench className="h-3 w-3" />
                       <span className="font-medium">{toolPart.type.replace('tool-', '')}</span>
-                      <span className="text-gray-500">({state})</span>
+                      <span className="text-muted-foreground">({state})</span>
                     </div>
                   );
                 })}

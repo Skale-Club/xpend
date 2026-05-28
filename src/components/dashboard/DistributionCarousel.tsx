@@ -134,7 +134,7 @@ export function DistributionCarousel({ items, onDataPointClick }: DistributionCa
       ...top,
       {
         name: 'Other',
-        color: '#94A3B8', // Slate-400
+        color: 'var(--muted-foreground)',
         amount: otherAmount,
       }
     ];
@@ -165,14 +165,14 @@ export function DistributionCarousel({ items, onDataPointClick }: DistributionCa
   };
 
   return (
-    <Card className="overflow-hidden border border-slate-200 bg-white">
+    <Card className="overflow-hidden border border-border bg-card">
       <CardHeader
         title={
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+            <div className="p-2 bg-accent text-primary rounded-lg">
               <PieIcon className="w-4 h-4" />
             </div>
-            <span className="font-semibold text-slate-900">Distribution Analysis</span>
+            <span className="font-semibold text-foreground">Distribution Analysis</span>
           </div>
         }
         action={
@@ -185,7 +185,7 @@ export function DistributionCarousel({ items, onDataPointClick }: DistributionCa
                 setActiveIndex(undefined);
                 setSelectedParentIndex(0);
               }}
-              className="text-sm font-medium bg-white border border-slate-200 text-slate-700 py-1.5 pl-3 pr-9 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 cursor-pointer hover:border-slate-300 transition-all appearance-none"
+              className="text-sm font-medium bg-card border border-border text-foreground py-1.5 pl-3 pr-9 rounded-lg focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary/50 cursor-pointer hover:border-muted-foreground/40 transition-all appearance-none"
               style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`,
                 backgroundRepeat: 'no-repeat',
@@ -206,7 +206,7 @@ export function DistributionCarousel({ items, onDataPointClick }: DistributionCa
                   setSelectedParentIndex(Number(e.target.value));
                   setActiveIndex(undefined);
                 }}
-                className="text-sm font-medium bg-white border border-slate-200 text-slate-700 py-1.5 pl-3 pr-9 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 cursor-pointer hover:border-slate-300 transition-all appearance-none"
+                className="text-sm font-medium bg-card border border-border text-foreground py-1.5 pl-3 pr-9 rounded-lg focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary/50 cursor-pointer hover:border-muted-foreground/40 transition-all appearance-none"
                 style={{
                   backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`,
                   backgroundRepeat: 'no-repeat',
@@ -223,10 +223,10 @@ export function DistributionCarousel({ items, onDataPointClick }: DistributionCa
             )}
 
             {/* Navigation buttons */}
-            <div className="flex items-center gap-0.5 border border-slate-200 bg-white rounded-lg p-0.5">
+            <div className="flex items-center gap-0.5 border border-border bg-card rounded-lg p-0.5">
               <button
                 onClick={() => cycleMode('prev')}
-                className="p-1.5 hover:bg-slate-50 rounded text-slate-400 hover:text-slate-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Previous"
                 disabled={regularItems.length <= 1}
               >
@@ -234,7 +234,7 @@ export function DistributionCarousel({ items, onDataPointClick }: DistributionCa
               </button>
               <button
                 onClick={() => cycleMode('next')}
-                className="p-1.5 hover:bg-slate-50 rounded text-slate-400 hover:text-slate-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Next"
                 disabled={regularItems.length <= 1}
               >
@@ -283,28 +283,28 @@ export function DistributionCarousel({ items, onDataPointClick }: DistributionCa
 
                 {/* Center text for the donut */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
-                  <div className="bg-white rounded-2xl shadow-md border border-slate-200 px-4 py-3 max-w-[140px] text-center">
+                  <div className="bg-card rounded-2xl shadow-md border border-border px-4 py-3 max-w-[140px] text-center">
                     {activeIndex !== undefined ? (
                       <>
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block mb-1 truncate">
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wide block mb-1 truncate">
                           {chartData[activeIndex].name}
                         </span>
-                        <span className="text-xl font-extrabold text-slate-900 block">
+                        <span className="text-xl font-extrabold text-foreground block">
                           {formatCurrency(chartData[activeIndex].amount, { hideSensitiveValues })}
                         </span>
-                        <span className="text-xs font-semibold text-slate-500 block mt-0.5">
+                        <span className="text-xs font-semibold text-muted-foreground block mt-0.5">
                           {((chartData[activeIndex].amount / totalAmount) * 100).toFixed(1)}%
                         </span>
                       </>
                     ) : (
                       <>
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block mb-1">
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wide block mb-1">
                           Total
                         </span>
-                        <span className="text-xl font-extrabold text-slate-900 block">
+                        <span className="text-xl font-extrabold text-foreground block">
                           {formatCurrency(totalAmount, { hideSensitiveValues })}
                         </span>
-                        <span className="text-[9px] font-medium text-slate-400 block mt-1 truncate">
+                        <span className="text-[9px] font-medium text-muted-foreground block mt-1 truncate">
                           {currentItem.title}
                         </span>
                       </>
@@ -326,8 +326,8 @@ export function DistributionCarousel({ items, onDataPointClick }: DistributionCa
                     key={index}
                     className={`flex items-center justify-between p-3 rounded-lg border transition-all group ${
                       isActive
-                        ? 'bg-slate-50 border-slate-200 shadow-sm'
-                        : 'bg-white border-slate-100 hover:bg-slate-50 hover:border-slate-200'
+                        ? 'bg-muted border-border shadow-sm'
+                        : 'bg-card border-border hover:bg-muted hover:border-border'
                     } ${isClickable ? 'cursor-pointer' : 'cursor-default'}`}
                     onMouseEnter={() => setActiveIndex(index)}
                     onMouseLeave={() => setActiveIndex(undefined)}
@@ -348,18 +348,18 @@ export function DistributionCarousel({ items, onDataPointClick }: DistributionCa
                         style={{ backgroundColor: entry.color }}
                       />
                       <span className={`text-sm font-medium truncate transition-colors ${
-                        isActive ? 'text-slate-900' : 'text-slate-700 group-hover:text-slate-900'
+                        isActive ? 'text-foreground' : 'text-foreground group-hover:text-foreground'
                       }`}>
                         {entry.name}
                       </span>
                     </div>
                     <div className="flex items-center gap-3 shrink-0 ml-3">
                       <span className={`text-sm font-bold transition-colors ${
-                        isActive ? 'text-slate-900' : 'text-slate-700'
+                        isActive ? 'text-foreground' : 'text-foreground'
                       }`}>
                         {formatCurrency(entry.amount, { hideSensitiveValues })}
                       </span>
-                      <span className="text-xs font-medium text-slate-400 min-w-[3rem] text-right">
+                      <span className="text-xs font-medium text-muted-foreground min-w-[3rem] text-right">
                         {percentage}%
                       </span>
                     </div>
@@ -369,8 +369,8 @@ export function DistributionCarousel({ items, onDataPointClick }: DistributionCa
             </div>
           </div>
         ) : (
-          <div className="h-[280px] flex flex-col items-center justify-center text-slate-400 gap-3">
-            <div className="p-4 bg-slate-50 rounded-full">
+          <div className="h-[280px] flex flex-col items-center justify-center text-muted-foreground gap-3">
+            <div className="p-4 bg-muted rounded-full">
               <PieIcon className="w-8 h-8 opacity-20" />
             </div>
             <p className="text-sm font-medium">No data available for this view</p>

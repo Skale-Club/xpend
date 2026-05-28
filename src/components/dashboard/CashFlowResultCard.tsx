@@ -37,7 +37,7 @@ export function CashFlowResultCard({ data }: CashFlowResultCardProps) {
     <Card>
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
-          <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+          <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             Partial result
           </div>
           <Link
@@ -49,7 +49,7 @@ export function CashFlowResultCard({ data }: CashFlowResultCardProps) {
           </Link>
         </div>
 
-        <div className="mt-3 text-4xl font-semibold leading-none text-slate-900">
+        <div className="mt-3 text-4xl font-semibold leading-none text-foreground">
           {formatCurrency(data.netAmount, { hideSensitiveValues })}
         </div>
 
@@ -58,31 +58,31 @@ export function CashFlowResultCard({ data }: CashFlowResultCardProps) {
             {isPositive ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
             {formatChange(data.changePercentage)}
           </span>
-          <span className="text-slate-500">
+          <span className="text-muted-foreground">
             vs {formatCurrency(data.previousNetAmount, { hideSensitiveValues, maximumFractionDigits: 0 })} {data.previousMonthLabel}
           </span>
         </div>
 
-        <div className="mt-4 h-2 w-full rounded-full bg-slate-100">
+        <div className="mt-4 h-2 w-full rounded-full bg-muted">
           <div className="h-2 rounded-full bg-blue-400" style={{ width: `${ratio}%` }} />
         </div>
 
-        <div className="mt-6 grid grid-cols-3 gap-3 border-t border-slate-100 pt-4">
+        <div className="mt-6 grid grid-cols-3 gap-3 border-t border-border pt-4">
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Income</div>
-            <div className="mt-1 text-sm font-semibold text-slate-900">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">Income</div>
+            <div className="mt-1 text-sm font-semibold text-foreground">
               {formatCurrency(data.incomeAmount, { hideSensitiveValues, maximumFractionDigits: 0 })}
             </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Spent</div>
-            <div className="mt-1 text-sm font-semibold text-slate-900">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">Spent</div>
+            <div className="mt-1 text-sm font-semibold text-foreground">
               {formatCurrency(data.expenseAmount, { hideSensitiveValues, maximumFractionDigits: 0 })}
             </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Transfer</div>
-            <div className="mt-1 text-sm font-semibold text-slate-900">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">Transfer</div>
+            <div className="mt-1 text-sm font-semibold text-foreground">
               {formatCurrency(data.transferAmount, { hideSensitiveValues, maximumFractionDigits: 0 })}
             </div>
           </div>

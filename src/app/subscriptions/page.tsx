@@ -162,7 +162,7 @@ function getDueMeta(dateString: string) {
       dateLabel: `Was due ${formatDate(dateString)}`,
       accent: 'bg-red-500',
       badge: 'bg-red-50 text-red-700 ring-red-200',
-      text: 'text-red-600',
+      text: 'text-destructive',
     };
   }
 
@@ -191,7 +191,7 @@ function getDueMeta(dateString: string) {
     dateLabel: formatDate(dateString),
     accent: 'bg-blue-500',
     badge: 'bg-blue-50 text-blue-700 ring-blue-200',
-    text: 'text-gray-500',
+    text: 'text-muted-foreground',
   };
 }
 
@@ -373,7 +373,7 @@ export default function SubscriptionsPage() {
 
   const renderSubscriptionCard = (subscription: Subscription) => {
     const dueMeta = getDueMeta(subscription.nextPayment);
-    const accent = subscription.inactive ? 'bg-gray-300' : dueMeta.accent;
+    const accent = subscription.inactive ? 'bg-muted' : dueMeta.accent;
 
     return (
       <div key={subscription.id} className="p-4 md:p-5">
@@ -383,17 +383,17 @@ export default function SubscriptionsPage() {
             <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
               <div className="flex min-w-0 items-start gap-4">
                 {subscription.logo ? (
-                  <Image src={subscription.logo} alt={subscription.name} width={56} height={56} className="h-14 w-14 rounded-xl border border-gray-200 object-cover" />
+                  <Image src={subscription.logo} alt={subscription.name} width={56} height={56} className="h-14 w-14 rounded-xl border border-border object-cover" />
                 ) : (
-                  <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gray-100 text-lg font-semibold text-gray-500">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted text-lg font-semibold text-muted-foreground">
                     {subscription.name.charAt(0).toUpperCase()}
                   </div>
                 )}
 
                 <div className="min-w-0 space-y-3">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className={`text-lg font-semibold ${subscription.inactive ? 'text-gray-500 line-through' : 'text-gray-900'}`}>{subscription.name}</h3>
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${subscription.inactive ? 'bg-gray-100 text-gray-600 ring-gray-200' : dueMeta.badge}`}>
+                    <h3 className={`text-lg font-semibold ${subscription.inactive ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{subscription.name}</h3>
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${subscription.inactive ? 'bg-muted text-muted-foreground ring-gray-200' : dueMeta.badge}`}>
                       {subscription.inactive ? 'Inactive' : dueMeta.label}
                     </span>
                     {subscription.source === 'detected' && (
@@ -410,7 +410,7 @@ export default function SubscriptionsPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-2 text-sm">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-200">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground ring-1 ring-inset ring-gray-200">
                       <Repeat2 className="h-3.5 w-3.5" />
                       {formatBillingCycle(subscription.billingCycle, subscription.frequency)}
                     </span>
@@ -421,7 +421,7 @@ export default function SubscriptionsPage() {
                       </span>
                     )}
                     {subscription.account && (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-200">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground ring-1 ring-inset ring-gray-200">
                         <Landmark className="h-3.5 w-3.5" />
                         {subscription.account.name}
                       </span>
@@ -434,19 +434,19 @@ export default function SubscriptionsPage() {
                         {subscription.occurrences} occurrences
                       </span>
                       {subscription.firstSeenDate && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-500">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
                           Since {formatDate(subscription.firstSeenDate)}
                         </span>
                       )}
                       {subscription.lastSeenDate && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-500">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
                           Last seen {formatDate(subscription.lastSeenDate)}
                         </span>
                       )}
                     </div>
                   )}
 
-                  {subscription.notes && <p className="max-w-2xl text-sm leading-6 text-gray-600">{subscription.notes}</p>}
+                  {subscription.notes && <p className="max-w-2xl text-sm leading-6 text-muted-foreground">{subscription.notes}</p>}
 
                   {subscription.url && (
                     <a
@@ -464,11 +464,11 @@ export default function SubscriptionsPage() {
 
               <div className="flex flex-col gap-4 xl:items-end">
                 <div className="space-y-1 text-left xl:text-right">
-                  <p className="text-2xl font-semibold text-gray-900">{formatCurrency(subscription.price, subscription.currency)}</p>
-                  <p className={`text-sm font-medium ${subscription.inactive ? 'text-gray-500' : dueMeta.text}`}>
+                  <p className="text-2xl font-semibold text-foreground">{formatCurrency(subscription.price, subscription.currency)}</p>
+                  <p className={`text-sm font-medium ${subscription.inactive ? 'text-muted-foreground' : dueMeta.text}`}>
                     {subscription.inactive ? `Next payment ${formatDate(subscription.nextPayment)}` : dueMeta.label}
                   </p>
-                  <p className="text-sm text-gray-500">{subscription.inactive ? formatDate(subscription.nextPayment) : dueMeta.dateLabel}</p>
+                  <p className="text-sm text-muted-foreground">{subscription.inactive ? formatDate(subscription.nextPayment) : dueMeta.dateLabel}</p>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -484,7 +484,7 @@ export default function SubscriptionsPage() {
                     <Pencil className="h-4 w-4" />
                     Edit
                   </Button>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => handleDeleteSubscription(subscription.id)} className="gap-1.5 text-red-600 hover:bg-red-50 hover:text-red-700 focus:ring-red-500">
+                  <Button type="button" variant="ghost" size="sm" onClick={() => handleDeleteSubscription(subscription.id)} className="gap-1.5 text-destructive hover:bg-red-50 hover:text-red-700 focus:ring-red-500">
                     <Trash2 className="h-4 w-4" />
                     Delete
                   </Button>
@@ -506,11 +506,11 @@ export default function SubscriptionsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Subscriptions</h1>
-          <p className="mt-1 text-gray-500">Track recurring payments, renewals, and paused services.</p>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">Subscriptions</h1>
+          <p className="mt-1 text-muted-foreground">Track recurring payments, renewals, and paused services.</p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" onClick={handleScanTransactions} disabled={isScanning}>
@@ -526,10 +526,10 @@ export default function SubscriptionsPage() {
 
       {stats && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Card><CardContent className="space-y-2"><p className="text-sm text-gray-500">Active subscriptions</p><p className="text-2xl font-bold text-gray-900">{stats.activeSubscriptions}</p><p className="text-xs text-gray-500">{stats.inactiveSubscriptions} inactive</p></CardContent></Card>
-          <Card><CardContent className="space-y-2"><p className="text-sm text-gray-500">Monthly spend</p><p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalMonthlyCost)}</p><p className="text-xs text-gray-500">Estimated recurring monthly cost</p></CardContent></Card>
-          <Card><CardContent className="space-y-2"><p className="text-sm text-gray-500">Yearly projection</p><p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalYearlyCost)}</p><p className="text-xs text-gray-500">Based on current active subscriptions</p></CardContent></Card>
-          <Card><CardContent className="space-y-2"><p className="text-sm text-gray-500">Paused savings</p><p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalSavings)}</p><p className="text-xs text-gray-500">Potential savings from inactive services</p></CardContent></Card>
+          <Card><CardContent className="space-y-2"><p className="text-sm text-muted-foreground">Active subscriptions</p><p className="text-xl font-bold tracking-tight text-foreground">{stats.activeSubscriptions}</p><p className="text-xs text-muted-foreground">{stats.inactiveSubscriptions} inactive</p></CardContent></Card>
+          <Card><CardContent className="space-y-2"><p className="text-sm text-muted-foreground">Monthly spend</p><p className="text-xl font-bold tracking-tight text-foreground">{formatCurrency(stats.totalMonthlyCost)}</p><p className="text-xs text-muted-foreground">Estimated recurring monthly cost</p></CardContent></Card>
+          <Card><CardContent className="space-y-2"><p className="text-sm text-muted-foreground">Yearly projection</p><p className="text-xl font-bold tracking-tight text-foreground">{formatCurrency(stats.totalYearlyCost)}</p><p className="text-xs text-muted-foreground">Based on current active subscriptions</p></CardContent></Card>
+          <Card><CardContent className="space-y-2"><p className="text-sm text-muted-foreground">Paused savings</p><p className="text-xl font-bold tracking-tight text-foreground">{formatCurrency(stats.totalSavings)}</p><p className="text-xs text-muted-foreground">Potential savings from inactive services</p></CardContent></Card>
         </div>
       )}
 
@@ -539,15 +539,15 @@ export default function SubscriptionsPage() {
             <p className="text-sm font-medium text-orange-700">Subscription spotlight</p>
             {stats?.mostExpensive ? (
               <>
-                <h2 className="text-2xl font-semibold text-gray-900">{stats.mostExpensive.name}</h2>
-                <p className="text-sm text-gray-600">
-                  Highest monthly commitment at <span className="font-semibold text-gray-900">{formatCurrency(stats.mostExpensive.monthlyPrice)}</span> per month.
+                <h2 className="text-2xl font-semibold text-foreground">{stats.mostExpensive.name}</h2>
+                <p className="text-sm text-muted-foreground">
+                  Highest monthly commitment at <span className="font-semibold text-foreground">{formatCurrency(stats.mostExpensive.monthlyPrice)}</span> per month.
                 </p>
               </>
             ) : (
               <>
-                <h2 className="text-2xl font-semibold text-gray-900">No subscriptions yet</h2>
-                <p className="text-sm text-gray-600">Create your first subscription to start tracking renewals.</p>
+                <h2 className="text-2xl font-semibold text-foreground">No subscriptions yet</h2>
+                <p className="text-sm text-muted-foreground">Create your first subscription to start tracking renewals.</p>
               </>
             )}
           </CardContent>
@@ -611,11 +611,11 @@ export default function SubscriptionsPage() {
         <CardContent className="p-0">
           {subscriptions.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-              <div className="rounded-full bg-gray-100 p-4">
-                <Repeat2 className="h-8 w-8 text-gray-400" />
+              <div className="rounded-full bg-muted p-4">
+                <Repeat2 className="h-8 w-8 text-muted-foreground/70" />
               </div>
-              <h3 className="mt-4 text-base font-semibold text-gray-900">No subscriptions found</h3>
-              <p className="mt-2 max-w-md text-sm text-gray-500">Add your first subscription, scan your transactions, or adjust the filters.</p>
+              <h3 className="mt-4 text-base font-semibold text-foreground">No subscriptions found</h3>
+              <p className="mt-2 max-w-md text-sm text-muted-foreground">Add your first subscription, scan your transactions, or adjust the filters.</p>
               <div className="mt-6 flex gap-3">
                 <Button variant="outline" onClick={handleScanTransactions} disabled={isScanning}>
                   <ScanSearch className="mr-2 h-4 w-4" />
@@ -637,8 +637,8 @@ export default function SubscriptionsPage() {
                   <>
                     {activeSubscriptions.length > 0 && (
                       <>
-                        <div className="border-b border-gray-100 bg-gray-50/50 px-5 py-2.5">
-                          <h3 className="text-sm font-semibold text-gray-700">Active ({activeSubscriptions.length})</h3>
+                        <div className="border-b border-border bg-muted/50 px-5 py-2.5">
+                          <h3 className="text-sm font-semibold text-muted-foreground">Active ({activeSubscriptions.length})</h3>
                         </div>
                         <div className="divide-y divide-gray-100">
                           {activeSubscriptions.map(renderSubscriptionCard)}
@@ -647,8 +647,8 @@ export default function SubscriptionsPage() {
                     )}
                     {inactiveSubscriptions.length > 0 && (
                       <>
-                        <div className="border-b border-gray-100 bg-gray-50/50 px-5 py-2.5">
-                          <h3 className="text-sm font-semibold text-gray-500">Inactive ({inactiveSubscriptions.length})</h3>
+                        <div className="border-b border-border bg-muted/50 px-5 py-2.5">
+                          <h3 className="text-sm font-semibold text-muted-foreground">Inactive ({inactiveSubscriptions.length})</h3>
                         </div>
                         <div className="divide-y divide-gray-100">
                           {inactiveSubscriptions.map(renderSubscriptionCard)}
@@ -736,25 +736,25 @@ function SubscriptionForm({
       <Input label="Website URL" value={formData.url} onChange={(event) => setFormData({ ...formData, url: event.target.value })} placeholder="example.com" />
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">Notes</label>
+        <label className="mb-1 block text-sm font-medium text-muted-foreground">Notes</label>
         <textarea
           value={formData.notes}
           onChange={(event) => setFormData({ ...formData, notes: event.target.value })}
           rows={3}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-lg border border-border px-3 py-2 text-foreground placeholder:text-muted-foreground/70 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
           placeholder="Optional context about the subscription or billing details"
         />
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-        <p className="text-sm font-medium text-gray-900">Subscription Behavior</p>
+      <div className="rounded-xl border border-border bg-muted p-4">
+        <p className="text-sm font-medium text-foreground">Subscription Behavior</p>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:gap-6">
-          <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" checked={formData.autoRenew} onChange={(event) => setFormData({ ...formData, autoRenew: event.target.checked })} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+          <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+            <input type="checkbox" checked={formData.autoRenew} onChange={(event) => setFormData({ ...formData, autoRenew: event.target.checked })} className="h-4 w-4 rounded border-border text-blue-600 focus:ring-ring" />
             Auto-renew enabled
           </label>
-          <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" checked={formData.inactive} onChange={(event) => setFormData({ ...formData, inactive: event.target.checked })} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+          <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+            <input type="checkbox" checked={formData.inactive} onChange={(event) => setFormData({ ...formData, inactive: event.target.checked })} className="h-4 w-4 rounded border-border text-blue-600 focus:ring-ring" />
             Mark as inactive
           </label>
         </div>

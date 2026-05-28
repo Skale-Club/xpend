@@ -170,10 +170,10 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="mt-1 text-gray-500">Configure your spending tracker</p>
+        <h1 className="text-xl font-bold tracking-tight text-foreground">Settings</h1>
+        <p className="mt-1 text-muted-foreground">Configure your spending tracker</p>
       </div>
 
       <Card>
@@ -183,8 +183,8 @@ export default function SettingsPage() {
               <Key className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900">OpenRouter</h3>
-              <p className="text-sm text-gray-500">
+              <h3 className="font-semibold text-foreground">OpenRouter</h3>
+              <p className="text-sm text-muted-foreground">
                 Configure API key and default chat model.
               </p>
             </div>
@@ -200,7 +200,7 @@ export default function SettingsPage() {
               </div>
               <button
                 onClick={handleClearApiKey}
-                className="text-sm text-red-600 hover:text-red-700"
+                className="text-sm text-destructive hover:text-red-700"
               >
                 Remove
               </button>
@@ -240,13 +240,13 @@ export default function SettingsPage() {
           </div>
 
           {keyMessage && (
-            <div className={`mt-3 flex items-center gap-2 text-sm ${keyMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+            <div className={`mt-3 flex items-center gap-2 text-sm ${keyMessage.type === 'success' ? 'text-green-600' : 'text-destructive'}`}>
               {keyMessage.type === 'success' ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
               {keyMessage.text}
             </div>
           )}
 
-          <div className="mt-5 border-t border-gray-100 pt-4">
+          <div className="mt-5 border-t border-border pt-4">
             <Select
               label="Default Chat Model"
               value={geminiChatModel}
@@ -268,7 +268,7 @@ export default function SettingsPage() {
             </div>
 
             {modelMessage && (
-              <div className={`mt-3 flex items-center gap-2 text-sm ${modelMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+              <div className={`mt-3 flex items-center gap-2 text-sm ${modelMessage.type === 'success' ? 'text-green-600' : 'text-destructive'}`}>
                 {modelMessage.type === 'success' ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
                 {modelMessage.text}
               </div>
@@ -279,8 +279,8 @@ export default function SettingsPage() {
 
       <Card>
         <CardContent className="py-6">
-          <h3 className="mb-2 font-semibold text-gray-900">Default Categories</h3>
-          <p className="mb-4 text-sm text-gray-500">
+          <h3 className="mb-2 font-semibold text-foreground">Default Categories</h3>
+          <p className="mb-4 text-sm text-muted-foreground">
             Populate the database with default expense and income categories.
           </p>
           <Button onClick={handleSeedCategories} isLoading={isSeeding}>
