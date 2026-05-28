@@ -3,8 +3,16 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
-import { GoalForm, GoalFormData, GoalProgress, GoalContributionList } from '@/components/goals';
-import { riskBadgeVariant } from '@/components/goals';
+import {
+  GoalForm,
+  GoalFormData,
+  GoalProgress,
+  GoalContributionList,
+  GoalAiPlanner,
+  GoalPlanCard,
+  normalizeStoredPlan,
+  riskBadgeVariant,
+} from '@/components/goals';
 import { Button, Badge, Loader, useToast, Card, CardContent } from '@/components/ui';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
@@ -80,6 +88,22 @@ export default function GoalDetailPage() {
       } catch (error) {
         console.error('Failed to update goal:', error);
         toast.error(error instanceof Error ? error.message : 'Failed to update goal');
+      }
+    },
+    [goalId, toast, fetchGoal],
+  );
+
+  const handleDeletePlan = useCallback(
+    async (planId: string) => {
+      if (!window.confirm('Remove this saved plan?')) return;
+      try {
+        const res = await fetch(`/api/goals/${goalId}/plans/${planId}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to remove plan');
+        toast.success('Plan removed');
+        fetchGoal();
+      } catch (error) {
+        console.error('Failed to remove plan:', error);
+        toast.error('Failed to remove plan');
       }
     },
     [goalId, toast, fetchGoal],
@@ -228,6 +252,34 @@ export default function GoalDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* AI Planner */}
+      <Card>
+        <CardContent>
+          <GoalAiPlanner goalId={goal.id} onSaved={fetchGoal} />
+        </CardContent>
+      </Card>
+
+      {/* Saved plans */}
+      {goal.plans && goal.plans.length > 0 && (
+        <div>
+          <p className="mb-3 text-sm font-semibold text-foreground">Saved Plans</p>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {goal.plans.map((plan) => (
+              <GoalPlanCard
+                key={plan.id}
+                plan={normalizeStoredPlan(plan)}
+                createdAt={plan.createdAt}
+                footer={
+                  <Button size="sm" variant="ghost" onClick={() => handleDeletePlan(plan.id)}>
+                    Remove
+                  </Button>
+                }
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Contributions */}
       <Card>

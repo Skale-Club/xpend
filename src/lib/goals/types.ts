@@ -51,6 +51,22 @@ export interface Goal {
   linkedAccount?: { id: string; name: string; color: string } | null;
   linkedCategory?: { id: string; name: string; color: string } | null;
   contributions?: GoalContribution[];
+  plans?: StoredGoalPlan[];
+}
+
+// A plan snapshot as stored in the database (JSON fields kept as raw strings).
+export interface StoredGoalPlan {
+  id: string;
+  goalId: string;
+  planType: GoalPlanType;
+  monthlyTarget: number | null;
+  weeklyTarget: number | null;
+  dailyTarget: number | null;
+  projectedCompletionDate: string | Date | null;
+  assumptionsJson: string | null;
+  recommendationsJson: string | null;
+  createdBy: string;
+  createdAt: string | Date;
 }
 
 export interface GoalContribution {
