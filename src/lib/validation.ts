@@ -169,6 +169,81 @@ export function validateSettings(data: {
   }
 }
 
+// Goal validation
+const VALID_GOAL_TYPES = ['SAVINGS', 'TRAVEL', 'DEBT_PAYOFF', 'PURCHASE', 'EMERGENCY_FUND'];
+const VALID_GOAL_STATUSES = ['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED', 'ARCHIVED'];
+const VALID_GOAL_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH'];
+
+export function validateGoalData(data: Record<string, unknown>) {
+  const errors: string[] = [];
+
+  if (!data.name || typeof data.name !== 'string' || data.name.trim().length === 0) {
+    errors.push('Goal name is required');
+  } else if (data.name.length > 100) {
+    errors.push('Goal name must be less than 100 characters');
+  }
+
+  if (!data.type || !VALID_GOAL_TYPES.includes(data.type as string)) {
+    errors.push(`Valid goal type is required (${VALID_GOAL_TYPES.join(', ')})`);
+  }
+
+  if (data.status !== undefined && data.status !== null && !VALID_GOAL_STATUSES.includes(data.status as string)) {
+    errors.push(`Status must be one of ${VALID_GOAL_STATUSES.join(', ')}`);
+  }
+
+  if (data.priority !== undefined && data.priority !== null && !VALID_GOAL_PRIORITIES.includes(data.priority as string)) {
+    errors.push(`Priority must be one of ${VALID_GOAL_PRIORITIES.join(', ')}`);
+  }
+
+  for (const field of ['targetAmount', 'currentAmount'] as const) {
+    if (data[field] !== undefined && data[field] !== null) {
+      const value = Number(data[field]);
+      if (isNaN(value)) {
+        errors.push(`${field} must be a number`);
+      } else if (value < 0) {
+        errors.push(`${field} cannot be negative`);
+      }
+    }
+  }
+
+  for (const field of ['interestRate', 'minimumPayment'] as const) {
+    if (data[field] !== undefined && data[field] !== null) {
+      const value = Number(data[field]);
+      if (isNaN(value) || value < 0) {
+        errors.push(`${field} must be a non-negative number`);
+      }
+    }
+  }
+
+  if (data.monthsOfCoverage !== undefined && data.monthsOfCoverage !== null) {
+    const value = Number(data.monthsOfCoverage);
+    if (isNaN(value) || value < 0 || !Number.isInteger(value)) {
+      errors.push('monthsOfCoverage must be a non-negative integer');
+    }
+  }
+
+  if (data.targetDate !== undefined && data.targetDate !== null && data.targetDate !== '') {
+    const date = new Date(data.targetDate as string);
+    if (isNaN(date.getTime())) {
+      errors.push('Invalid targetDate format');
+    }
+  }
+
+  for (const field of ['linkedAccountId', 'linkedCategoryId'] as const) {
+    if (data[field] !== undefined && data[field] !== null && typeof data[field] !== 'string') {
+      errors.push(`${field} must be a string or null`);
+    }
+  }
+
+  if (data.description !== undefined && data.description !== null && typeof data.description !== 'string') {
+    errors.push('Description must be a string or null');
+  }
+
+  if (errors.length > 0) {
+    throw new ValidationError(errors.join(', '));
+  }
+}
+
 // Query parameter validation
 export function validateQueryParams(params: {
   accountId?: string | null;
