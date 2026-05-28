@@ -18,6 +18,7 @@ import {
   Eye,
   EyeOff,
   Repeat,
+  Target,
 } from 'lucide-react';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ import { ThemeToggle } from '@/components/layout/ThemeToggle';
 const navItems = [
   { href: '/',               label: 'Dashboard',        icon: LayoutDashboard },
   { href: '/reports',        label: 'Reports',           icon: BarChart3 },
+  { href: '/goals',          label: 'Goals',             icon: Target },
   { href: '/accounts',       label: 'Accounts',          icon: Wallet },
   { href: '/subscriptions',  label: 'Subscriptions',     icon: Repeat },
   { href: '/statements',     label: 'Statements',        icon: Upload },
