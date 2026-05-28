@@ -50,6 +50,19 @@ export interface Goal {
   updatedAt: string | Date;
   linkedAccount?: { id: string; name: string; color: string } | null;
   linkedCategory?: { id: string; name: string; color: string } | null;
+  contributions?: GoalContribution[];
+}
+
+export interface GoalContribution {
+  id: string;
+  goalId: string;
+  amount: number;
+  date: string | Date;
+  accountId?: string | null;
+  transactionId?: string | null;
+  note?: string | null;
+  createdAt: string | Date;
+  account?: { id: string; name: string; color: string } | null;
 }
 
 // Result of progress / savings-requirement calculations for a goal.

@@ -244,6 +244,47 @@ export function validateGoalData(data: Record<string, unknown>) {
   }
 }
 
+// Goal contribution validation
+export function validateContributionData(data: Record<string, unknown>) {
+  const errors: string[] = [];
+
+  if (data.amount === undefined || data.amount === null || data.amount === '') {
+    errors.push('Contribution amount is required');
+  } else {
+    const amount = Number(data.amount);
+    if (isNaN(amount)) {
+      errors.push('Amount must be a number');
+    } else if (amount <= 0) {
+      errors.push('Amount must be greater than zero');
+    }
+  }
+
+  if (data.date !== undefined && data.date !== null && data.date !== '') {
+    const date = new Date(data.date as string);
+    if (isNaN(date.getTime())) {
+      errors.push('Invalid date format');
+    }
+  }
+
+  for (const field of ['accountId', 'transactionId'] as const) {
+    if (data[field] !== undefined && data[field] !== null && typeof data[field] !== 'string') {
+      errors.push(`${field} must be a string or null`);
+    }
+  }
+
+  if (data.note !== undefined && data.note !== null) {
+    if (typeof data.note !== 'string') {
+      errors.push('Note must be a string or null');
+    } else if (data.note.length > 1000) {
+      errors.push('Note must be less than 1000 characters');
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new ValidationError(errors.join(', '));
+  }
+}
+
 // Query parameter validation
 export function validateQueryParams(params: {
   accountId?: string | null;
