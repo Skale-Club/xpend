@@ -77,6 +77,42 @@ export interface GoalCalculation {
   isComplete: boolean;
 }
 
+// Real financial context assembled from existing Xpend data, passed to the AI
+// planner. All figures are derived from stored transactions/subscriptions —
+// never invented.
+export interface GoalAiContext {
+  hasData: boolean;
+  monthsAnalyzed: number;
+  avgMonthlyIncome: number;
+  avgMonthlyExpenses: number;
+  avgMonthlySurplus: number;
+  monthlySubscriptionCost: number;
+  estimatedTotalBalance: number;
+  topExpenseCategories: { name: string; monthlyAvg: number }[];
+  otherActiveGoals: { name: string; requiredMonthly: number | null }[];
+}
+
+// Deterministic numeric targets for a plan, computed by us (not the AI).
+export interface PlanTargets {
+  planType: GoalPlanType;
+  monthlyTarget: number;
+  weeklyTarget: number;
+  dailyTarget: number;
+  projectedCompletionDate: string | null;
+  assumedHorizon: boolean; // true when no target date and a horizon was assumed
+}
+
+// A full AI-generated plan: our calculated numbers + the AI's narrative.
+export interface GeneratedGoalPlan extends PlanTargets {
+  summary: string;
+  targetDateFeasibility: string;
+  riskLevel: 'low' | 'medium' | 'high';
+  assumptions: string[];
+  recommendedSpendingChanges: string[];
+  incomeIncreaseIdeas: string[];
+  nextSteps: string[];
+}
+
 export const GOAL_TYPE_LABELS: Record<GoalType, string> = {
   SAVINGS: 'Savings Goal',
   TRAVEL: 'Travel Goal',
