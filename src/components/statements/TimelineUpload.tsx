@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { Upload, Check, Clock, AlertCircle, Calendar, Trash2, AlertTriangle, Sparkles } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { Upload, Check, Clock, AlertCircle, Calendar, Trash2, Loader2, Sparkles, ChevronLeft, ChevronRight, ChevronDown, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui';
 
 interface ExistingStatement {
@@ -11,6 +11,8 @@ interface ExistingStatement {
   uploadedAt?: string | Date;
   fileName?: string;
   hasTransactions?: boolean;
+  uncategorizedCount?: number;
+  aiCategorized?: boolean;
 }
 
 interface TimelineUploadProps {
@@ -19,6 +21,9 @@ interface TimelineUploadProps {
   existingStatements: ExistingStatement[];
   onUpload: (month: number, year: number, file: File) => Promise<void>;
   onDelete?: (statementId: string) => Promise<void>;
+  onRefresh?: () => Promise<void> | void;
+  openingMonth?: number | null;
+  openingYear?: number | null;
 }
 
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error' | 'incomplete';
@@ -41,23 +46,29 @@ const MONTH_ABBREV = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
 ];
 
-export function TimelineUpload({ year, existingStatements, onUpload, onDelete }: TimelineUploadProps) {
+export function TimelineUpload({ year, existingStatements, onUpload, onDelete, onRefresh, openingMonth, openingYear }: TimelineUploadProps) {
   const [monthStatuses, setMonthStatuses] = useState<Record<number, MonthStatus>>({});
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [uploadingMonth, setUploadingMonth] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [isCategorizing, setIsCategorizing] = useState(false);
+  // Which month is currently being AI-categorized, plus its live progress.
+  const [categorizingMonth, setCategorizingMonth] = useState<number | null>(null);
+  const [categorizeProgress, setCategorizeProgress] = useState<{ processed: number; total: number; categorizedCount: number } | null>(null);
 
   // Calculate current month and year
   const now = new Date();
   const currentMonth = now.getMonth() + 1; // 1-12
   const currentYear = now.getFullYear();
 
+  // First visible month for the displayed year: hide months before the account
+  // opening in the opening year; all other years start at January.
+  const firstMonth = openingYear != null && year === openingYear ? (openingMonth ?? 1) : 1;
+
   useEffect(() => {
     setMonthStatuses((prevStatuses) => {
       const updated: Record<number, MonthStatus> = {};
-      for (let month = 1; month <= 12; month++) {
+      for (let month = firstMonth; month <= 12; month++) {
         const statement = existingStatements.find(
           (s) => s.month === month && s.year === year
         );
@@ -96,7 +107,30 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
       }
       return updated;
     });
-  }, [existingStatements, year, currentMonth, currentYear]);
+  }, [existingStatements, year, currentMonth, currentYear, firstMonth]);
+
+  const goToMonth = useCallback((delta: number) => {
+    setSelectedMonth((m) => {
+      if (m === null) return m;
+      const next = m + delta;
+      return next >= firstMonth && next <= 12 ? next : m;
+    });
+  }, [firstMonth]);
+
+  useEffect(() => {
+    if (selectedMonth === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedMonth(null);
+      else if (e.key === 'ArrowLeft') goToMonth(-1);
+      else if (e.key === 'ArrowRight') goToMonth(1);
+    };
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = 'unset';
+    };
+  }, [selectedMonth, goToMonth]);
 
   const handleFileSelect = useCallback(
     async (month: number, file: File) => {
@@ -166,32 +200,65 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
     }
   };
 
-  const handleAutoCategorize = async () => {
-    const statement = monthStatuses[selectedMonth!]?.statement;
+  // Stream AI categorization for a single month and drive a live progress bar.
+  // Reads NDJSON events (start / progress / done / error) from the endpoint.
+  const runCategorize = useCallback(async (month: number) => {
+    if (categorizingMonth !== null) return; // one at a time
+    const statement = monthStatuses[month]?.statement;
     if (!statement?.id) return;
 
-    if (!confirm('Auto-categorize all uncategorized transactions in this statement using AI?')) return;
+    setCategorizingMonth(month);
+    setCategorizeProgress({ processed: 0, total: statement.uncategorizedCount ?? 0, categorizedCount: 0 });
 
-    setIsCategorizing(true);
     try {
       const res = await fetch(`/api/statements/${statement.id}/categorize`, {
         method: 'POST',
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to categorize');
+      if (!res.ok || !res.body) {
+        throw new Error('Failed to categorize');
       }
 
-      alert(data.message || `Categorized ${data.categorizedCount} transactions`);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+          const line = buffer.slice(0, newlineIndex).trim();
+          buffer = buffer.slice(newlineIndex + 1);
+          if (!line) continue;
+
+          const event = JSON.parse(line) as
+            | { type: 'start'; total: number }
+            | { type: 'progress'; processed: number; total: number; categorizedCount: number }
+            | { type: 'done'; categorizedCount: number; total: number }
+            | { type: 'error'; message: string };
+
+          if (event.type === 'start') {
+            setCategorizeProgress({ processed: 0, total: event.total, categorizedCount: 0 });
+          } else if (event.type === 'progress') {
+            setCategorizeProgress({ processed: event.processed, total: event.total, categorizedCount: event.categorizedCount });
+          } else if (event.type === 'error') {
+            throw new Error(event.message);
+          }
+        }
+      }
+
+      // Refresh so the new uncategorized count / aiCategorized flag is reflected.
+      await onRefresh?.();
     } catch (error) {
       console.error('Failed to auto-categorize:', error);
-      alert('Failed to auto-categorize transactions');
     } finally {
-      setIsCategorizing(false);
+      setCategorizingMonth(null);
+      setCategorizeProgress(null);
     }
-  };
+  }, [categorizingMonth, monthStatuses, onRefresh]);
 
   const getStatusStyles = (monthData: MonthStatus) => {
     const { status, isCurrentMonth } = monthData;
@@ -201,20 +268,20 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
 
     if (isCurrentMonth) {
       // Current month - always highlighted with blue ring
-      baseStyles += 'ring-2 ring-blue-400 ring-offset-2 ';
+      baseStyles += 'ring-2 ring-blue-500 dark:ring-blue-400 ring-offset-2 ring-offset-background ';
     }
 
     switch (status) {
       case 'success':
         // Green - uploaded and complete
-        return baseStyles + 'bg-green-100 border-green-400 hover:bg-green-200';
+        return baseStyles + 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40';
       case 'uploading':
-        return baseStyles + 'bg-blue-100 border-blue-400';
+        return baseStyles + 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800';
       case 'error':
-        return baseStyles + 'bg-red-100 border-red-400';
+        return baseStyles + 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800';
       case 'incomplete':
         // Red - missing information
-        return baseStyles + 'bg-red-50 border-red-300 hover:bg-red-100';
+        return baseStyles + 'bg-rose-50 dark:bg-rose-950/25 border-rose-200 dark:border-rose-900 hover:bg-rose-100 dark:hover:bg-rose-900/40';
       default:
         // Idle - future month or not yet uploaded
         return baseStyles + 'bg-muted border-border hover:bg-muted hover:border-border';
@@ -224,13 +291,13 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
   const getStatusIcon = (status: UploadStatus) => {
     switch (status) {
       case 'success':
-        return <Check className="w-6 h-6 text-green-600" />;
+        return <Check className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />;
       case 'uploading':
-        return <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />;
+        return <div className="w-6 h-6 border-2 border-blue-500 dark:border-blue-400 border-t-transparent rounded-full animate-spin" />;
       case 'error':
-        return <AlertCircle className="w-6 h-6 text-red-600" />;
+        return <AlertCircle className="w-6 h-6 text-red-500 dark:text-red-400" />;
       case 'incomplete':
-        return <AlertCircle className="w-6 h-6 text-red-400" />;
+        return <AlertCircle className="w-6 h-6 text-rose-500 dark:text-rose-400" />;
       default:
         return <Clock className="w-6 h-6 text-muted-foreground/40" />;
     }
@@ -254,8 +321,8 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
   return (
     <div className="space-y-6">
       {/* Current month indicator */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground bg-blue-50 px-4 py-2 rounded-lg border border-blue-200">
-        <Calendar className="w-4 h-4 text-blue-500" />
+      <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200 bg-blue-50 dark:bg-muted px-4 py-2 rounded-lg border border-blue-100 dark:border-border">
+        <Calendar className="w-4 h-4 text-blue-500 dark:text-blue-400" />
         <span>
           <strong>Current month:</strong> {MONTH_NAMES[currentMonth - 1]} {currentYear}
         </span>
@@ -264,11 +331,11 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
       {/* Legend */}
       <div className="flex flex-wrap gap-4 text-sm">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-green-100 border-2 border-green-400" />
+          <div className="w-4 h-4 rounded bg-emerald-50 dark:bg-emerald-950/30 border-2 border-emerald-200 dark:border-emerald-800" />
           <span className="text-muted-foreground">Uploaded and complete</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-red-50 border-2 border-red-300" />
+          <div className="w-4 h-4 rounded bg-rose-50 dark:bg-rose-950/25 border-2 border-rose-200 dark:border-rose-900" />
           <span className="text-muted-foreground">Missing info</span>
         </div>
         <div className="flex items-center gap-2">
@@ -276,7 +343,7 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
           <span className="text-muted-foreground">Pending</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-blue-50 border-2 border-blue-200 ring-2 ring-blue-400 ring-offset-1" />
+          <div className="w-4 h-4 rounded bg-blue-50 dark:bg-muted border-2 border-blue-200 dark:border-border ring-2 ring-blue-500 dark:ring-blue-400 ring-offset-1 ring-offset-background" />
           <span className="text-muted-foreground">Current month</span>
         </div>
       </div>
@@ -285,7 +352,7 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
       <Card>
         <CardContent className="p-6">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => {
+            {Array.from({ length: 12 - firstMonth + 1 }, (_, i) => i + firstMonth).map((month) => {
               const monthData = monthStatuses[month];
               if (!monthData) return null;
 
@@ -313,13 +380,83 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
                   </span>
 
                   {/* Status label */}
-                  <span className={`text-xs mt-1 ${monthData.status === 'success' ? 'text-green-600' :
-                    monthData.status === 'incomplete' ? 'text-red-500' :
-                      monthData.status === 'error' ? 'text-red-600' :
-                        'text-muted-foreground/70'
+                  <span className={`text-xs mt-1 ${monthData.status === 'success' ? 'text-emerald-700 dark:text-emerald-400' :
+                    monthData.status === 'incomplete' ? 'text-rose-600 dark:text-rose-400' :
+                      monthData.status === 'error' ? 'text-red-600 dark:text-red-400' :
+                        'text-muted-foreground'
                     }`}>
                     {getStatusLabel(monthData.status, monthData.isCurrentMonth)}
                   </span>
+
+                  {/* AI categorization status — shown once the month has transactions */}
+                  {monthData.statement?.hasTransactions && (() => {
+                    const stmt = monthData.statement;
+                    const uncategorized = stmt.uncategorizedCount ?? 0;
+
+                    // Live progress while this month is being categorized.
+                    if (categorizingMonth === month) {
+                      const total = categorizeProgress?.total ?? uncategorized;
+                      const processed = categorizeProgress?.processed ?? 0;
+                      const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
+                      return (
+                        <div className="mt-1.5 w-full px-1" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1 text-[10px] font-medium text-violet-700 dark:text-violet-300">
+                            <Sparkles className="w-2.5 h-2.5 animate-pulse" />
+                            {processed}/{total}
+                          </div>
+                          <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-violet-100 dark:bg-violet-950/50">
+                            <div
+                              className="h-full rounded-full bg-violet-500 transition-all duration-300 ease-out"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Already categorized with AI.
+                    if (stmt.aiCategorized) {
+                      return (
+                        <span
+                          className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-violet-100 dark:bg-violet-950/50 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300"
+                          title="Transactions categorized with AI"
+                        >
+                          <Sparkles className="w-2.5 h-2.5" />
+                          AI
+                          <Check className="w-2.5 h-2.5" />
+                        </span>
+                      );
+                    }
+
+                    // Not categorized yet, but there's something to do → clickable button.
+                    if (uncategorized > 0) {
+                      return (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            runCategorize(month);
+                          }}
+                          disabled={categorizingMonth !== null}
+                          title={`Categorize ${uncategorized} transaction${uncategorized === 1 ? '' : 's'} with AI`}
+                          className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/40 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300 transition-colors hover:bg-violet-100 dark:hover:bg-violet-900/50 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <Sparkles className="w-2.5 h-2.5" />
+                          Categorize
+                        </button>
+                      );
+                    }
+
+                    // Nothing left to categorize, but AI was never run.
+                    return (
+                      <span
+                        className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                        title="No uncategorized transactions"
+                      >
+                        <Sparkles className="w-2.5 h-2.5" />
+                        No AI
+                      </span>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -327,40 +464,69 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
         </CardContent>
       </Card>
 
-      {/* Upload panel for selected month */}
+      {/* Upload popup for selected month */}
       {selectedMonth && monthStatuses[selectedMonth] && (
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setSelectedMonth(null)}
+        >
+          <div
+            className="flex w-full max-w-xl max-h-[90vh] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header with prev / title / next / close */}
+            <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+              <button
+                onClick={() => goToMonth(-1)}
+                disabled={selectedMonth === firstMonth}
+                aria-label="Previous month"
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+
+              <div className="flex-1 text-center">
                 <h3 className="text-lg font-semibold text-foreground">
                   {MONTH_NAMES[selectedMonth - 1]} {year}
                 </h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {monthStatuses[selectedMonth].statement?.uploadedAt
                     ? `Uploaded on ${new Date(monthStatuses[selectedMonth].statement!.uploadedAt!).toLocaleDateString()}`
                     : 'No file uploaded'}
                 </p>
               </div>
+
+              <button
+                onClick={() => goToMonth(1)}
+                disabled={selectedMonth === 12}
+                aria-label="Next month"
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+
               <button
                 onClick={() => setSelectedMonth(null)}
-                className="text-muted-foreground/70 hover:text-muted-foreground"
+                aria-label="Close"
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
-                ✕
+                <X className="h-5 w-5" />
               </button>
             </div>
 
+            {/* Body */}
+            <div className="overflow-y-auto p-5">
             {monthStatuses[selectedMonth].statement?.fileName && (
               <div className="mb-4 space-y-3">
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
-                  <p className="text-sm text-green-700">
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg flex items-center justify-between">
+                  <p className="text-sm text-emerald-700 dark:text-emerald-300">
                     <strong>File:</strong> {monthStatuses[selectedMonth].statement?.fileName}
                   </p>
                   {onDelete && (
                     <button
                       onClick={handleDelete}
                       disabled={isDeleting}
-                      className="flex items-center gap-1 px-3 py-1 text-sm text-red-600 hover:text-red-700 hover:bg-red-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center gap-1 px-3 py-1 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-100 dark:hover:bg-red-950/50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Trash2 className="w-4 h-4" />
                       {isDeleting ? 'Removing...' : 'Remove'}
@@ -368,20 +534,82 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
                   )}
                 </div>
 
-                {/* Auto-categorize button */}
-                <button
-                  onClick={handleAutoCategorize}
-                  disabled={isCategorizing}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg hover:from-purple-600 hover:to-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span className="font-medium">
-                    {isCategorizing ? 'Categorizing with AI...' : 'Auto-categorize with AI'}
-                  </span>
-                </button>
-                <p className="text-xs text-muted-foreground text-center">
-                  Automatically categorize uncategorized transactions using AI
-                </p>
+                {/* Large AI-categorized marker */}
+                {monthStatuses[selectedMonth].statement?.aiCategorized && (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800">
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-violet-500">
+                      <Sparkles className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-violet-800 dark:text-violet-300">Categorized with AI</p>
+                      <p className="text-xs text-violet-600 dark:text-violet-400/80">
+                        Transactions in this statement were categorized using AI.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Auto-categorize: only offered while there are still
+                    uncategorized transactions to act on. It's a one-time-per-upload
+                    action, so once everything is categorized we show a done state
+                    instead of the button. Hidden entirely until the upload has
+                    produced transactions. */}
+                {(() => {
+                  const stmt = monthStatuses[selectedMonth].statement;
+                  const uncategorized = stmt?.uncategorizedCount ?? 0;
+                  if (!stmt?.hasTransactions) return null;
+
+                  const isRunning = categorizingMonth === selectedMonth;
+
+                  // Live progress while categorizing this month.
+                  if (isRunning) {
+                    const total = categorizeProgress?.total ?? uncategorized;
+                    const processed = categorizeProgress?.processed ?? 0;
+                    const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
+                    return (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm text-violet-700 dark:text-violet-300">
+                          <span className="flex items-center gap-2 font-medium">
+                            <Sparkles className="w-4 h-4 animate-pulse" />
+                            Categorizing with AI…
+                          </span>
+                          <span className="tabular-nums">{processed}/{total}</span>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-violet-100 dark:bg-violet-950/50">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-300 ease-out"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (uncategorized > 0) {
+                    return (
+                      <>
+                        <button
+                          onClick={() => runCategorize(selectedMonth)}
+                          disabled={categorizingMonth !== null}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg hover:from-purple-600 hover:to-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          <span className="font-medium">Auto-categorize with AI</span>
+                        </button>
+                        <p className="text-xs text-muted-foreground text-center">
+                          {uncategorized} uncategorized transaction{uncategorized === 1 ? '' : 's'} — categorize with AI
+                        </p>
+                      </>
+                    );
+                  }
+
+                  return (
+                    <div className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-sm text-emerald-700 dark:text-emerald-300">
+                      <Check className="w-4 h-4" />
+                      <span className="font-medium">All transactions categorized</span>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -399,7 +627,7 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
                     e.target.value = '';
                   }}
                 />
-                <div className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-border rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                <div className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-border rounded-lg hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors">
                   <Upload className="w-5 h-5 text-muted-foreground" />
                   <span className="text-muted-foreground font-medium">
                     {monthStatuses[selectedMonth].status === 'success'
@@ -412,13 +640,13 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
 
             {uploadingMonth === selectedMonth && (
               <div className="space-y-4">
-                {/* Warning not to refresh */}
-                <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                  <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                {/* Keep-open note */}
+                <div className="flex items-start gap-3 p-4 bg-muted/50 border border-border rounded-lg">
+                  <Loader2 className="w-5 h-5 text-primary flex-shrink-0 mt-0.5 animate-spin" />
                   <div>
-                    <p className="text-sm font-medium text-amber-800">Please do not refresh or close this page</p>
-                    <p className="text-xs text-amber-600 mt-1">
-                      PDF processing with AI can take up to 2 minutes. The page will automatically update when complete.
+                    <p className="text-sm font-medium text-foreground">Keep this page open</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      We&apos;re reading your statement. This usually takes just a few seconds.
                     </p>
                   </div>
                 </div>
@@ -433,7 +661,7 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
                         <Check className="w-4 h-4 text-white" />
                       )}
                     </div>
-                    <span className={`text-sm ${uploadProgress < 30 ? 'font-medium text-blue-700' : 'text-green-700'}`}>
+                    <span className={`text-sm ${uploadProgress < 30 ? 'font-medium text-blue-700 dark:text-blue-400' : 'text-green-700 dark:text-green-400'}`}>
                       {uploadProgress < 30 ? 'Uploading file...' : 'File uploaded'}
                     </span>
                   </div>
@@ -448,8 +676,8 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
                         <Check className="w-4 h-4 text-white" />
                       )}
                     </div>
-                    <span className={`text-sm ${uploadProgress < 30 ? 'text-muted-foreground' : uploadProgress < 70 ? 'font-medium text-blue-700' : 'text-green-700'}`}>
-                      {uploadProgress < 70 ? 'Parsing with AI...' : 'Parsing complete'}
+                    <span className={`text-sm ${uploadProgress < 30 ? 'text-muted-foreground' : uploadProgress < 70 ? 'font-medium text-blue-700 dark:text-blue-400' : 'text-green-700 dark:text-green-400'}`}>
+                      {uploadProgress < 70 ? 'Reading transactions...' : 'Transactions read'}
                     </span>
                   </div>
 
@@ -463,7 +691,7 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
                         <Check className="w-4 h-4 text-white" />
                       )}
                     </div>
-                    <span className={`text-sm ${uploadProgress < 70 ? 'text-muted-foreground' : uploadProgress < 100 ? 'font-medium text-blue-700' : 'text-green-700'}`}>
+                    <span className={`text-sm ${uploadProgress < 70 ? 'text-muted-foreground' : uploadProgress < 100 ? 'font-medium text-blue-700 dark:text-blue-400' : 'text-green-700 dark:text-green-400'}`}>
                       {uploadProgress < 100 ? 'Saving transactions...' : 'Transactions saved'}
                     </span>
                   </div>
@@ -479,15 +707,16 @@ export function TimelineUpload({ year, existingStatements, onUpload, onDelete }:
 
                 <p className="text-xs text-muted-foreground text-center">
                   {uploadProgress < 100 ? (
-                    <>Processing... {Math.round(uploadProgress)}% complete (this may take 30-120 seconds)</>
+                    <>Processing your statement…</>
                   ) : (
-                    <>Upload complete! Finalizing...</>
+                    <>Done! Finalizing…</>
                   )}
                 </p>
               </div>
             )}
-          </CardContent>
-        </Card>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -497,23 +726,89 @@ interface TimelineYearSelectorProps {
   years: number[];
   selectedYear: number;
   onSelectYear: (year: number) => void;
+  disabled?: boolean;
 }
 
-export function TimelineYearSelector({ years, selectedYear, onSelectYear }: TimelineYearSelectorProps) {
+export function TimelineYearSelector({
+  years,
+  selectedYear,
+  onSelectYear,
+  disabled = false,
+}: TimelineYearSelectorProps) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // years is expected highest → lowest. Derive bounds for the step arrows.
+  const lowerYear = years.length ? years[years.length - 1] : selectedYear;
+  const upperYear = years.length ? years[0] : selectedYear;
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [open]);
+
   return (
-    <div className="flex gap-2 overflow-x-auto pb-2">
-      {years.map((year) => (
+    <div className="flex flex-shrink-0 items-center gap-1 rounded-lg border border-input bg-card p-1 shadow-sm">
+      <button
+        onClick={() => onSelectYear(selectedYear - 1)}
+        disabled={disabled || selectedYear <= lowerYear}
+        aria-label="Previous year"
+        className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </button>
+
+      <div className="relative" ref={containerRef}>
         <button
-          key={year}
-          onClick={() => onSelectYear(year)}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${selectedYear === year
-            ? 'bg-blue-600 text-white'
-            : 'bg-muted text-muted-foreground hover:bg-muted'
-            }`}
+          onClick={() => setOpen((prev) => !prev)}
+          disabled={disabled}
+          aria-label="Select year"
+          className="flex h-8 min-w-[5rem] items-center justify-center gap-1.5 rounded-md px-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {year}
+          {selectedYear}
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
         </button>
-      ))}
+
+        {open && (
+          <div className="absolute left-1/2 z-50 mt-1 max-h-64 -translate-x-1/2 overflow-y-auto rounded-lg border border-input bg-card py-1 shadow-lg">
+            {years.map((year) => (
+              <button
+                key={year}
+                onClick={() => {
+                  onSelectYear(year);
+                  setOpen(false);
+                }}
+                className={`block w-full px-5 py-1.5 text-center text-sm transition-colors hover:bg-accent hover:text-accent-foreground ${year === selectedYear ? 'bg-accent font-semibold text-accent-foreground' : 'text-foreground'
+                  }`}
+              >
+                {year}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <button
+        onClick={() => onSelectYear(selectedYear + 1)}
+        disabled={disabled || selectedYear >= upperYear}
+        aria-label="Next year"
+        className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </button>
     </div>
   );
 }

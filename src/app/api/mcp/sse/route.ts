@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { validateMcpToken } from '@/lib/mcp/auth';
 import { addSession, removeSession, sendSse } from '@/lib/mcp/session';
+import { withApiLogging } from '@/lib/apiLogger';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
+export const GET = withApiLogging(async (request: Request) => {
   const { searchParams, origin } = new URL(request.url);
   const tokenParam = searchParams.get('token');
 
@@ -58,4 +59,4 @@ export async function GET(request: Request) {
       'X-Accel-Buffering': 'no',
     },
   });
-}
+});

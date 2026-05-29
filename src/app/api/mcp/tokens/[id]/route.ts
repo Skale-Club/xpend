@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { withApiLogging } from '@/lib/apiLogger';
 
-export async function DELETE(
+export const DELETE = withApiLogging(async (
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   try {
     const { id } = await params;
 
@@ -18,4 +19,4 @@ export async function DELETE(
     console.error('Failed to revoke MCP token:', error);
     return NextResponse.json({ error: 'Failed to revoke token' }, { status: 500 });
   }
-}
+});

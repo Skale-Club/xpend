@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { isSuperAdmin } from '@/lib/auth/superAdmin';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -9,6 +10,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 // itself would create an infinite loop.
 const PROTECTED_PAGE_PATHS = [
   '/accounts',
+  '/admin',
   '/categories',
   '/reports',
   '/settings',
@@ -16,6 +18,10 @@ const PROTECTED_PAGE_PATHS = [
   '/subscriptions',
   '/transactions',
 ];
+
+function isAdminPath(pathname: string): boolean {
+  return pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/api/admin');
+}
 
 export async function middleware(request: NextRequest) {
   if (!supabaseUrl || !supabaseAnonKey) {
@@ -33,9 +39,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
-  let response = NextResponse.next({
-    request,
-  });
+  // Forwarded request headers. We strip any client-supplied x-user-email so it
+  // can only ever be set by us, then re-add it once the session is verified.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.delete('x-user-email');
+
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
@@ -47,9 +56,7 @@ export async function middleware(request: NextRequest) {
           request.cookies.set(name, value);
         });
 
-        response = NextResponse.next({
-          request,
-        });
+        response = NextResponse.next({ request: { headers: requestHeaders } });
 
         cookiesToSet.forEach(({ name, value, options }) => {
           response.cookies.set(name, value, options);
@@ -81,6 +88,27 @@ export async function middleware(request: NextRequest) {
       loginUrl.pathname = '/';
       return NextResponse.redirect(loginUrl);
     }
+
+    return response;
+  }
+
+  // Super-admin gate for the logs panel and its API.
+  if (isAdminPath(pathname) && !isSuperAdmin(user.email)) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const homeUrl = request.nextUrl.clone();
+    homeUrl.pathname = '/';
+    return NextResponse.redirect(homeUrl);
+  }
+
+  // Authenticated: expose the verified email to downstream handlers/loggers.
+  if (user.email) {
+    requestHeaders.set('x-user-email', user.email);
+    const finalResponse = NextResponse.next({ request: { headers: requestHeaders } });
+    // Preserve any session cookies refreshed during getUser().
+    response.cookies.getAll().forEach((cookie) => finalResponse.cookies.set(cookie));
+    response = finalResponse;
   }
 
   return response;
@@ -91,6 +119,7 @@ export const config = {
     // Match API routes and all protected page routes
     '/api/:path*',
     '/accounts/:path*',
+    '/admin/:path*',
     '/categories/:path*',
     '/reports/:path*',
     '/settings/:path*',

@@ -1,5 +1,6 @@
 import { validateMcpToken } from '@/lib/mcp/auth';
 import { handleJsonRpc, type JsonRpcRequest } from '@/lib/mcp/jsonrpc';
+import { withApiLogging } from '@/lib/apiLogger';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,7 @@ function getToken(request: Request): string | null {
   return null;
 }
 
-export async function POST(request: Request) {
+export const POST = withApiLogging(async (request: Request) => {
   const mcpToken = await validateMcpToken(getToken(request));
   if (!mcpToken) {
     return new Response(
@@ -51,9 +52,9 @@ export async function POST(request: Request) {
   return new Response(JSON.stringify(response), {
     headers: { 'Content-Type': 'application/json' },
   });
-}
+});
 
 // GET required by Streamable HTTP spec for server-initiated messages (optional)
-export async function GET() {
+export const GET = withApiLogging(async (_request: Request) => {
   return new Response(null, { status: 405 });
-}
+});

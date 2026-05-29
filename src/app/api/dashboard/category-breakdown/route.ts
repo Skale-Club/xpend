@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { amountEqualsRange, parseSearchAmount } from '@/lib/searchAmount';
 import { expandCategoryIdsWithDescendants } from '@/lib/categoryDescendants';
+import { withApiLogging } from '@/lib/apiLogger';
 
 type RawCategory = { id: string; name: string; color: string; parentId: string | null };
 
@@ -70,7 +71,7 @@ function buildCategoryContext(categories: RawCategory[]) {
   };
 }
 
-export async function GET(request: Request) {
+export const GET = withApiLogging(async (request: Request) => {
   try {
     const { searchParams } = new URL(request.url);
     const parentCategoryId = searchParams.get('parentCategoryId');
@@ -213,4 +214,4 @@ export async function GET(request: Request) {
     console.error('Dashboard category breakdown error:', error);
     return NextResponse.json({ error: 'Failed to fetch category breakdown' }, { status: 500 });
   }
-}
+});

@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { learnFromCorrection } from '@/lib/autoCategorize';
+import { withApiLogging } from '@/lib/apiLogger';
 
-export async function POST(request: Request) {
+export const POST = withApiLogging(async (request: Request) => {
     try {
         const body = await request.json();
         const { transactionIds, categoryId } = body;
@@ -49,4 +50,4 @@ export async function POST(request: Request) {
         console.error('Failed to bulk categorize:', error);
         return NextResponse.json({ error: 'Failed to bulk categorize transactions' }, { status: 500 });
     }
-}
+});

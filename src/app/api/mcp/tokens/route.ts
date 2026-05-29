@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { generateToken } from '@/lib/mcp/auth';
 import { ALL_TOOLS } from '@/lib/mcp/tools/registry';
+import { withApiLogging } from '@/lib/apiLogger';
 
-export async function GET() {
+export const GET = withApiLogging(async (_request: Request) => {
   try {
     const tokens = await prisma.mcpToken.findMany({
       where: { isActive: true },
@@ -23,9 +24,9 @@ export async function GET() {
     console.error('Failed to list MCP tokens:', error);
     return NextResponse.json({ error: 'Failed to list tokens' }, { status: 500 });
   }
-}
+});
 
-export async function POST(request: Request) {
+export const POST = withApiLogging(async (request: Request) => {
   try {
     const body = await request.json();
     const { name, permissions } = body as { name?: string; permissions?: string[] };
@@ -74,4 +75,4 @@ export async function POST(request: Request) {
     console.error('Failed to create MCP token:', error);
     return NextResponse.json({ error: 'Failed to create token' }, { status: 500 });
   }
-}
+});

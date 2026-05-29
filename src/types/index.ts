@@ -1,5 +1,6 @@
 export type AccountType = 'CHECKING' | 'SAVINGS' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'CASH' | 'OTHER';
 export type TransactionType = 'INCOME' | 'EXPENSE' | 'TRANSFER';
+export type InvoiceStatus = 'OPEN' | 'CLOSED' | 'PAID' | 'PARTIAL';
 
 export interface Account {
   id: string;
@@ -10,8 +11,54 @@ export interface Account {
   icon?: string | null;
   initialBalance: number;
   isActive: boolean;
+  openingMonth?: number | null;
+  openingYear?: number | null;
+  sortOrder?: number;
+  creditLimit?: number | null;
+  closingDay?: number | null;
+  dueDay?: number | null;
+  lastFour?: string | null;
+  brand?: string | null;
+  creditLimitUpdatedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface CreditCardInvoice {
+  id: string;
+  accountId: string;
+  referenceMonth: number;
+  referenceYear: number;
+  closingDate?: Date | null;
+  dueDate?: Date | null;
+  totalAmount?: number | null;
+  minimumPayment?: number | null;
+  previousBalance?: number | null;
+  paymentsReceived?: number | null;
+  paidAmount?: number | null;
+  creditLimitSnapshot?: number | null;
+  availableLimitSnapshot?: number | null;
+  status: InvoiceStatus;
+  paidAt?: Date | null;
+  statementId?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreditCardSummary {
+  accountId: string;
+  creditLimit: number | null;
+  availableLimit: number | null;
+  dueDay: number | null;
+  closingDay: number | null;
+  currentInvoice: {
+    id: string;
+    referenceMonth: number;
+    referenceYear: number;
+    totalAmount: number | null;
+    dueDate: string | null;
+    status: InvoiceStatus;
+  } | null;
 }
 
 export interface Statement {
@@ -35,6 +82,10 @@ export interface Transaction {
   date: Date;
   isRecurring: boolean;
   notes?: string | null;
+  installmentNumber?: number | null;
+  installmentTotal?: number | null;
+  installmentGroupId?: string | null;
+  invoiceId?: string | null;
   createdAt: Date;
   updatedAt: Date;
   category?: { id: string; name: string; color: string; icon?: string | null } | null;

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { detectAndUpsertSubscriptions } from '@/lib/subscriptionDetector';
+import { withApiLogging } from '@/lib/apiLogger';
 
-export async function POST(request: Request) {
+export const POST = withApiLogging(async (request: Request) => {
   try {
     let accountId: string | undefined;
 
@@ -22,4 +23,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+});

@@ -11,7 +11,7 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     orientation: "portrait",
     background_color: "#f9fafb",
-    theme_color: "#2563eb",
+    theme_color: "#2E6299",
     lang: "en-US",
     categories: ["finance", "productivity"],
     icons: [
@@ -24,12 +24,6 @@ export default function manifest(): MetadataRoute.Manifest {
         src: "/icons/icon-512.png",
         sizes: "512x512",
         type: "image/png",
-      },
-      {
-        src: "/icons/icon-maskable-512.png",
-        sizes: "512x512",
-        type: "image/png",
-        purpose: "maskable",
       },
     ],
     shortcuts: [

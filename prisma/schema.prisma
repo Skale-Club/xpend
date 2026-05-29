@@ -70,6 +70,13 @@ enum GoalScenarioType {
   CUSTOM
 }
 
+enum InvoiceStatus {
+  OPEN
+  CLOSED
+  PAID
+  PARTIAL
+}
+
 model Account {
   id          String   @id @default(cuid())
   name        String
@@ -79,6 +86,16 @@ model Account {
   icon        String?
   initialBalance Float @default(0)
   isActive    Boolean  @default(true)
+  openingMonth Int?
+  openingYear  Int?
+  sortOrder   Int      @default(0)
+  // Credit-card-specific fields (nullable, only used when type === CREDIT_CARD)
+  creditLimit          Float?
+  closingDay           Int?
+  dueDay               Int?
+  lastFour             String?
+  brand                String?
+  creditLimitUpdatedAt DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   statements  Statement[]
@@ -86,6 +103,7 @@ model Account {
   subscriptions Subscription[]
   goals       Goal[]
   goalContributions GoalContribution[]
+  invoices    CreditCardInvoice[]
 }
 
 model Statement {
@@ -97,9 +115,40 @@ model Statement {
   fileName    String
   fileUrl     String?
   uploadedAt  DateTime @default(now())
+  aiCategorizedAt DateTime?
+  extractedJson Json?
   transactions Transaction[]
-  
+  invoices    CreditCardInvoice[]
+
   @@unique([accountId, month, year])
+}
+
+model CreditCardInvoice {
+  id                     String        @id @default(cuid())
+  accountId              String
+  account                Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  referenceMonth         Int
+  referenceYear          Int
+  closingDate            DateTime?
+  dueDate                DateTime?
+  totalAmount            Float?
+  minimumPayment         Float?
+  previousBalance        Float?
+  paymentsReceived       Float?
+  paidAmount             Float?
+  creditLimitSnapshot    Float?
+  availableLimitSnapshot Float?
+  status                 InvoiceStatus @default(OPEN)
+  paidAt                 DateTime?
+  statementId            String?
+  statement              Statement?    @relation(fields: [statementId], references: [id], onDelete: SetNull)
+  transactions           Transaction[]
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  @@unique([accountId, referenceMonth, referenceYear])
+  @@index([accountId])
+  @@index([status])
 }
 
 model Category {
@@ -150,6 +199,11 @@ model Transaction {
   date          DateTime
   isRecurring   Boolean         @default(false)
   notes         String?
+  installmentNumber  Int?
+  installmentTotal   Int?
+  installmentGroupId String?
+  invoiceId     String?
+  invoice       CreditCardInvoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   goalContributions GoalContribution[]
@@ -157,6 +211,8 @@ model Transaction {
   @@index([accountId, date])
   @@index([categoryId])
   @@index([date])
+  @@index([installmentGroupId])
+  @@index([invoiceId])
 }
 
 model Subscription {
@@ -352,4 +408,24 @@ model GoalScenario {
   createdAt          DateTime         @default(now())
 
   @@index([goalId])
+}
+
+model ApiLog {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  level      String   @default("INFO") // INFO | WARN | ERROR
+  category   String   @default("api")  // api | statement_parse | ai_call
+  method     String?
+  path       String?
+  status     Int?
+  durationMs Int?
+  message    String?
+  metadata   Json?
+  error      String?
+  userEmail  String?
+
+  @@index([createdAt])
+  @@index([level])
+  @@index([category])
+  @@index([path])
 }

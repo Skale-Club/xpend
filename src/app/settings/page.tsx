@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Button, Card, CardContent, Input, Select } from '@/components/ui';
+import { Button, Card, CardContent, Combobox, Input } from '@/components/ui';
 import { CheckCircle, Key, Loader2, XCircle } from 'lucide-react';
 import McpSettings from '@/components/settings/McpSettings';
 
@@ -29,7 +29,20 @@ export default function SettingsPage() {
 
   useEffect(() => {
     loadSettings();
+    loadModels();
   }, []);
+
+  const loadModels = async () => {
+    try {
+      const res = await fetch('/api/openrouter/models');
+      const data = await res.json();
+      if (Array.isArray(data.models) && data.models.length > 0) {
+        setModelOptions(data.models);
+      }
+    } catch (error) {
+      console.error('Failed to load models:', error);
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -43,9 +56,6 @@ export default function SettingsPage() {
       }
 
       setGeminiChatModel(data.geminiChatModel || 'google/gemini-2.5-flash');
-      if (Array.isArray(data.availableGeminiChatModels) && data.availableGeminiChatModels.length > 0) {
-        setModelOptions(data.availableGeminiChatModels);
-      }
     } catch (error) {
       console.error('Failed to load settings:', error);
     }
@@ -247,11 +257,14 @@ export default function SettingsPage() {
           )}
 
           <div className="mt-5 border-t border-border pt-4">
-            <Select
+            <Combobox
               label="Default Chat Model"
               value={geminiChatModel}
-              onChange={(e) => setGeminiChatModel(e.target.value)}
+              onChange={setGeminiChatModel}
               options={modelOptions}
+              placeholder="Select a model…"
+              searchPlaceholder="Search models…"
+              emptyText="No models found"
             />
 
             <div className="mt-3">

@@ -15,6 +15,8 @@ export function validateAccountData(data: {
   color?: unknown;
   initialBalance?: unknown;
   isActive?: unknown;
+  openingMonth?: unknown;
+  openingYear?: unknown;
 }) {
   const errors: string[] = [];
 
@@ -46,6 +48,33 @@ export function validateAccountData(data: {
 
   if (data.isActive !== undefined && typeof data.isActive !== 'boolean') {
     errors.push('isActive must be a boolean');
+  }
+
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
+
+  let openingMonth: number | null = null;
+  if (data.openingMonth !== undefined && data.openingMonth !== null && data.openingMonth !== '') {
+    openingMonth = Number(data.openingMonth);
+    if (isNaN(openingMonth) || openingMonth < 1 || openingMonth > 12) {
+      errors.push('Opening month must be between 1 and 12');
+      openingMonth = null;
+    }
+  }
+
+  let openingYear: number | null = null;
+  if (data.openingYear !== undefined && data.openingYear !== null && data.openingYear !== '') {
+    openingYear = Number(data.openingYear);
+    if (isNaN(openingYear) || openingYear < 1970 || openingYear > currentYear) {
+      errors.push(`Opening year must be between 1970 and ${currentYear}`);
+      openingYear = null;
+    }
+  }
+
+  if (openingYear !== null && openingMonth !== null) {
+    if (openingYear === currentYear && openingMonth > currentMonth) {
+      errors.push('Opening date cannot be in the future');
+    }
   }
 
   if (errors.length > 0) {

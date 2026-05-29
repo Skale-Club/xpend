@@ -16,7 +16,8 @@
     "db:seed": "prisma db seed",
     "db:push": "prisma db push",
     "storage:create": "node scripts/create-bucket-via-api.js",
-    "storage:check": "node scripts/check-bucket-status.js"
+    "storage:check": "node scripts/check-bucket-status.js",
+    "icons:generate": "node scripts/generate-icons.js"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.118",
@@ -41,6 +42,7 @@
     "react-dom": "19.2.3",
     "recharts": "^3.7.0",
     "tailwind-merge": "^3.6.0",
+    "unpdf": "^1.6.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {

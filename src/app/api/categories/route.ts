@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { withApiLogging } from '@/lib/apiLogger';
 
 async function ensureGamesCategoryExists() {
   await prisma.$transaction(async (tx) => {
@@ -57,7 +58,7 @@ async function ensureGamesCategoryExists() {
   });
 }
 
-export async function GET() {
+export const GET = withApiLogging(async (_request: Request) => {
   try {
     await ensureGamesCategoryExists();
 
@@ -68,9 +69,9 @@ export async function GET() {
   } catch {
     return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 });
   }
-}
+});
 
-export async function POST(request: Request) {
+export const POST = withApiLogging(async (request: Request) => {
   try {
     const body = await request.json();
 
@@ -103,4 +104,4 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: 'Failed to create category' }, { status: 500 });
   }
-}
+});

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { withApiLogging } from '@/lib/apiLogger';
 
-export async function GET() {
+export const GET = withApiLogging(async (_request: Request) => {
     try {
         const rules = await prisma.categorizationRule.findMany({
             include: {
@@ -20,9 +21,9 @@ export async function GET() {
         console.error('Failed to fetch categorization rules:', error);
         return NextResponse.json({ error: 'Failed to fetch categorization rules' }, { status: 500 });
     }
-}
+});
 
-export async function POST(request: Request) {
+export const POST = withApiLogging(async (request: Request) => {
     try {
         const body = await request.json();
         const { categoryId, keywords, matchType, priority } = body;
@@ -60,9 +61,9 @@ export async function POST(request: Request) {
         console.error('Failed to create categorization rule:', error);
         return NextResponse.json({ error: 'Failed to create categorization rule' }, { status: 500 });
     }
-}
+});
 
-export async function PUT(request: Request) {
+export const PUT = withApiLogging(async (request: Request) => {
     try {
         const body = await request.json();
         const { id, categoryId, keywords, matchType, priority, isActive } = body;
@@ -92,9 +93,9 @@ export async function PUT(request: Request) {
         console.error('Failed to update categorization rule:', error);
         return NextResponse.json({ error: 'Failed to update categorization rule' }, { status: 500 });
     }
-}
+});
 
-export async function DELETE(request: Request) {
+export const DELETE = withApiLogging(async (request: Request) => {
     try {
         const { searchParams } = new URL(request.url);
         const id = searchParams.get('id');
@@ -112,4 +113,4 @@ export async function DELETE(request: Request) {
         console.error('Failed to delete categorization rule:', error);
         return NextResponse.json({ error: 'Failed to delete categorization rule' }, { status: 500 });
     }
-}
+});

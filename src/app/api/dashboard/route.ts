@@ -3,8 +3,9 @@ import { prisma } from '@/lib/db';
 import { amountEqualsRange, parseSearchAmount } from '@/lib/searchAmount';
 import { expandCategoryIdsWithDescendants } from '@/lib/categoryDescendants';
 import type { Prisma } from '@/generated/prisma';
+import { withApiLogging } from '@/lib/apiLogger';
 
-export async function GET(request: Request) {
+export const GET = withApiLogging(async (request: Request) => {
   try {
     const { searchParams } = new URL(request.url);
     const dateFrom = searchParams.get('dateFrom');
@@ -191,7 +192,7 @@ export async function GET(request: Request) {
     console.error('Dashboard error:', error);
     return NextResponse.json({ error: 'Failed to fetch dashboard data' }, { status: 500 });
   }
-}
+});
 
 function buildCategoryContext(categories: { id: string; name: string; color: string; parentId: string | null }[]) {
   const byId = new Map(categories.map((c) => [c.id, c]));

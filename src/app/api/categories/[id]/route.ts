@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { withApiLogging } from '@/lib/apiLogger';
 
 async function getDescendantIds(categoryId: string): Promise<string[]> {
     const descendants: string[] = [];
@@ -21,10 +22,10 @@ async function getDescendantIds(categoryId: string): Promise<string[]> {
     return descendants;
 }
 
-export async function GET(
+export const GET = withApiLogging(async (
     request: Request,
     { params }: { params: Promise<{ id: string }> }
-) {
+) => {
     try {
         const { id } = await params;
         const category = await prisma.category.findUnique({
@@ -46,12 +47,12 @@ export async function GET(
         console.error('Failed to fetch category:', error);
         return NextResponse.json({ error: 'Failed to fetch category' }, { status: 500 });
     }
-}
+});
 
-export async function PUT(
+export const PUT = withApiLogging(async (
     request: Request,
     { params }: { params: Promise<{ id: string }> }
-) {
+) => {
     try {
         const { id } = await params;
         const body = await request.json();
@@ -113,12 +114,12 @@ export async function PUT(
         console.error('Failed to update category:', error);
         return NextResponse.json({ error: 'Failed to update category' }, { status: 500 });
     }
-}
+});
 
-export async function DELETE(
+export const DELETE = withApiLogging(async (
     request: Request,
     { params }: { params: Promise<{ id: string }> }
-) {
+) => {
     try {
         const { id } = await params;
 
@@ -157,4 +158,4 @@ export async function DELETE(
         console.error('Failed to delete category:', error);
         return NextResponse.json({ error: 'Failed to delete category' }, { status: 500 });
     }
-}
+});

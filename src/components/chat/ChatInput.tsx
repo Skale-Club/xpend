@@ -42,7 +42,7 @@ export function ChatInput({ onSend, isLoading, disabled }: ChatInputProps) {
             <button
                 onClick={handleSend}
                 disabled={!input.trim() || isLoading || disabled}
-                className="flex-shrink-0 w-10 h-10 rounded-lg bg-accent0 text-white flex items-center justify-center hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed transition-colors"
+                className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary text-white flex items-center justify-center hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed transition-colors"
             >
                 {isLoading ? (
                     <Loader2 className="w-5 h-5 animate-spin" />

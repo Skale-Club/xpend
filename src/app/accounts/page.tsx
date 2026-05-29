@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Plus } from 'lucide-react';
 import { AccountList, AccountForm, AccountFormData } from '@/components/accounts';
-import { Account } from '@/types';
+import { Account, CreditCardSummary } from '@/types';
 import { useToast, Loader, Button } from '@/components/ui';
 import { formatCurrency } from '@/lib/utils';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
@@ -11,6 +11,7 @@ import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider'
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [balances, setBalances] = useState<Record<string, number>>({});
+  const [creditSummaries, setCreditSummaries] = useState<Record<string, CreditCardSummary>>({});
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -27,6 +28,14 @@ export default function AccountsPage() {
       const balancesRes = await fetch('/api/dashboard');
       const balancesData = await balancesRes.json();
       setBalances(balancesData.balances || {});
+
+      const creditRes = await fetch('/api/credit-cards');
+      if (creditRes.ok) {
+        const creditData: CreditCardSummary[] = await creditRes.json();
+        setCreditSummaries(
+          Object.fromEntries(creditData.map((s) => [s.accountId, s])),
+        );
+      }
     } catch (error) {
       console.error('Failed to fetch accounts:', error);
       toast.error('Failed to load accounts. Please try again.');
@@ -61,6 +70,26 @@ export default function AccountsPage() {
     } catch (error) {
       console.error('Failed to delete account:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to delete account');
+    }
+  };
+
+  const handleReorder = async (orderedIds: string[]) => {
+    // Optimistically apply the new order.
+    setAccounts((prev) => {
+      const byId = new Map(prev.map((a) => [a.id, a]));
+      return orderedIds.map((id) => byId.get(id)!).filter(Boolean);
+    });
+    try {
+      const res = await fetch('/api/accounts/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderedIds }),
+      });
+      if (!res.ok) throw new Error('Failed to save order');
+    } catch (error) {
+      console.error('Failed to reorder accounts:', error);
+      toast.error('Failed to save the new order');
+      fetchAccounts();
     }
   };
 
@@ -158,9 +187,11 @@ export default function AccountsPage() {
       <AccountList
         accounts={accounts}
         balances={balances}
+        creditSummaries={creditSummaries}
         onAddAccount={handleAddAccount}
         onEditAccount={handleEditAccount}
         onDeleteAccount={handleDeleteAccount}
+        onReorder={handleReorder}
       />
 
       <AccountForm
