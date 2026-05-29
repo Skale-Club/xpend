@@ -13,6 +13,7 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { prisma } from '@/lib/db';
 import { chatTools } from '@/lib/chat/tools';
 import { buildSystemPrompt } from '@/lib/chat/systemPrompt';
+import { buildFinancialContext, renderContextText } from '@/lib/memory/contextBuilder';
 import {
   DEFAULT_CHAT_MODEL,
   CHAT_MODEL_VALUES,
@@ -199,6 +200,18 @@ export async function POST(req: Request) {
       systemPrompt = await buildSystemPrompt();
     } catch (promptError) {
       console.error('Error building system prompt:', promptError);
+    }
+
+    // Additively inject remembered financial-journey context. Fail-soft: if the
+    // memory layer errors or has nothing, the chat prompt is unchanged.
+    try {
+      const memoryContext = await buildFinancialContext();
+      const memoryText = renderContextText(memoryContext);
+      if (memoryText) {
+        systemPrompt = `${systemPrompt}\n\n${memoryText}`;
+      }
+    } catch (memoryError) {
+      console.error('Error building memory context:', memoryError);
     }
 
     const modelMessages = await convertToModelMessages(
