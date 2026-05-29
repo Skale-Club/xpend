@@ -3,8 +3,8 @@ import { prisma } from '@/lib/db';
 import {
     DEFAULT_CHAT_MODEL,
     OPENROUTER_CHAT_MODELS,
-    CHAT_MODEL_VALUES,
 } from '@/lib/chat/models';
+import { withApiLogging } from '@/lib/apiLogger';
 
 async function getStoredChatModel(): Promise<string> {
     try {
@@ -16,9 +16,7 @@ async function getStoredChatModel(): Promise<string> {
         `;
 
         const model = rows[0]?.geminiChatModel;
-        return model && CHAT_MODEL_VALUES.has(model)
-            ? model
-            : DEFAULT_CHAT_MODEL;
+        return model && model.trim() !== '' ? model : DEFAULT_CHAT_MODEL;
     } catch {
         return DEFAULT_CHAT_MODEL;
     }
@@ -33,7 +31,7 @@ async function setStoredChatModel(model: string): Promise<void> {
     `;
 }
 
-export async function GET() {
+export const GET = withApiLogging(async (_request: Request) => {
     try {
         let settings = await prisma.settings.findUnique({
             where: { id: 'default' },
@@ -64,9 +62,9 @@ export async function GET() {
         console.error('Failed to fetch settings:', error);
         return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
     }
-}
+});
 
-export async function PUT(request: Request) {
+export const PUT = withApiLogging(async (request: Request) => {
     try {
         const body = await request.json();
         const { geminiApiKey, geminiChatModel } = body;
@@ -83,7 +81,10 @@ export async function PUT(request: Request) {
             }
         }
 
-        if (geminiChatModel !== undefined && !CHAT_MODEL_VALUES.has(geminiChatModel)) {
+        if (
+            geminiChatModel !== undefined &&
+            (typeof geminiChatModel !== 'string' || geminiChatModel.trim() === '')
+        ) {
             return NextResponse.json({
                 error: 'Invalid chat model selected.'
             }, { status: 400 });
@@ -134,7 +135,7 @@ export async function PUT(request: Request) {
             : 'Failed to update settings';
         return NextResponse.json({ error: responseError }, { status: 500 });
     }
-}
+});
 
 // Export the API key getter for use in other modules
 export async function getOpenRouterApiKey(): Promise<string | null> {

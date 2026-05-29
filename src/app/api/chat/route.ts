@@ -15,8 +15,6 @@ import { chatTools } from '@/lib/chat/tools';
 import { buildSystemPrompt } from '@/lib/chat/systemPrompt';
 import {
   DEFAULT_CHAT_MODEL,
-  CHAT_MODEL_VALUES,
-  type ChatModel,
 } from '@/lib/chat/models';
 import { ChatApiError } from '@/lib/chat/errors';
 import { checkChatRateLimit } from '@/lib/chat/rateLimit';
@@ -27,6 +25,7 @@ import {
   serializeMessage,
 } from '@/lib/chat/storage';
 import { postRequestBodySchema, type PostRequestBody } from './schema';
+import { withApiLogging } from '@/lib/apiLogger';
 
 export const maxDuration = 60;
 
@@ -48,8 +47,8 @@ async function getChatConfig(): Promise<{ apiKey: string | null; chatModel: stri
     `;
 
     const storedModel = rows[0]?.geminiChatModel;
-    const chatModel = storedModel && CHAT_MODEL_VALUES.has(storedModel)
-      ? (storedModel as ChatModel)
+    const chatModel = storedModel && storedModel.trim() !== ''
+      ? storedModel
       : DEFAULT_CHAT_MODEL;
 
     return {
@@ -127,7 +126,7 @@ function parseBody(json: unknown): PostRequestBody {
   return parsed.data;
 }
 
-export async function POST(req: Request) {
+export const POST = withApiLogging(async (req: Request) => {
   let body: PostRequestBody;
 
   try {
@@ -272,9 +271,9 @@ export async function POST(req: Request) {
 
     return new ChatApiError('offline:chat').toResponse();
   }
-}
+});
 
-export async function GET(req: Request) {
+export const GET = withApiLogging(async (req: Request) => {
   try {
     const { searchParams } = new URL(req.url);
     const sessionId = searchParams.get('sessionId') || searchParams.get('id');
@@ -338,9 +337,9 @@ export async function GET(req: Request) {
     console.error('Error in chat GET:', error);
     return Response.json({ error: 'Failed to load chat data', sessions: [] }, { status: 500 });
   }
-}
+});
 
-export async function PUT(req: Request) {
+export const PUT = withApiLogging(async (req: Request) => {
   try {
     const body = await req.json().catch(() => ({}));
     const { title } = body as { title?: string };
@@ -367,9 +366,9 @@ export async function PUT(req: Request) {
     console.error('Error creating chat session:', error);
     return Response.json({ error: 'Failed to create session' }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(req: Request) {
+export const DELETE = withApiLogging(async (req: Request) => {
   const { searchParams } = new URL(req.url);
   const sessionId = searchParams.get('sessionId') || searchParams.get('id');
 
@@ -387,4 +386,4 @@ export async function DELETE(req: Request) {
     console.error('Error deleting chat session:', error);
     return Response.json({ error: 'Failed to delete session' }, { status: 500 });
   }
-}
+});

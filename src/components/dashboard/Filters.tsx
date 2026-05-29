@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Search, Filter, X, ChevronDown, Calendar, ArrowRight, Tag, DollarSign, Wallet } from 'lucide-react';
-import { Button, Select } from '@/components/ui';
+import { Button, Select, Combobox } from '@/components/ui';
 import { Account, Category, DashboardFilters, TransactionType } from '@/types';
 import { CategoryTreeSelector } from '@/components/categories/CategoryTreeSelector';
 import { formatCurrency } from '@/lib/utils';
@@ -24,10 +24,12 @@ export function DashboardFiltersPanel({
   const { hideSensitiveValues } = useSensitiveValues();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCategoryFilterOpen, setIsCategoryFilterOpen] = useState(false);
+  const [isCustomRangeOpen, setIsCustomRangeOpen] = useState(false);
   const [activeRange, setActiveRange] = useState<string | null>(null);
   const [localSearch, setLocalSearch] = useState(filters.searchQuery || '');
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const categoryFilterRef = useRef<HTMLDivElement | null>(null);
+  const customRangeRef = useRef<HTMLDivElement | null>(null);
 
   const updateFilter = useCallback(<K extends keyof DashboardFilters>(key: K, value: DashboardFilters[K]) => {
     onFiltersChange({ ...filters, [key]: value });
@@ -58,13 +60,17 @@ export function DashboardFiltersPanel({
     if (key === 'searchQuery') setLocalSearch('');
   };
 
-  const setQuickRange = (range: 'thisMonth' | 'lastMonth' | 'thisYear' | 'last30Days' | 'last7Days' | 'last90Days', label?: string) => {
+  const setQuickRange = (range: 'allTime' | 'thisMonth' | 'lastMonth' | 'thisYear' | 'last30Days' | 'last7Days' | 'last90Days', label?: string) => {
     setActiveRange(label ?? range);
     const now = new Date();
     let from: Date | undefined;
     let to: Date | undefined = new Date();
 
     switch (range) {
+      case 'allTime':
+        from = undefined;
+        to = undefined;
+        break;
       case 'thisMonth':
         from = new Date(now.getFullYear(), now.getMonth(), 1);
         break;
@@ -90,6 +96,11 @@ export function DashboardFiltersPanel({
     }
 
     onFiltersChange({ ...filters, dateFrom: from, dateTo: to });
+  };
+
+  const setCustomDate = (key: 'dateFrom' | 'dateTo', value: string) => {
+    setActiveRange('Custom');
+    updateFilter(key, value ? new Date(value) : undefined);
   };
 
   const hasActiveFilters = Object.entries(filters).some(([, value]) => {
@@ -127,7 +138,21 @@ export function DashboardFiltersPanel({
     return () => document.removeEventListener('mousedown', handlePointerDown);
   }, [isCategoryFilterOpen]);
 
+  useEffect(() => {
+    if (!isCustomRangeOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!customRangeRef.current) return;
+      if (customRangeRef.current.contains(event.target as Node)) return;
+      setIsCustomRangeOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, [isCustomRangeOpen]);
+
   const SHORTCUTS = [
+    { label: 'All Time',  range: 'allTime'   as const },
     { label: '7D',        range: 'last7Days'  as const },
     { label: '30D',       range: 'last30Days' as const },
     { label: 'This Month', range: 'thisMonth'  as const },
@@ -143,19 +168,16 @@ export function DashboardFiltersPanel({
           {/* Row 1: Account + Category + Search */}
           <div className="flex flex-col sm:flex-row gap-2.5">
             {/* Account */}
-            <div className="relative sm:w-48 shrink-0">
-              <Wallet className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
-              <select
+            <div className="sm:w-48 shrink-0">
+              <Combobox
                 value={filters.accountIds?.[0] || ''}
-                onChange={(e) => updateFilter('accountIds', e.target.value ? [e.target.value] : undefined)}
-                className="w-full h-10 pl-9 pr-8 text-sm border border-border rounded-xl bg-card text-muted-foreground appearance-none cursor-pointer hover:border-border focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary/50 transition-colors"
-              >
-                <option value="">All Accounts</option>
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70" />
+                onChange={(v) => updateFilter('accountIds', v ? [v] : undefined)}
+                options={[{ value: '', label: 'All Accounts' }, ...accounts.map((a) => ({ value: a.id, label: a.name }))]}
+                placeholder="All Accounts"
+                searchPlaceholder="Search accounts…"
+                icon={<Wallet className="w-4 h-4 text-muted-foreground/70 shrink-0" />}
+                triggerClassName="rounded-xl"
+              />
             </div>
 
             {/* Category */}
@@ -239,6 +261,60 @@ export function DashboardFiltersPanel({
                   </button>
                 );
               })}
+
+              {/* Custom range */}
+              <div className="relative" ref={customRangeRef}>
+                <button
+                  onClick={() => setIsCustomRangeOpen((prev) => !prev)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
+                    activeRange === 'Custom'
+                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
+                      : 'bg-muted text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  Custom
+                  <ChevronDown className={`w-3 h-3 transition-transform ${isCustomRangeOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isCustomRangeOpen && (
+                  <div className="absolute left-0 top-full z-30 mt-2 w-[20rem] max-w-[calc(100vw-2rem)] bg-card border border-border rounded-xl shadow-lg p-3 space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider flex items-center gap-1.5">
+                      <Calendar className="w-3 h-3" />
+                      Custom Date Range
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="date"
+                        value={filters.dateFrom ? new Date(filters.dateFrom).toISOString().split('T')[0] : ''}
+                        onChange={(e) => setCustomDate('dateFrom', e.target.value)}
+                        className="flex-1 min-w-0 px-3 py-2 text-sm border border-border rounded-xl bg-card text-foreground [color-scheme:light] dark:[color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary/50 h-10 transition-colors"
+                      />
+                      <ArrowRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+                      <input
+                        type="date"
+                        value={filters.dateTo ? new Date(filters.dateTo).toISOString().split('T')[0] : ''}
+                        onChange={(e) => setCustomDate('dateTo', e.target.value)}
+                        className="flex-1 min-w-0 px-3 py-2 text-sm border border-border rounded-xl bg-card text-foreground [color-scheme:light] dark:[color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary/50 h-10 transition-colors"
+                      />
+                    </div>
+                    {(filters.dateFrom || filters.dateTo) && (
+                      <button
+                        onClick={() => {
+                          const newFilters = { ...filters };
+                          delete newFilters.dateFrom;
+                          delete newFilters.dateTo;
+                          onFiltersChange(newFilters);
+                          setActiveRange(null);
+                        }}
+                        className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Clear range
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-1.5 ml-auto">
@@ -273,30 +349,7 @@ export function DashboardFiltersPanel({
           </div>
           {isExpanded && (
             <div className="pt-3 border-t border-border">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {/* Date Group */}
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider flex items-center gap-1.5">
-                    <Calendar className="w-3 h-3" />
-                    Custom Date Range
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="date"
-                      value={filters.dateFrom ? new Date(filters.dateFrom).toISOString().split('T')[0] : ''}
-                      onChange={(e) => { updateFilter('dateFrom', e.target.value ? new Date(e.target.value) : undefined); setActiveRange(null); }}
-                      className="flex-1 px-3 py-2 text-sm border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary/50 h-10 transition-colors"
-                    />
-                    <ArrowRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
-                    <input
-                      type="date"
-                      value={filters.dateTo ? new Date(filters.dateTo).toISOString().split('T')[0] : ''}
-                      onChange={(e) => { updateFilter('dateTo', e.target.value ? new Date(e.target.value) : undefined); setActiveRange(null); }}
-                      className="flex-1 px-3 py-2 text-sm border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary/50 h-10 transition-colors"
-                    />
-                  </div>
-                </div>
-
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {/* Transaction Type Group */}
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider flex items-center gap-1.5">
@@ -358,7 +411,7 @@ export function DashboardFiltersPanel({
           <span className="text-xs font-medium text-muted-foreground mr-1">Active filters:</span>
 
           {filters.searchQuery && (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-accent text-accent-foreground rounded-full border border-blue-100 text-xs font-medium">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-accent text-accent-foreground rounded-full border border-blue-100 dark:border-border text-xs font-medium">
               Search: &ldquo;{filters.searchQuery}&rdquo;
               <button onClick={() => removeFilter('searchQuery')} className="hover:text-blue-900">
                 <X className="w-3 h-3" />

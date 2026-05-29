@@ -49,6 +49,19 @@ export const INPUT_SCHEMAS: Record<string, JsonSchema> = {
       type:     { type: 'string', description: 'Transaction type', enum: ['INCOME', 'EXPENSE'], default: 'EXPENSE' },
     },
   },
+  get_credit_card_invoices: {
+    type: 'object',
+    properties: {
+      accountId: { type: 'string', description: 'Filter invoices to one credit-card account' },
+    },
+  },
+  get_invoice: {
+    type: 'object',
+    properties: {
+      invoiceId: { type: 'string', description: 'Invoice ID to fetch' },
+    },
+    required: ['invoiceId'],
+  },
   categorize_transaction: {
     type: 'object',
     properties: {

@@ -9,12 +9,13 @@ import {
   READ_TOOLS,
   WRITE_TOOLS,
 } from '@/lib/mcp/tools/registry';
+import { withApiLogging } from '@/lib/apiLogger';
 
 function errorResponse(code: string, message: string, status: number) {
   return NextResponse.json({ ok: false, error: { code, message } }, { status });
 }
 
-export async function GET() {
+export const GET = withApiLogging(async (_request: Request) => {
   return NextResponse.json({
     ok: true,
     version: '1.0',
@@ -26,9 +27,9 @@ export async function GET() {
       ...TOOL_DESCRIPTIONS[name],
     })),
   });
-}
+});
 
-export async function POST(request: Request) {
+export const POST = withApiLogging(async (request: Request) => {
   const startedAt = Date.now();
   const authHeader = request.headers.get('Authorization');
 
@@ -103,4 +104,4 @@ export async function POST(request: Request) {
     console.error(`[MCP] Tool "${tool}" failed:`, error);
     return errorResponse('INTERNAL_ERROR', message, 500);
   }
-}
+});

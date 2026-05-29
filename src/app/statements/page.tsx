@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Card, CardContent, Select, Loader } from '@/components/ui';
+import { Card, CardContent, Combobox, Loader } from '@/components/ui';
 import { TimelineUpload, TimelineYearSelector } from '@/components/statements';
 import { Account } from '@/types';
 import { getCurrentMonthYear } from '@/lib/utils';
@@ -10,15 +10,26 @@ export default function StatementsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState(getCurrentMonthYear().year);
-  const [statements, setStatements] = useState<{ month: number; year: number; uploadedAt?: string; fileName?: string }[]>([]);
+  const [statements, setStatements] = useState<{ id?: string; month: number; year: number; uploadedAt?: string; fileName?: string; hasTransactions?: boolean; uncategorizedCount?: number; aiCategorized?: boolean }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isStatementsLoading, setIsStatementsLoading] = useState(true);
 
-  const years = [];
   const currentYear = new Date().getFullYear();
-  for (let y = currentYear; y >= currentYear - 5; y--) {
+  const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
+  // The account's opening year is the single source of truth for how far back
+  // statements can go. Fall back to a 5-year window when it isn't set.
+  const lowerYear = selectedAccount?.openingYear ?? currentYear - 5;
+
+  const years = [];
+  for (let y = currentYear; y >= lowerYear; y--) {
     years.push(y);
   }
+
+  // Keep the selected year within the derived range when the account changes.
+  useEffect(() => {
+    if (selectedYear < lowerYear) setSelectedYear(lowerYear);
+    else if (selectedYear > currentYear) setSelectedYear(currentYear);
+  }, [lowerYear, currentYear, selectedYear]);
 
   const fetchAccounts = useCallback(async () => {
     try {
@@ -41,13 +52,15 @@ export default function StatementsPage() {
     try {
       const res = await fetch(`/api/statements?accountId=${selectedAccountId}&year=${selectedYear}`);
       const data = await res.json();
-      setStatements(data.map((s: { id: string; month: number; year: number; uploadedAt?: string; fileName?: string; hasTransactions?: boolean }) => ({
+      setStatements(data.map((s: { id: string; month: number; year: number; uploadedAt?: string; fileName?: string; hasTransactions?: boolean; uncategorizedCount?: number; aiCategorized?: boolean }) => ({
         id: s.id,
         month: s.month,
         year: s.year,
         uploadedAt: s.uploadedAt,
         fileName: s.fileName,
         hasTransactions: s.hasTransactions,
+        uncategorizedCount: s.uncategorizedCount,
+        aiCategorized: s.aiCategorized,
       })));
     } catch (error) {
       console.error('Failed to fetch statements:', error);
@@ -130,22 +143,23 @@ export default function StatementsPage() {
 
       <Card>
         <CardContent className="py-4">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <Select
+          <div className="flex items-end gap-3">
+            <div className="w-72 sm:w-80 flex-shrink-0">
+              <Combobox
                 label="Select Account"
                 value={selectedAccountId}
-                onChange={(e) => setSelectedAccountId(e.target.value)}
+                onChange={setSelectedAccountId}
                 options={accounts.map((a) => ({ value: a.id, label: a.name }))}
+                placeholder="Select an account…"
+                searchPlaceholder="Search accounts…"
               />
             </div>
-            <div className="pt-6">
-              <TimelineYearSelector
-                years={years}
-                selectedYear={selectedYear}
-                onSelectYear={setSelectedYear}
-              />
-            </div>
+            <TimelineYearSelector
+              years={years}
+              selectedYear={selectedYear}
+              onSelectYear={setSelectedYear}
+              disabled={!selectedAccount}
+            />
           </div>
         </CardContent>
       </Card>
@@ -162,6 +176,9 @@ export default function StatementsPage() {
             existingStatements={statements}
             onUpload={handleUpload}
             onDelete={handleDelete}
+            onRefresh={fetchStatements}
+            openingMonth={selectedAccount?.openingMonth}
+            openingYear={selectedAccount?.openingYear}
           />
         )
       )}

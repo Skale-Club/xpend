@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Bind the `dark:` variant to the `.dark` class (toggled by next-themes)
+   instead of the default `prefers-color-scheme` media query. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ── Design tokens ──────────────────────────────────────────────────────── */
 :root {
   /* Core */
@@ -15,7 +19,7 @@
   --popover-foreground: #0f172a;
 
   /* Primary (blue) */
-  --primary: #2563eb;
+  --primary: #2E6299;
   --primary-foreground: #ffffff;
 
   /* Secondary */
@@ -45,21 +49,21 @@
   /* Border & Input */
   --border: #e2e8f0;
   --input: #e2e8f0;
-  --ring: #2563eb;
+  --ring: #2E6299;
 
   /* Sidebar */
   --sidebar: #ffffff;
   --sidebar-foreground: #0f172a;
   --sidebar-border: #e2e8f0;
   --sidebar-accent: #eff6ff;
-  --sidebar-accent-foreground: #2563eb;
+  --sidebar-accent-foreground: #2E6299;
   --sidebar-muted-foreground: #64748b;
 
   /* Radius */
   --radius: 0.5rem;
 
   /* Chart colors (finance palette) */
-  --chart-1: #2563eb;
+  --chart-1: #2E6299;
   --chart-2: #22c55e;
   --chart-3: #f59e0b;
   --chart-4: #8b5cf6;
@@ -70,25 +74,25 @@
 }
 
 .dark {
-  --background: #0f172a;
+  --background: #0b0c0f;
   --foreground: #f8fafc;
 
-  --card: #1e293b;
+  --card: #16181d;
   --card-foreground: #f8fafc;
 
-  --popover: #1e293b;
+  --popover: #16181d;
   --popover-foreground: #f8fafc;
 
-  --primary: #3b82f6;
+  --primary: #2979B4;
   --primary-foreground: #ffffff;
 
-  --secondary: #334155;
+  --secondary: #24272e;
   --secondary-foreground: #f8fafc;
 
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
+  --muted: #16181d;
+  --muted-foreground: #9ca3af;
 
-  --accent: #1e3a5f;
+  --accent: #1f2228;
   --accent-foreground: #93c5fd;
 
   --destructive: #ef4444;
@@ -100,18 +104,18 @@
   --warning: #f59e0b;
   --warning-foreground: #ffffff;
 
-  --border: #334155;
-  --input: #334155;
-  --ring: #3b82f6;
+  --border: #24272e;
+  --input: #24272e;
+  --ring: #2979B4;
 
-  --sidebar: #1e293b;
+  --sidebar: #16181d;
   --sidebar-foreground: #f8fafc;
-  --sidebar-border: #334155;
+  --sidebar-border: #24272e;
   --sidebar-accent: #1e3a5f;
   --sidebar-accent-foreground: #93c5fd;
-  --sidebar-muted-foreground: #94a3b8;
+  --sidebar-muted-foreground: #9ca3af;
 
-  --chart-1: #3b82f6;
+  --chart-1: #2979B4;
   --chart-2: #4ade80;
   --chart-3: #fbbf24;
   --chart-4: #a78bfa;
@@ -160,6 +164,23 @@
   --color-chart-6: var(--chart-6);
   --color-chart-7: var(--chart-7);
   --color-chart-8: var(--chart-8);
+
+  /* Brand blue scale — derived dynamically from --primary so every `blue-*`
+     utility tracks the brand color and auto-shifts between light/dark themes
+     (--primary is the 600 anchor and is redefined in .dark). Change --primary
+     and the whole scale recomputes. */
+  --color-blue-50: color-mix(in oklab, var(--primary) 6%, white);
+  --color-blue-100: color-mix(in oklab, var(--primary) 12%, white);
+  --color-blue-200: color-mix(in oklab, var(--primary) 24%, white);
+  --color-blue-300: color-mix(in oklab, var(--primary) 42%, white);
+  --color-blue-400: color-mix(in oklab, var(--primary) 68%, white);
+  --color-blue-500: color-mix(in oklab, var(--primary) 88%, white);
+  --color-blue-600: var(--primary);
+  --color-blue-700: color-mix(in oklab, var(--primary) 82%, black);
+  --color-blue-800: color-mix(in oklab, var(--primary) 66%, black);
+  --color-blue-900: color-mix(in oklab, var(--primary) 52%, black);
+  --color-blue-950: color-mix(in oklab, var(--primary) 34%, black);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --radius-sm: calc(var(--radius) - 2px);

@@ -32,6 +32,11 @@ export const metadata: Metadata = {
     telephone: false,
   },
   icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    shortcut: "/favicon.ico",
     apple: "/icons/apple-touch-icon.png",
   },
 };
@@ -41,7 +46,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#2563eb" },
+    { media: "(prefers-color-scheme: light)", color: "#2E6299" },
     { media: "(prefers-color-scheme: dark)", color: "#1e293b" },
   ],
 };

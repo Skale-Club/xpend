@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { validateQueryParams, ValidationError } from '@/lib/validation';
 import { amountEqualsRange, parseSearchAmount } from '@/lib/searchAmount';
 import { expandCategoryIdsWithDescendants } from '@/lib/categoryDescendants';
+import { withApiLogging } from '@/lib/apiLogger';
 
 /** Shape of a node in the hierarchical category breakdown tree. */
 interface CategoryNode {
@@ -24,7 +25,7 @@ interface CategoryNode {
   subcategories: CategoryNode[];
 }
 
-export async function GET(request: Request) {
+export const GET = withApiLogging(async (request: Request) => {
   try {
     const { searchParams } = new URL(request.url);
     const dateFrom = searchParams.get('dateFrom');
@@ -425,7 +426,7 @@ export async function GET(request: Request) {
     console.error('Reports API error:', error);
     return NextResponse.json({ error: 'Failed to fetch report data' }, { status: 500 });
   }
-}
+});
 
 // Helper functions for additional visualizations
 function getAccountDistribution(

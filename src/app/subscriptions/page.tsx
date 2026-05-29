@@ -534,9 +534,9 @@ export default function SubscriptionsPage() {
       )}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <Card className="overflow-hidden border-orange-100 bg-gradient-to-r from-orange-50 via-white to-rose-50">
+        <Card className="overflow-hidden border-orange-100 dark:border-orange-900/40 bg-gradient-to-r from-orange-50 via-white to-rose-50 dark:from-orange-950/40 dark:via-card dark:to-rose-950/30">
           <CardContent className="space-y-4 p-5">
-            <p className="text-sm font-medium text-orange-700">Subscription spotlight</p>
+            <p className="text-sm font-medium text-orange-700 dark:text-orange-400">Subscription spotlight</p>
             {stats?.mostExpensive ? (
               <>
                 <h2 className="text-2xl font-semibold text-foreground">{stats.mostExpensive.name}</h2>

@@ -1,9 +1,9 @@
 'use client';
 
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
-import { CircleDollarSign, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { Button, Card, CardContent, Input } from '@/components/ui';
+import { Button, Card, CardContent, Input, XpendLogo } from '@/components/ui';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 interface AuthGateProps {
@@ -82,9 +82,7 @@ export function AuthGate({ children }: AuthGateProps) {
         <Card className="relative w-full max-w-md shadow-xl">
           <CardContent className="p-8">
             <div className="mb-8 flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-md shadow-primary/30">
-                <CircleDollarSign className="h-6 w-6 text-primary-foreground" />
-              </div>
+              <XpendLogo className="h-12 w-12 rounded-2xl shadow-md shadow-primary/30" />
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-primary">Xpend</p>
                 <h1 className="text-2xl font-bold text-foreground">Welcome back</h1>

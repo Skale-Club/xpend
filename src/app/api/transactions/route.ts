@@ -3,8 +3,9 @@ import { prisma } from '@/lib/db';
 import { validateTransactionUpdate, validateQueryParams, ValidationError } from '@/lib/validation';
 import { amountEqualsRange, parseSearchAmount } from '@/lib/searchAmount';
 import { expandCategoryIdsWithDescendants } from '@/lib/categoryDescendants';
+import { withApiLogging } from '@/lib/apiLogger';
 
-export async function GET(request: Request) {
+export const GET = withApiLogging(async (request: Request) => {
   try {
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get('accountId');
@@ -97,9 +98,9 @@ export async function GET(request: Request) {
     console.error('Failed to fetch transactions:', error);
     return NextResponse.json({ error: 'Failed to fetch transactions' }, { status: 500 });
   }
-}
+});
 
-export async function PUT(request: Request) {
+export const PUT = withApiLogging(async (request: Request) => {
   try {
     const body = await request.json();
     const { id, categoryId, description, notes } = body;
@@ -125,4 +126,4 @@ export async function PUT(request: Request) {
     console.error('Failed to update transaction:', error);
     return NextResponse.json({ error: 'Failed to update transaction' }, { status: 500 });
   }
-}
+});

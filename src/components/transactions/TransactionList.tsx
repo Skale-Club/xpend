@@ -521,7 +521,7 @@ export function TransactionList({
     <>
       {/* Bulk Action Bar */}
       {selectedTransactions.size > 0 && (
-        <div className="bg-accent border border-blue-200 rounded-lg p-3 mb-4 flex items-center justify-between flex-wrap gap-3">
+        <div className="bg-accent border border-blue-200 dark:border-border rounded-lg p-3 mb-4 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-accent-foreground">
               {selectedTransactions.size} selected

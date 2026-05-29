@@ -1,13 +1,18 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { parseCSV } from '@/lib/csvParser';
-import { parsePDF } from '@/lib/pdfParser';
+import { parsePDF, type FaturaMeta } from '@/lib/pdfParser';
 import { validateStatementUpload, ValidationError } from '@/lib/validation';
 import { createClient } from '@supabase/supabase-js';
 import { batchCategorize } from '@/lib/autoCategorize';
 import { detectAndUpsertSubscriptions, normalizeDescription } from '@/lib/subscriptionDetector';
+import { withApiLogging } from '@/lib/apiLogger';
+import { applyFaturaToInvoice } from '@/lib/creditCard/applyFatura';
+import { faturaDedupWindow } from '@/lib/creditCard/invoiceCycle';
+import { parseInstallment } from '@/lib/creditCard/installment';
+import { installmentGroupId } from '@/lib/creditCard/installmentGroup';
 
-export async function POST(request: Request) {
+export const POST = withApiLogging(async (request: Request) => {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -17,6 +22,13 @@ export async function POST(request: Request) {
 
     // Validate input
     validateStatementUpload({ file, accountId, month, year });
+
+    // Load the account — credit-card faturas need type + closingDay for cycle logic.
+    const account = await prisma.account.findUnique({ where: { id: accountId } });
+    if (!account) {
+      return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+    }
+    const isCreditCard = account.type === 'CREDIT_CARD';
 
     // Check file type
     const fileName = file.name.toLowerCase();
@@ -73,15 +85,19 @@ export async function POST(request: Request) {
     // any categoryId, notes, and isRecurring edits the user made on prior transactions.
 
     let transactions: { date: Date; description: string; amount: number; type: 'INCOME' | 'EXPENSE'; categoryId?: string | null }[] = [];
+    let faturaMeta: FaturaMeta | null = null;
     let parseMessage: string | undefined;
 
     if (isCSV) {
       // Parse CSV files
       transactions = await parseCSV(file);
     } else if (isPDF) {
-      // Parse PDF files using Google Gemini API
+      // Parse PDF files via the AI/local parser. Credit-card accounts use the
+      // dedicated fatura path which also returns invoice metadata.
       try {
-        transactions = await parsePDF(file);
+        const result = await parsePDF(file, account.type);
+        transactions = result.transactions;
+        faturaMeta = result.faturaMeta;
         if (transactions.length === 0) {
           parseMessage = 'PDF processed, but no transactions were found. Please verify the file is a valid bank statement.';
         }
@@ -112,9 +128,13 @@ export async function POST(request: Request) {
     });
 
     if (transactions.length > 0) {
-      // Check for potential duplicates across all statements (not just this one)
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0, 23, 59, 59);
+      // Check for potential duplicates across all statements (not just this one).
+      // Credit-card faturas cross the calendar-month boundary, so widen the window
+      // to the billing cycle — otherwise re-uploads duplicate cross-boundary rows.
+      // Widening is safe: dedup matches exact (date, amount, description).
+      const { start: startDate, end: endDate } = isCreditCard
+        ? faturaDedupWindow(month, year, account.closingDay)
+        : { start: new Date(year, month - 1, 1), end: new Date(year, month, 0, 23, 59, 59) };
 
       // Include ALL transactions for this account+month — including any already linked
       // to this statement from a previous upload. This ensures re-uploading the same
@@ -164,10 +184,10 @@ export async function POST(request: Request) {
           }))
         );
 
-        // Apply categorization results
+        // Apply categorization results (+ installment metadata for credit cards).
         const transactionsWithCategories = uniqueTransactions.map((t, index) => {
           const result = categorizationResults.get(index);
-          return {
+          const base = {
             accountId,
             statementId: statement.id,
             date: t.date,
@@ -175,6 +195,16 @@ export async function POST(request: Request) {
             amount: t.amount,
             type: t.type,
             categoryId: result?.categoryId || t.categoryId || null,
+          };
+          if (!isCreditCard) return base;
+          const installment = parseInstallment(t.description);
+          return {
+            ...base,
+            installmentNumber: installment?.number ?? null,
+            installmentTotal: installment?.total ?? null,
+            installmentGroupId: installment
+              ? installmentGroupId(accountId, t.description, installment.total)
+              : null,
           };
         });
 
@@ -187,6 +217,24 @@ export async function POST(request: Request) {
         parseMessage = parseMessage
           ? `${parseMessage} ${duplicateCount} duplicate transaction(s) were skipped.`
           : `${duplicateCount} duplicate transaction(s) were skipped.`;
+      }
+    }
+
+    // Credit-card faturas: materialize the invoice, link its transactions, and
+    // refresh the account's limit/closing/due snapshot from the extracted meta.
+    // Runs even with zero transactions so a metadata-only fatura still updates
+    // the limit. Idempotent on re-upload.
+    if (isCreditCard) {
+      try {
+        await applyFaturaToInvoice({
+          accountId,
+          statementId: statement.id,
+          referenceMonth: month,
+          referenceYear: year,
+          faturaMeta,
+        });
+      } catch (faturaError) {
+        console.error('Failed to apply fatura to invoice:', faturaError);
       }
     }
 
@@ -213,4 +261,4 @@ export async function POST(request: Request) {
     console.error('Upload error:', error);
     return NextResponse.json({ error: 'Failed to process statement' }, { status: 500 });
   }
-}
+});

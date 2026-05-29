@@ -8,6 +8,8 @@ export type ToolName =
   | 'get_subscriptions'
   | 'get_dashboard_summary'
   | 'get_category_breakdown'
+  | 'get_credit_card_invoices'
+  | 'get_invoice'
   | 'categorize_transaction'
   | 'update_transaction_notes'
   | 'mark_transaction_recurring'
@@ -21,6 +23,8 @@ export const READ_TOOLS: ToolName[] = [
   'get_subscriptions',
   'get_dashboard_summary',
   'get_category_breakdown',
+  'get_credit_card_invoices',
+  'get_invoice',
 ];
 
 export const WRITE_TOOLS: ToolName[] = [
@@ -49,8 +53,20 @@ export const TOOL_DESCRIPTIONS: Record<ToolName, { description: string; params: 
     },
   },
   get_accounts: {
-    description: 'List all active accounts with current balance.',
+    description: 'List all active accounts with current balance. Credit cards also include creditLimit, availableLimit, closingDay and dueDay.',
     params: {},
+  },
+  get_credit_card_invoices: {
+    description: 'List credit-card invoices (faturas), newest first. Optionally filter by account.',
+    params: {
+      accountId: 'string (optional) — filter invoices to one credit-card account',
+    },
+  },
+  get_invoice: {
+    description: 'Get a single credit-card invoice with its transactions and installment markers.',
+    params: {
+      invoiceId: 'string (required)',
+    },
   },
   get_categories: {
     description: 'List all categories with hierarchy info.',
@@ -126,6 +142,8 @@ const HANDLERS: Record<ToolName, (params: AnyParams) => Promise<unknown>> = {
   get_subscriptions: (p) => reads.get_subscriptions(p as Parameters<typeof reads.get_subscriptions>[0]),
   get_dashboard_summary: (p) => reads.get_dashboard_summary(p as Parameters<typeof reads.get_dashboard_summary>[0]),
   get_category_breakdown: (p) => reads.get_category_breakdown(p as Parameters<typeof reads.get_category_breakdown>[0]),
+  get_credit_card_invoices: (p) => reads.get_credit_card_invoices(p as Parameters<typeof reads.get_credit_card_invoices>[0]),
+  get_invoice: (p) => reads.get_invoice(p as Parameters<typeof reads.get_invoice>[0]),
   categorize_transaction: (p) => writes.categorize_transaction(p as Parameters<typeof writes.categorize_transaction>[0]),
   update_transaction_notes: (p) => writes.update_transaction_notes(p as Parameters<typeof writes.update_transaction_notes>[0]),
   mark_transaction_recurring: (p) => writes.mark_transaction_recurring(p as Parameters<typeof writes.mark_transaction_recurring>[0]),

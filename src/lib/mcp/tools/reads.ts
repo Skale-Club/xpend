@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db';
 import type { Prisma } from '@/generated/prisma';
+import { computeAvailableLimit } from '@/lib/creditCard/limit';
 
 export async function get_transactions(params: {
   dateFrom?: string;
@@ -73,7 +74,17 @@ export async function get_accounts(_params: Record<string, never>) {
   const accounts = await prisma.account.findMany({
     where: { isActive: true },
     orderBy: { name: 'asc' },
-    select: { id: true, name: true, type: true, bank: true, color: true, icon: true },
+    select: {
+      id: true, name: true, type: true, bank: true, color: true, icon: true,
+      creditLimit: true, closingDay: true, dueDay: true, lastFour: true, brand: true,
+      invoices: {
+        orderBy: [{ referenceYear: 'desc' }, { referenceMonth: 'desc' }],
+        select: {
+          status: true, totalAmount: true, paidAmount: true, availableLimitSnapshot: true,
+          referenceMonth: true, referenceYear: true,
+        },
+      },
+    },
   });
 
   const totals = await prisma.transaction.groupBy({
@@ -92,9 +103,90 @@ export async function get_accounts(_params: Record<string, never>) {
   }
 
   return {
-    accounts: accounts.map((a) => ({
-      ...a,
-      currentBalance: balanceMap.get(a.id) ?? 0,
+    accounts: accounts.map(({ invoices, ...a }) => {
+      const isCard = a.type === 'CREDIT_CARD';
+      return {
+        ...a,
+        currentBalance: balanceMap.get(a.id) ?? 0,
+        ...(isCard
+          ? { availableLimit: computeAvailableLimit(a.creditLimit, invoices) }
+          : {}),
+      };
+    }),
+  };
+}
+
+export async function get_credit_card_invoices(params: { accountId?: string }) {
+  const where: Prisma.CreditCardInvoiceWhereInput = {};
+  if (params.accountId) where.accountId = params.accountId;
+
+  const invoices = await prisma.creditCardInvoice.findMany({
+    where,
+    orderBy: [{ referenceYear: 'desc' }, { referenceMonth: 'desc' }],
+    include: {
+      account: { select: { id: true, name: true } },
+      _count: { select: { transactions: true } },
+    },
+  });
+
+  return {
+    invoices: invoices.map((inv) => ({
+      id: inv.id,
+      account: { id: inv.account.id, name: inv.account.name },
+      referenceMonth: inv.referenceMonth,
+      referenceYear: inv.referenceYear,
+      closingDate: inv.closingDate ? inv.closingDate.toISOString().split('T')[0] : null,
+      dueDate: inv.dueDate ? inv.dueDate.toISOString().split('T')[0] : null,
+      totalAmount: inv.totalAmount,
+      minimumPayment: inv.minimumPayment,
+      paidAmount: inv.paidAmount,
+      status: inv.status,
+      transactionCount: inv._count.transactions,
+    })),
+  };
+}
+
+export async function get_invoice(params: { invoiceId: string }) {
+  const invoice = await prisma.creditCardInvoice.findUnique({
+    where: { id: params.invoiceId },
+    include: {
+      account: { select: { id: true, name: true } },
+      transactions: {
+        orderBy: { date: 'desc' },
+        select: {
+          id: true, date: true, description: true, amount: true, type: true,
+          installmentNumber: true, installmentTotal: true,
+        },
+      },
+    },
+  });
+
+  if (!invoice) return { error: 'Invoice not found' };
+
+  return {
+    id: invoice.id,
+    account: { id: invoice.account.id, name: invoice.account.name },
+    referenceMonth: invoice.referenceMonth,
+    referenceYear: invoice.referenceYear,
+    closingDate: invoice.closingDate ? invoice.closingDate.toISOString().split('T')[0] : null,
+    dueDate: invoice.dueDate ? invoice.dueDate.toISOString().split('T')[0] : null,
+    totalAmount: invoice.totalAmount,
+    minimumPayment: invoice.minimumPayment,
+    previousBalance: invoice.previousBalance,
+    paidAmount: invoice.paidAmount,
+    creditLimitSnapshot: invoice.creditLimitSnapshot,
+    availableLimitSnapshot: invoice.availableLimitSnapshot,
+    status: invoice.status,
+    transactions: invoice.transactions.map((t) => ({
+      id: t.id,
+      date: t.date.toISOString().split('T')[0],
+      description: t.description,
+      amount: t.amount,
+      type: t.type,
+      installment:
+        t.installmentNumber && t.installmentTotal
+          ? `${t.installmentNumber}/${t.installmentTotal}`
+          : null,
     })),
   };
 }

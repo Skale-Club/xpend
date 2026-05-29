@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { withApiLogging } from '@/lib/apiLogger';
 
 // GET /api/subscriptions/[id] - Get a single subscription
-export async function GET(
+export const GET = withApiLogging(async (
     _request: Request,
     { params }: { params: Promise<{ id: string }> }
-) {
+) => {
     try {
         const { id } = await params;
 
@@ -26,13 +27,13 @@ export async function GET(
         console.error('Failed to fetch subscription:', error);
         return NextResponse.json({ error: 'Failed to fetch subscription' }, { status: 500 });
     }
-}
+});
 
 // PUT /api/subscriptions/[id] - Update a subscription
-export async function PUT(
+export const PUT = withApiLogging(async (
     request: Request,
     { params }: { params: Promise<{ id: string }> }
-) {
+) => {
     try {
         const { id } = await params;
         const body = await request.json();
@@ -81,13 +82,13 @@ export async function PUT(
         console.error('Failed to update subscription:', error);
         return NextResponse.json({ error: 'Failed to update subscription' }, { status: 500 });
     }
-}
+});
 
 // DELETE /api/subscriptions/[id] - Delete a subscription
-export async function DELETE(
+export const DELETE = withApiLogging(async (
     _request: Request,
     { params }: { params: Promise<{ id: string }> }
-) {
+) => {
     try {
         const { id } = await params;
 
@@ -104,4 +105,4 @@ export async function DELETE(
         console.error('Failed to delete subscription:', error);
         return NextResponse.json({ error: 'Failed to delete subscription' }, { status: 500 });
     }
-}
+});

@@ -1,10 +1,11 @@
 import { validateMcpToken } from '@/lib/mcp/auth';
 import { handleJsonRpc } from '@/lib/mcp/jsonrpc';
 import { getSession, sendSse } from '@/lib/mcp/session';
+import { withApiLogging } from '@/lib/apiLogger';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: Request) {
+export const POST = withApiLogging(async (request: Request) => {
   const { searchParams } = new URL(request.url);
   const tokenParam = searchParams.get('token');
   const sessionId = searchParams.get('sessionId') ?? '';
@@ -43,4 +44,4 @@ export async function POST(request: Request) {
   }
 
   return new Response(null, { status: 202 }); // notification, no response needed
-}
+});

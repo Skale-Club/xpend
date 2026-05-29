@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { withApiLogging } from '@/lib/apiLogger';
 
 interface CategorySeed {
   name: string;
@@ -237,7 +238,7 @@ async function seedCategories(categories: CategorySeed[], parentId?: string): Pr
   return count;
 }
 
-export async function POST() {
+export const POST = withApiLogging(async (_request: Request) => {
   try {
     const count = await seedCategories(DEFAULT_CATEGORIES);
     return NextResponse.json({ message: 'Categories seeded successfully', count });
@@ -245,4 +246,4 @@ export async function POST() {
     console.error('Failed to seed categories:', error);
     return NextResponse.json({ error: 'Failed to seed categories' }, { status: 500 });
   }
-}
+});

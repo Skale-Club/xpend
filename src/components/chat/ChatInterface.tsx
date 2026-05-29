@@ -339,7 +339,7 @@ export function ChatInterface({ onClose }: ChatInterfaceProps) {
           {sessions.length === 0 ? (
             <div className="p-4 text-center text-muted-foreground">No previous conversations</div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-border">
               {sessions.map((session) => (
                 <button
                   key={session.id}
@@ -388,7 +388,7 @@ export function ChatInterface({ onClose }: ChatInterfaceProps) {
       )}
 
       {error ? (
-        <div className="border-t border-red-100 bg-red-50 p-3 text-sm text-red-600">
+        <div className="border-t border-red-100 dark:border-red-900/40 bg-red-50 dark:bg-red-950/30 p-3 text-sm text-red-600 dark:text-red-400">
           {error}
         </div>
       ) : null}

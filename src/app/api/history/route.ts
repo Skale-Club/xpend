@@ -1,7 +1,8 @@
 import { prisma } from '@/lib/db';
 import { previewFromStoredContent } from '@/lib/chat/storage';
+import { withApiLogging } from '@/lib/apiLogger';
 
-export async function GET(request: Request) {
+export const GET = withApiLogging(async (request: Request) => {
   try {
     const { searchParams } = new URL(request.url);
 
@@ -65,9 +66,9 @@ export async function GET(request: Request) {
     console.error('Error loading chat history:', error);
     return Response.json({ chats: [], hasMore: false }, { status: 500 });
   }
-}
+});
 
-export async function DELETE() {
+export const DELETE = withApiLogging(async (_request: Request) => {
   try {
     const result = await prisma.chatSession.deleteMany({});
     return Response.json({ deletedCount: result.count }, { status: 200 });
@@ -75,4 +76,4 @@ export async function DELETE() {
     console.error('Error deleting chat history:', error);
     return Response.json({ error: 'Failed to delete history' }, { status: 500 });
   }
-}
+});

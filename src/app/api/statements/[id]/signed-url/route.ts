@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createClient } from '@supabase/supabase-js';
+import { withApiLogging } from '@/lib/apiLogger';
 
 // Signed URL TTL: 7 days (604800 seconds).
 // The bucket is private — this endpoint is the only way to get a download link.
 const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 7;
 
-export async function GET(
+export const GET = withApiLogging(async (
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   try {
     const { id } = await params;
 
@@ -56,4 +57,4 @@ export async function GET(
     console.error('Signed URL error:', error);
     return NextResponse.json({ error: 'Failed to generate download link' }, { status: 500 });
   }
-}
+});

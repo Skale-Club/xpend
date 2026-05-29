@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { generateToken } from '@/lib/mcp/auth';
+import { withApiLogging } from '@/lib/apiLogger';
 
-export async function POST(
+export const POST = withApiLogging(async (
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   try {
     const { id } = await params;
 
@@ -34,4 +35,4 @@ export async function POST(
     console.error('Failed to rotate MCP token:', error);
     return NextResponse.json({ error: 'Failed to rotate token' }, { status: 500 });
   }
-}
+});

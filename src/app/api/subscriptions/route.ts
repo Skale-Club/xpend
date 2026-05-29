@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import type { BillingCycle } from '@/generated/prisma';
+import { withApiLogging } from '@/lib/apiLogger';
 
 export interface SubscriptionStats {
     activeSubscriptions: number;
@@ -31,7 +32,7 @@ function getMonthlyPrice(price: number, cycle: BillingCycle, frequency: number):
 }
 
 // GET /api/subscriptions - List all subscriptions with optional filters
-export async function GET(request: Request) {
+export const GET = withApiLogging(async (request: Request) => {
     try {
         const { searchParams } = new URL(request.url);
         const inactive = searchParams.get('inactive');
@@ -124,10 +125,10 @@ export async function GET(request: Request) {
         console.error('Failed to fetch subscriptions:', error);
         return NextResponse.json({ error: 'Failed to fetch subscriptions' }, { status: 500 });
     }
-}
+});
 
 // POST /api/subscriptions - Create a new subscription
-export async function POST(request: Request) {
+export const POST = withApiLogging(async (request: Request) => {
     try {
         const body = await request.json();
 
@@ -170,4 +171,4 @@ export async function POST(request: Request) {
         console.error('Failed to create subscription:', error);
         return NextResponse.json({ error: 'Failed to create subscription' }, { status: 500 });
     }
-}
+});

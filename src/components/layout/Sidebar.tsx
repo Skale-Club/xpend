@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -9,7 +9,6 @@ import {
   Upload,
   List,
   Settings,
-  CircleDollarSign,
   Menu,
   X,
   Tags,
@@ -18,15 +17,19 @@ import {
   Eye,
   EyeOff,
   Repeat,
+  ScrollText,
+  CreditCard,
 } from 'lucide-react';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { XpendLogo } from '@/components/ui';
 
 const navItems = [
   { href: '/',               label: 'Dashboard',        icon: LayoutDashboard },
   { href: '/reports',        label: 'Reports',           icon: BarChart3 },
   { href: '/accounts',       label: 'Accounts',          icon: Wallet },
+  { href: '/credit-cards',   label: 'Credit Cards',      icon: CreditCard },
   { href: '/subscriptions',  label: 'Subscriptions',     icon: Repeat },
   { href: '/statements',     label: 'Statements',        icon: Upload },
   { href: '/transactions',   label: 'Transactions',      icon: List },
@@ -41,7 +44,23 @@ interface SidebarProps {
 export function Sidebar({ onLogout }: SidebarProps) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const { hideSensitiveValues, toggleSensitiveValues } = useSensitiveValues();
+
+  useEffect(() => {
+    // Middleware 403s non-admins on /api/admin/*, so a 200 here means the
+    // signed-in user is a super admin and should see the admin section.
+    let cancelled = false;
+    fetch('/api/admin/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.isSuperAdmin) setIsSuperAdmin(true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <>
@@ -76,9 +95,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
         {/* Logo */}
         <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-4">
           <Link href="/" className="flex items-center gap-3" onClick={() => setIsMobileMenuOpen(false)}>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-sm">
-              <CircleDollarSign className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <XpendLogo className="h-9 w-9 rounded-xl shadow-sm" />
             <div>
               <p className="text-sm font-bold tracking-tight text-sidebar-foreground">Xpend</p>
               <p className="text-[11px] text-sidebar-muted-foreground">Personal finance</p>
@@ -123,6 +140,46 @@ export function Sidebar({ onLogout }: SidebarProps) {
               );
             })}
           </ul>
+
+          {isSuperAdmin && (
+            <>
+              <p className="mb-2 mt-5 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-muted-foreground">
+                Admin
+              </p>
+              <ul className="space-y-0.5">
+                {(() => {
+                  const isActive = pathname === '/admin/logs';
+                  return (
+                    <li>
+                      <Link
+                        href="/admin/logs"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className={cn(
+                          'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
+                          isActive
+                            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                            : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/40 hover:text-sidebar-foreground',
+                        )}
+                      >
+                        <ScrollText
+                          className={cn(
+                            'h-4 w-4 flex-shrink-0 transition-colors',
+                            isActive
+                              ? 'text-sidebar-accent-foreground'
+                              : 'text-sidebar-muted-foreground group-hover:text-sidebar-foreground',
+                          )}
+                        />
+                        System Logs
+                        {isActive && (
+                          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })()}
+              </ul>
+            </>
+          )}
         </nav>
 
         {/* Footer actions */}

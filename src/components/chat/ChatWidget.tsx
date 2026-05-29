@@ -22,7 +22,7 @@ export function ChatWidget() {
             ) : (
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="w-14 h-14 bg-accent0 text-white rounded-full shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center"
+                    className="w-14 h-14 bg-primary text-white rounded-full shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center"
                     title="Open chat"
                 >
                     <MessageCircle className="w-6 h-6" />
