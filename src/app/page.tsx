@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { ArrowDownRight, ArrowRight, ArrowUpRight, Tag } from 'lucide-react';
-import { Card, CardHeader, CardContent, Pagination, Loader, Modal, ExportButton, Button } from '@/components/ui';
+import { Card, CardHeader, CardContent, Pagination, Loader, ExportButton } from '@/components/ui';
 import {
   StatsCards,
   MonthlyChart,
@@ -12,14 +11,11 @@ import {
   SpendingPaceCard,
   CashFlowResultCard,
   NetWorthCard,
+  CategoryBreakdownModal,
 } from '@/components/dashboard';
 import { TransactionList } from '@/components/transactions';
-import { CategoryTreeSelector } from '@/components/categories/CategoryTreeSelector';
-import { Account, Category, DashboardFilters, TransactionType, Transaction, DashboardData, CategoryBreakdownData } from '@/types';
+import { Account, Category, DashboardFilters, TransactionType, Transaction, DashboardData } from '@/types';
 import { buildDistributionTemplateItems, categorySummaryToDistribution } from '@/lib/distributionHelpers';
-import { formatCurrency, formatDate } from '@/lib/utils';
-import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
-import { getCategoryIcon } from '@/lib/categoryIcons';
 import { readArrayResponse, readObjectResponse } from '@/lib/http';
 
 export default function DashboardPage() {
@@ -28,17 +24,8 @@ export default function DashboardPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [filters, setFilters] = useState<DashboardFilters>({});
   const [isLoading, setIsLoading] = useState(true);
-  const { hideSensitiveValues } = useSensitiveValues();
 
-  const [isCategoryBreakdownOpen, setIsCategoryBreakdownOpen] = useState(false);
-  const [isCategoryBreakdownLoading, setIsCategoryBreakdownLoading] = useState(false);
-  const [categoryBreakdownData, setCategoryBreakdownData] = useState<CategoryBreakdownData | null>(null);
-  const [categoryBreakdownError, setCategoryBreakdownError] = useState<string | null>(null);
-  const [breakdownTransactionToCategorize, setBreakdownTransactionToCategorize] = useState<CategoryBreakdownData['transactions'][number] | null>(null);
-  const [selectedBreakdownCategory, setSelectedBreakdownCategory] = useState('');
-  const [isSavingBreakdownCategory, setIsSavingBreakdownCategory] = useState(false);
-  const [editingBreakdownDescriptionId, setEditingBreakdownDescriptionId] = useState<string | null>(null);
-  const [breakdownTempDescription, setBreakdownTempDescription] = useState('');
+  const [breakdownParentId, setBreakdownParentId] = useState<string | null>(null);
 
   // Pagination state for Recent Transactions
   const [currentPage, setCurrentPage] = useState(1);
@@ -134,91 +121,6 @@ export default function DashboardPage() {
     await fetchData({ silent: true });
   };
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'INCOME':
-        return <ArrowUpRight className="w-4 h-4 shrink-0 text-green-500" />;
-      case 'EXPENSE':
-        return <ArrowDownRight className="w-4 h-4 shrink-0 text-red-500" />;
-      case 'TRANSFER':
-        return <ArrowRight className="w-4 h-4 shrink-0 text-blue-500" />;
-      default:
-        return null;
-    }
-  };
-
-  const startBreakdownDescriptionEdit = (id: string, currentDescription: string) => {
-    setEditingBreakdownDescriptionId(id);
-    setBreakdownTempDescription(currentDescription);
-  };
-
-  const cancelBreakdownDescriptionEdit = () => {
-    setEditingBreakdownDescriptionId(null);
-    setBreakdownTempDescription('');
-  };
-
-  const handleBreakdownDescriptionCommit = async (
-    id: string,
-    nextValue: string,
-    currentDescription: string
-  ) => {
-    const nextDescription = nextValue.trim();
-    setEditingBreakdownDescriptionId(null);
-    setBreakdownTempDescription('');
-
-    if (!nextDescription || nextDescription === currentDescription) {
-      return;
-    }
-
-    try {
-      await handleDescriptionUpdate(id, nextDescription);
-      setCategoryBreakdownData((previous) => {
-        if (!previous) return previous;
-        return {
-          ...previous,
-          transactions: previous.transactions.map((transaction) =>
-            transaction.id === id
-              ? { ...transaction, description: nextDescription }
-              : transaction
-          ),
-        };
-      });
-    } catch (error) {
-      console.error('Failed to update breakdown transaction description:', error);
-    }
-  };
-
-  const openBreakdownTransactionCategorize = (transaction: CategoryBreakdownData['transactions'][number]) => {
-    setBreakdownTransactionToCategorize(transaction);
-    setSelectedBreakdownCategory(transaction.category?.id || '');
-  };
-
-  const closeBreakdownTransactionCategorize = () => {
-    setBreakdownTransactionToCategorize(null);
-    setSelectedBreakdownCategory('');
-  };
-
-  const handleBreakdownTransactionCategorize = async () => {
-    if (!breakdownTransactionToCategorize) return;
-    setIsSavingBreakdownCategory(true);
-    try {
-      await fetch('/api/transactions', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: breakdownTransactionToCategorize.id,
-          categoryId: selectedBreakdownCategory || null,
-        }),
-      });
-      closeBreakdownTransactionCategorize();
-      await fetchData({ silent: true });
-    } catch (error) {
-      console.error('Failed to categorize breakdown transaction:', error);
-    } finally {
-      setIsSavingBreakdownCategory(false);
-    }
-  };
-
   if (isLoading && !data) {
     return (
       <div className="flex items-center justify-center min-h-[50vh] w-full">
@@ -301,44 +203,13 @@ export default function DashboardPage() {
             recurringVsOneTime: categorySummaryToDistribution(data.recurringVsOneTime),
             expenseByWeekday: categorySummaryToDistribution(data.weekdayPattern),
           })}
-          onDataPointClick={async ({ viewId, dataPoint }) => {
+          onDataPointClick={({ viewId, dataPoint }) => {
             const parentCategoryId = viewId === 'expense'
               ? dataPoint.id
               : viewId.startsWith('parent-breakdown-')
                 ? viewId.replace('parent-breakdown-', '')
                 : null;
-            if (!parentCategoryId) return;
-
-            setIsCategoryBreakdownOpen(true);
-            setIsCategoryBreakdownLoading(true);
-            setCategoryBreakdownData(null);
-            setCategoryBreakdownError(null);
-
-            try {
-              const params = new URLSearchParams();
-              params.set('parentCategoryId', parentCategoryId);
-
-              if (filters.dateFrom) params.set('dateFrom', filters.dateFrom.toISOString());
-              if (filters.dateTo) params.set('dateTo', filters.dateTo.toISOString());
-              if (filters.accountIds?.length) params.set('accountIds', filters.accountIds.join(','));
-              if (filters.categoryIds?.length) params.set('categoryIds', filters.categoryIds.join(','));
-              if (filters.minAmount) params.set('minAmount', filters.minAmount.toString());
-              if (filters.maxAmount) params.set('maxAmount', filters.maxAmount.toString());
-              if (filters.searchQuery) params.set('search', filters.searchQuery);
-
-              const response = await fetch(`/api/dashboard/category-breakdown?${params.toString()}`);
-              if (!response.ok) {
-                throw new Error('Failed to load breakdown');
-              }
-
-              const breakdown = await response.json();
-              setCategoryBreakdownData(breakdown);
-            } catch (error) {
-              console.error('Failed to fetch category breakdown:', error);
-              setCategoryBreakdownError('Failed to load category breakdown');
-            } finally {
-              setIsCategoryBreakdownLoading(false);
-            }
+            if (parentCategoryId) setBreakdownParentId(parentCategoryId);
           }}
         />
       </div>
@@ -399,213 +270,13 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <Modal
-        isOpen={isCategoryBreakdownOpen}
-        onClose={() => {
-          setIsCategoryBreakdownOpen(false);
-          setCategoryBreakdownData(null);
-          setCategoryBreakdownError(null);
-          cancelBreakdownDescriptionEdit();
-        }}
-        title={categoryBreakdownData ? `${categoryBreakdownData.category.name} Breakdown` : 'Category Breakdown'}
-        size="xl"
-      >
-        {isCategoryBreakdownLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader size={56} />
-          </div>
-        ) : categoryBreakdownError ? (
-          <div className="py-8 text-center text-sm text-destructive">
-            {categoryBreakdownError}
-          </div>
-        ) : categoryBreakdownData ? (
-          <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border border-border bg-muted px-3 py-2">
-                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total</div>
-                <div className="text-base font-bold text-foreground">
-                  {formatCurrency(categoryBreakdownData.category.total, { hideSensitiveValues })}
-                </div>
-              </div>
-              <div className="rounded-lg border border-border bg-muted px-3 py-2">
-                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Transactions</div>
-                <div className="text-base font-bold text-foreground">{categoryBreakdownData.totalTransactions}</div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-semibold text-foreground mb-2">Subcategories</h3>
-              <div className="space-y-2">
-                {categoryBreakdownData.subcategories.length === 0 ? (
-                  <div className="rounded-lg border border-border px-3 py-4 text-sm text-muted-foreground">
-                    No subcategories found.
-                  </div>
-                ) : (
-                  categoryBreakdownData.subcategories.map((subcategory) => (
-                    <div key={subcategory.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: subcategory.color }} />
-                        <span className="text-sm text-foreground truncate">{subcategory.name}</span>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className="text-sm font-semibold text-foreground">
-                          {formatCurrency(subcategory.total, { hideSensitiveValues })}
-                        </span>
-                        <span className="text-xs text-muted-foreground min-w-[3rem] text-right">
-                          {subcategory.percentage.toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-semibold text-foreground mb-2">Related Transactions</h3>
-              <div className="max-h-[320px] overflow-y-auto rounded-lg border border-border">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-muted-foreground bg-muted sticky top-0 border-b border-border">
-                    <tr>
-                      <th className="px-3 py-2 font-medium">Date</th>
-                      <th className="px-3 py-2 font-medium">Description</th>
-                      <th className="px-3 py-2 font-medium">Subcategory</th>
-                      <th className="px-3 py-2 font-medium text-right">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {categoryBreakdownData.transactions.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
-                          No transactions found for this category.
-                        </td>
-                      </tr>
-                    ) : (
-                      categoryBreakdownData.transactions.map((transaction) => (
-                        <tr key={transaction.id} className="hover:bg-muted">
-                          <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{formatDate(transaction.date)}</td>
-                          <td className="px-3 py-2 text-foreground max-w-[220px]">
-                            <div className="flex items-center gap-2 min-w-0">
-                              {getTypeIcon(transaction.type)}
-                              {editingBreakdownDescriptionId === transaction.id ? (
-                                <input
-                                  autoFocus
-                                  value={breakdownTempDescription}
-                                  onChange={(event) => setBreakdownTempDescription(event.target.value)}
-                                  onBlur={(event) =>
-                                    handleBreakdownDescriptionCommit(
-                                      transaction.id,
-                                      event.target.value,
-                                      transaction.description
-                                    )
-                                  }
-                                  onKeyDown={(event) => {
-                                    if (event.key === 'Enter') {
-                                      event.preventDefault();
-                                      event.currentTarget.blur();
-                                    } else if (event.key === 'Escape') {
-                                      event.preventDefault();
-                                      cancelBreakdownDescriptionEdit();
-                                    }
-                                  }}
-                                  className="w-full bg-card border border-primary/50 rounded px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                                />
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => startBreakdownDescriptionEdit(transaction.id, transaction.description)}
-                                  className="truncate text-left hover:text-primary transition-colors cursor-text"
-                                  title="Edit description"
-                                >
-                                  {transaction.description}
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2">
-                            {transaction.category ? (
-                              (() => {
-                                const CategoryIcon = getCategoryIcon(transaction.category.icon);
-                                return (
-                                  <button
-                                    type="button"
-                                    onClick={() => openBreakdownTransactionCategorize(transaction)}
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
-                                    style={{
-                                      backgroundColor: `${transaction.category.color}20`,
-                                      color: transaction.category.color,
-                                    }}
-                                    title="Change category"
-                                  >
-                                    <CategoryIcon className="w-3.5 h-3.5" />
-                                    {transaction.subcategoryName}
-                                  </button>
-                                );
-                              })()
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => openBreakdownTransactionCategorize(transaction)}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground"
-                                title="Set category"
-                              >
-                                <Tag className="w-3.5 h-3.5" />
-                                {transaction.subcategoryName}
-                              </button>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 text-right font-semibold text-foreground whitespace-nowrap">
-                            {formatCurrency(transaction.amount, { hideSensitiveValues })}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              {categoryBreakdownData.truncated && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Showing the 100 most recent transactions for this category.
-                </p>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="py-8 text-center text-sm text-muted-foreground">
-            Select a category to view details.
-          </div>
-        )}
-      </Modal>
-
-      <Modal
-        isOpen={!!breakdownTransactionToCategorize}
-        onClose={closeBreakdownTransactionCategorize}
-        title="Change Transaction Category"
-        size="sm"
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground line-clamp-2">
-            {breakdownTransactionToCategorize?.description}
-          </p>
-          <CategoryTreeSelector
-            categories={categories}
-            value={selectedBreakdownCategory}
-            onChange={setSelectedBreakdownCategory}
-            transactionType={breakdownTransactionToCategorize?.type || null}
-            allowParentSelection={false}
-            includeUncategorized
-            maxHeightClassName="max-h-72"
-          />
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={closeBreakdownTransactionCategorize} disabled={isSavingBreakdownCategory}>
-              Cancel
-            </Button>
-            <Button onClick={handleBreakdownTransactionCategorize} disabled={isSavingBreakdownCategory}>
-              {isSavingBreakdownCategory ? 'Saving...' : 'Save'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      <CategoryBreakdownModal
+        parentCategoryId={breakdownParentId}
+        filters={filters}
+        categories={categories}
+        onClose={() => setBreakdownParentId(null)}
+        onMutated={() => fetchData({ silent: true })}
+      />
     </div>
   );
 }

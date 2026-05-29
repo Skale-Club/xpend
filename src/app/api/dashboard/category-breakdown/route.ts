@@ -3,73 +3,7 @@ import { prisma } from '@/lib/db';
 import { amountEqualsRange, parseSearchAmount } from '@/lib/searchAmount';
 import { expandCategoryIdsWithDescendants } from '@/lib/categoryDescendants';
 import { withApiLogging } from '@/lib/apiLogger';
-
-type RawCategory = { id: string; name: string; color: string; parentId: string | null };
-
-function buildCategoryContext(categories: RawCategory[]) {
-  const byId = new Map(categories.map((category) => [category.id, category]));
-  const rootCache = new Map<string, string>();
-  const firstChildCache = new Map<string, string | null>();
-  const colorCache = new Map<string, string>();
-
-  const getRootCategoryId = (categoryId: string): string => {
-    if (rootCache.has(categoryId)) return rootCache.get(categoryId)!;
-
-    let current = byId.get(categoryId);
-    let rootId = categoryId;
-
-    while (current?.parentId) {
-      rootId = current.parentId;
-      current = byId.get(current.parentId);
-    }
-
-    rootCache.set(categoryId, current?.id || rootId);
-    return rootCache.get(categoryId)!;
-  };
-
-  const getFirstChildUnderRootId = (categoryId: string): string | null => {
-    if (firstChildCache.has(categoryId)) return firstChildCache.get(categoryId)!;
-
-    const rootId = getRootCategoryId(categoryId);
-    let currentId = categoryId;
-    let current = byId.get(currentId);
-
-    if (!current || current.id === rootId) {
-      firstChildCache.set(categoryId, null);
-      return null;
-    }
-
-    while (current?.parentId && current.parentId !== rootId) {
-      currentId = current.parentId;
-      current = byId.get(current.parentId);
-    }
-
-    firstChildCache.set(categoryId, currentId);
-    return currentId;
-  };
-
-  const getEffectiveColor = (categoryId: string): string => {
-    if (colorCache.has(categoryId)) return colorCache.get(categoryId)!;
-
-    let current = byId.get(categoryId);
-    let color = current?.color || '#6B7280';
-
-    while (current?.parentId) {
-      current = byId.get(current.parentId);
-      if (current?.color) color = current.color;
-    }
-
-    colorCache.set(categoryId, color);
-    return color;
-  };
-
-  return {
-    byId,
-    getRootCategoryId,
-    getFirstChildUnderRootId,
-    getEffectiveColor,
-  };
-}
+import { buildCategoryContext } from '@/lib/categoryContext';
 
 export const GET = withApiLogging(async (request: Request) => {
   try {

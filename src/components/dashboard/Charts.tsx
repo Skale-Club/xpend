@@ -9,15 +9,12 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
   LineChart,
   Line,
   Legend,
 } from 'recharts';
 import { formatCurrency, formatCurrencyTick } from '@/lib/utils';
-import { MonthlyData, CategorySummary } from '@/types';
+import { MonthlyData } from '@/types';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 
 /* Reusable chart style helpers — reads CSS variables so they follow the theme */
@@ -80,43 +77,6 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
         <Bar dataKey="income"   name="Income"   fill={INCOME_COLOR}  radius={[4, 4, 0, 0]} />
         <Bar dataKey="expenses" name="Expenses" fill={EXPENSE_COLOR} radius={[4, 4, 0, 0]} />
       </BarChart>
-    </ResponsiveContainer>
-  );
-}
-
-interface CategoryPieChartProps {
-  data: CategorySummary[];
-}
-
-export function CategoryPieChart({ data }: CategoryPieChartProps) {
-  const { hideSensitiveValues } = useSensitiveValues();
-
-  return (
-    <ResponsiveContainer width="100%" height={300}>
-      <PieChart>
-        <Pie
-          data={data}
-          dataKey="total"
-          nameKey="categoryName"
-          cx="50%"
-          cy="50%"
-          outerRadius={100}
-          innerRadius={40}
-          paddingAngle={2}
-          label={({ name, value }) =>
-            `${name} (${formatCurrency(Number(value), { hideSensitiveValues })})`
-          }
-          labelLine={false}
-        >
-          {data.map((entry, i) => (
-            <Cell key={`cell-${i}`} fill={entry.color} />
-          ))}
-        </Pie>
-        <Tooltip
-          formatter={(value) => formatCurrency(Number(value), { hideSensitiveValues })}
-          contentStyle={TOOLTIP_STYLE}
-        />
-      </PieChart>
     </ResponsiveContainer>
   );
 }

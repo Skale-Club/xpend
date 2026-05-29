@@ -276,7 +276,7 @@ export interface DashboardData {
   };
   netWorthSummary: {
     netWorth: number;
-    series: { label: string; value: number }[];
+    series: { date: string; value: number }[];
   };
   transactions: {
     id: string;

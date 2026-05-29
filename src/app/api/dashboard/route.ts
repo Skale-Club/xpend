@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { amountEqualsRange, parseSearchAmount } from '@/lib/searchAmount';
 import { expandCategoryIdsWithDescendants } from '@/lib/categoryDescendants';
+import { buildCategoryContext, type CategoryContext } from '@/lib/categoryContext';
 import type { Prisma } from '@/generated/prisma';
 import { withApiLogging } from '@/lib/apiLogger';
 
@@ -194,74 +195,6 @@ export const GET = withApiLogging(async (request: Request) => {
   }
 });
 
-function buildCategoryContext(categories: { id: string; name: string; color: string; parentId: string | null }[]) {
-  const byId = new Map(categories.map((c) => [c.id, c]));
-  const rootCache = new Map<string, string>();
-  const firstChildCache = new Map<string, string | null>();
-  const colorCache = new Map<string, string>();
-
-  const getRootCategoryId = (categoryId: string): string => {
-    if (rootCache.has(categoryId)) return rootCache.get(categoryId)!;
-
-    let current = byId.get(categoryId);
-    let rootId = categoryId;
-
-    while (current?.parentId) {
-      rootId = current.parentId;
-      current = byId.get(current.parentId);
-    }
-
-    rootCache.set(categoryId, current?.id || rootId);
-    return rootCache.get(categoryId)!;
-  };
-
-  const getFirstChildUnderRootId = (categoryId: string): string | null => {
-    if (firstChildCache.has(categoryId)) return firstChildCache.get(categoryId)!;
-
-    const rootId = getRootCategoryId(categoryId);
-    let currentId = categoryId;
-    let current = byId.get(currentId);
-
-    if (!current || current.id === rootId) {
-      firstChildCache.set(categoryId, null);
-      return null;
-    }
-
-    while (current?.parentId && current.parentId !== rootId) {
-      currentId = current.parentId;
-      current = byId.get(current.parentId);
-    }
-
-    firstChildCache.set(categoryId, currentId);
-    return currentId;
-  };
-
-  const getEffectiveColor = (categoryId: string): string => {
-    if (colorCache.has(categoryId)) return colorCache.get(categoryId)!;
-
-    let current = byId.get(categoryId);
-    let color = current?.color || '#6B7280';
-
-    // Subcategories inherit root color in charts for visual consistency.
-    while (current?.parentId) {
-      current = byId.get(current.parentId);
-      if (current?.color) {
-        color = current.color;
-      }
-    }
-
-    colorCache.set(categoryId, color);
-    return color;
-  };
-
-  return {
-    byId,
-    getRootCategoryId,
-    getFirstChildUnderRootId,
-    getEffectiveColor,
-  };
-}
-
 function getMonthlyData(transactions: { date: Date; type: string; amount: number }[]) {
   const monthlyMap = new Map<string, { income: number; expenses: number }>();
 
@@ -301,7 +234,7 @@ function getMonthlyData(transactions: { date: Date; type: string; amount: number
 function getCategoryData(
   transactions: { type: string; amount: number; category: { id: string; name: string; color: string; parentId?: string | null } | null }[],
   filterType: string,
-  categoryContext: ReturnType<typeof buildCategoryContext>
+  categoryContext: CategoryContext
 ) {
   const categoryMap = new Map<string, { total: number; count: number; color: string; name: string }>();
   const filteredTxs = transactions.filter((t) => t.type === filterType);
@@ -467,7 +400,7 @@ function getWeekdayPattern(transactions: { type: string; amount: number; date: D
 function getSubcategoryData(
   transactions: { type: string; amount: number; category: { id: string; name: string; color: string; parentId?: string | null } | null }[],
   filterType: string,
-  categoryContext: ReturnType<typeof buildCategoryContext>
+  categoryContext: CategoryContext
 ) {
   const subcategoryMap = new Map<string, { total: number; count: number; color: string; name: string; parentName?: string }>();
   const filteredTxs = transactions.filter((t) => t.type === filterType && t.category?.parentId); // Only subcategories
@@ -507,7 +440,7 @@ function getSubcategoryData(
 function getParentCategoryBreakdown(
   transactions: { type: string; amount: number; category: { id: string; name: string; color: string; parentId?: string | null } | null }[],
   filterType: string,
-  categoryContext: ReturnType<typeof buildCategoryContext>
+  categoryContext: CategoryContext
 ) {
   const parentMap = new Map<
     string,
@@ -781,40 +714,30 @@ function getNetWorthSummaryData(
   const firstTransactionDate = sortedTransactions[0]?.date ?? null;
 
   const now = new Date();
-  const startDate = new Date(now);
-  startDate.setDate(now.getDate() - 6);
-  startDate.setHours(0, 0, 0, 0);
 
+  // Net daily change (INCOME +, EXPENSE -, TRANSFER neutral) keyed by ISO day.
   const dailyDelta = new Map<string, number>();
-  let runningBalance = initialTotal;
-  const series: { label: string; value: number }[] = [];
-
   for (const transaction of sortedTransactions) {
-    const date = new Date(transaction.date);
-    const dayKey = date.toISOString().slice(0, 10);
-    const currentDelta = dailyDelta.get(dayKey) || 0;
+    const dayKey = new Date(transaction.date).toISOString().slice(0, 10);
     const delta = transaction.type === 'INCOME' ? transaction.amount : transaction.type === 'EXPENSE' ? -transaction.amount : 0;
-    dailyDelta.set(dayKey, currentDelta + delta);
+    dailyDelta.set(dayKey, (dailyDelta.get(dayKey) || 0) + delta);
   }
 
-  const baselineDate = new Date(startDate);
-  baselineDate.setDate(startDate.getDate() - 1);
-  for (const transaction of sortedTransactions) {
-    if (transaction.date > baselineDate) break;
-    if (transaction.type === 'INCOME') runningBalance += transaction.amount;
-    if (transaction.type === 'EXPENSE') runningBalance -= transaction.amount;
-  }
-
-  for (let i = 0; i < 7; i += 1) {
-    const day = new Date(startDate);
-    day.setDate(startDate.getDate() + i);
-    const key = day.toISOString().slice(0, 10);
-    runningBalance += dailyDelta.get(key) || 0;
-
-    series.push({
-      label: day.toLocaleDateString('en-US', { weekday: 'short' }),
-      value: runningBalance,
-    });
+  // Full daily running-balance series from first activity to today; the client
+  // slices this by range. Running balance = initialBalance + cumulative net.
+  const series: { date: string; value: number }[] = [];
+  if (firstTransactionDate) {
+    const cursor = new Date(firstTransactionDate);
+    cursor.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setHours(0, 0, 0, 0);
+    let runningBalance = initialTotal;
+    while (cursor <= end) {
+      const key = cursor.toISOString().slice(0, 10);
+      runningBalance += dailyDelta.get(key) || 0;
+      series.push({ date: key, value: runningBalance });
+      cursor.setDate(cursor.getDate() + 1);
+    }
   }
 
   const daysTracked = firstTransactionDate

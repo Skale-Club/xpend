@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { validateQueryParams, ValidationError } from '@/lib/validation';
 import { amountEqualsRange, parseSearchAmount } from '@/lib/searchAmount';
 import { expandCategoryIdsWithDescendants } from '@/lib/categoryDescendants';
+import { buildCategoryContext } from '@/lib/categoryContext';
 import { withApiLogging } from '@/lib/apiLogger';
 
 /** Shape of a node in the hierarchical category breakdown tree. */
@@ -585,23 +586,7 @@ function getTopCategoriesComparison(
   const previousYear = previousMonthDate.getFullYear();
   const previousMonth = previousMonthDate.getMonth();
 
-  const categoryById = new Map(categories.map((category) => [category.id, category]));
-  const rootCategoryCache = new Map<string, string>();
-  const getRootCategoryId = (categoryId: string): string => {
-    if (rootCategoryCache.has(categoryId)) {
-      return rootCategoryCache.get(categoryId)!;
-    }
-
-    let currentId = categoryId;
-    let current = categoryById.get(currentId);
-    while (current?.parentId) {
-      currentId = current.parentId;
-      current = categoryById.get(currentId);
-    }
-
-    rootCategoryCache.set(categoryId, currentId);
-    return currentId;
-  };
+  const { byId: categoryById, getRootCategoryId } = buildCategoryContext(categories);
 
   const comparisonMap = new Map<
     string,

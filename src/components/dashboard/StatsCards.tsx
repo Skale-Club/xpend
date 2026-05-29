@@ -1,6 +1,6 @@
 'use client';
 
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Hash } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Hash } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 
@@ -9,8 +9,6 @@ interface StatsCardsProps {
   totalExpenses: number;
   totalBalance: number;
   transactionCount: number;
-  incomeChange?: number;
-  expenseChange?: number;
 }
 
 export function StatsCards({
@@ -18,8 +16,6 @@ export function StatsCards({
   totalExpenses,
   totalBalance,
   transactionCount,
-  incomeChange,
-  expenseChange,
 }: StatsCardsProps) {
   const { hideSensitiveValues } = useSensitiveValues();
 
@@ -31,7 +27,6 @@ export function StatsCards({
       iconBg: 'bg-success/10',
       iconColor: 'text-success',
       valueColor: 'text-success',
-      change: incomeChange,
     },
     {
       title: 'Total Expenses',
@@ -40,7 +35,6 @@ export function StatsCards({
       iconBg: 'bg-destructive/10',
       iconColor: 'text-destructive',
       valueColor: 'text-destructive',
-      change: expenseChange,
     },
     {
       title: 'Net Balance',
@@ -78,20 +72,6 @@ export function StatsCards({
                   ? stat.value.toLocaleString()
                   : formatCurrency(stat.value, { hideSensitiveValues })}
               </p>
-              {stat.change !== undefined && (
-                <div
-                  className={`flex items-center gap-0.5 mt-1.5 text-xs font-medium ${
-                    stat.change >= 0 ? 'text-success' : 'text-destructive'
-                  }`}
-                >
-                  {stat.change >= 0 ? (
-                    <ArrowUpRight className="h-3.5 w-3.5" />
-                  ) : (
-                    <ArrowDownRight className="h-3.5 w-3.5" />
-                  )}
-                  {Math.abs(stat.change).toFixed(1)}% vs last period
-                </div>
-              )}
             </div>
             <div className={`flex-shrink-0 rounded-lg p-2.5 ${stat.iconBg}`}>
               <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
