@@ -13,6 +13,7 @@ import {
   MemoryInsights,
 } from '@/components/journey';
 import { useToast, Loader, Button, Select } from '@/components/ui';
+import { readArrayResponse, readObjectResponse } from '@/lib/http';
 import {
   MEMORY_TYPES,
   MEMORY_STATUSES,
@@ -45,11 +46,11 @@ export default function JourneyPage() {
         fetch('/api/memories'),
         fetch('/api/memories/review-queue'),
       ]);
-      const journeyData = await journeyRes.json();
+      const journeyData = await readObjectResponse<FinancialJourney>(journeyRes, 'Journey');
       setJourney(journeyData);
-      setEntries(journeyData.entries || []);
-      setMemories(await memoriesRes.json());
-      setReviewItems(await reviewRes.json());
+      setEntries(journeyData?.entries || []);
+      setMemories(await readArrayResponse<FinancialMemory>(memoriesRes, 'Memories'));
+      setReviewItems(await readArrayResponse<MemoryReviewItem>(reviewRes, 'Review queue'));
       setReloadKey((k) => k + 1);
     } catch (error) {
       console.error('Failed to load journey:', error);

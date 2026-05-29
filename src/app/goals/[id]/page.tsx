@@ -20,6 +20,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 import { computeGoalProgress } from '@/lib/goals/calculations';
 import { computeRiskStatus } from '@/lib/goals/status';
+import { readArrayResponse } from '@/lib/http';
 import {
   GOAL_TYPE_LABELS,
   GOAL_STATUS_LABELS,
@@ -58,8 +59,8 @@ export default function GoalDetailPage() {
         return;
       }
       setGoal(await goalRes.json());
-      setAccounts(await accountsRes.json());
-      setCategories(await categoriesRes.json());
+      setAccounts(await readArrayResponse<AccountOption>(accountsRes, 'Accounts'));
+      setCategories(await readArrayResponse<CategoryOption>(categoriesRes, 'Categories'));
     } catch (error) {
       console.error('Failed to fetch goal:', error);
       toast.error('Failed to load goal');
