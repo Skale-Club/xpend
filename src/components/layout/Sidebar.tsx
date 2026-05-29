@@ -20,6 +20,7 @@ import {
   Target,
   ScrollText,
   CreditCard,
+  Brain,
 } from 'lucide-react';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,7 @@ const navItems = [
   { href: '/',               label: 'Dashboard',        icon: LayoutDashboard },
   { href: '/reports',        label: 'Reports',           icon: BarChart3 },
   { href: '/goals',          label: 'Goals',             icon: Target },
+  { href: '/journey',        label: 'Journey',           icon: Brain },
   { href: '/accounts',       label: 'Accounts',          icon: Wallet },
   { href: '/credit-cards',   label: 'Credit Cards',      icon: CreditCard },
   { href: '/subscriptions',  label: 'Subscriptions',     icon: Repeat },

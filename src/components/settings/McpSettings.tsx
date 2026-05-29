@@ -21,6 +21,11 @@ const READ_TOOLS = [
   'get_subscriptions',
   'get_dashboard_summary',
   'get_category_breakdown',
+  'get_financial_journey_summary',
+  'search_financial_memories',
+  'get_relevant_financial_context',
+  'list_open_financial_next_steps',
+  'get_goal_memory_context',
 ] as const;
 
 const WRITE_TOOLS = [
@@ -29,6 +34,11 @@ const WRITE_TOOLS = [
   'mark_transaction_recurring',
   'categorize_by_description',
   'create_categorization_rule',
+  'create_financial_memory',
+  'propose_financial_memory',
+  'update_financial_memory_status',
+  'record_financial_decision',
+  'record_plan_update',
 ] as const;
 
 type ToolName = (typeof READ_TOOLS)[number] | (typeof WRITE_TOOLS)[number];

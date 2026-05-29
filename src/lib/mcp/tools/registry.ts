@@ -1,5 +1,6 @@
 import * as reads from './reads';
 import * as writes from './writes';
+import * as memory from './memory';
 
 export type ToolName =
   | 'get_transactions'
@@ -14,7 +15,17 @@ export type ToolName =
   | 'update_transaction_notes'
   | 'mark_transaction_recurring'
   | 'categorize_by_description'
-  | 'create_categorization_rule';
+  | 'create_categorization_rule'
+  | 'get_financial_journey_summary'
+  | 'search_financial_memories'
+  | 'get_relevant_financial_context'
+  | 'list_open_financial_next_steps'
+  | 'get_goal_memory_context'
+  | 'create_financial_memory'
+  | 'propose_financial_memory'
+  | 'update_financial_memory_status'
+  | 'record_financial_decision'
+  | 'record_plan_update';
 
 export const READ_TOOLS: ToolName[] = [
   'get_transactions',
@@ -25,6 +36,11 @@ export const READ_TOOLS: ToolName[] = [
   'get_category_breakdown',
   'get_credit_card_invoices',
   'get_invoice',
+  'get_financial_journey_summary',
+  'search_financial_memories',
+  'get_relevant_financial_context',
+  'list_open_financial_next_steps',
+  'get_goal_memory_context',
 ];
 
 export const WRITE_TOOLS: ToolName[] = [
@@ -33,6 +49,11 @@ export const WRITE_TOOLS: ToolName[] = [
   'mark_transaction_recurring',
   'categorize_by_description',
   'create_categorization_rule',
+  'create_financial_memory',
+  'propose_financial_memory',
+  'update_financial_memory_status',
+  'record_financial_decision',
+  'record_plan_update',
 ];
 
 export const ALL_TOOLS: ToolName[] = [...READ_TOOLS, ...WRITE_TOOLS];
@@ -131,6 +152,83 @@ export const TOOL_DESCRIPTIONS: Record<ToolName, { description: string; params: 
       matchType: '"exact" | "contains" | "regex" (default "contains")',
     },
   },
+  get_financial_journey_summary: {
+    description: 'Get the user financial journey summary, current focus, and memory counts.',
+    params: {},
+  },
+  search_financial_memories: {
+    description: 'Search durable financial memories (decisions, assumptions, plans, risks, preferences, next steps).',
+    params: {
+      memoryType: 'string (optional)',
+      status: 'string (optional, defaults to active)',
+      q: 'string (optional) — keyword search in title/content',
+      relatedEntityType: 'string (optional)',
+      relatedEntityId: 'string (optional)',
+      limit: 'number (default 20, max 100)',
+    },
+  },
+  get_relevant_financial_context: {
+    description: 'Get a compact, ranked financial-context package for planning, optionally focused on a topic or entity.',
+    params: {
+      topic: 'string (optional)',
+      entityType: 'string (optional)',
+      entityId: 'string (optional)',
+    },
+  },
+  list_open_financial_next_steps: {
+    description: 'List open (active) financial next-step memories.',
+    params: {},
+  },
+  get_goal_memory_context: {
+    description: 'Get memories and context related to a specific goal.',
+    params: { goalId: 'string (required)' },
+  },
+  create_financial_memory: {
+    description: 'Create a durable financial memory directly (active). Use propose_financial_memory when user confirmation is preferred.',
+    params: {
+      memoryType: 'string (required): decision | assumption | plan | goal | risk | preference | next_step | conversation_summary',
+      title: 'string (required)',
+      content: 'string (required)',
+      confidence: 'number 0-1 (optional)',
+      priority: 'number (optional)',
+      relatedEntityType: 'string (optional)',
+      relatedEntityId: 'string (optional)',
+    },
+  },
+  propose_financial_memory: {
+    description: 'Propose a memory for user review instead of saving it directly. Lands in the review queue.',
+    params: {
+      proposedMemoryType: 'string (required)',
+      title: 'string (required)',
+      content: 'string (required)',
+      confidence: 'number 0-1 (optional)',
+    },
+  },
+  update_financial_memory_status: {
+    description: 'Update a memory status (active, archived, superseded, rejected, needs_review).',
+    params: {
+      memoryId: 'string (required)',
+      status: 'string (required)',
+      supersededById: 'string (optional) — the memory that replaces this one',
+    },
+  },
+  record_financial_decision: {
+    description: 'Record a financial decision as a durable memory and a journey timeline entry.',
+    params: {
+      title: 'string (required)',
+      content: 'string (required)',
+      relatedEntityType: 'string (optional)',
+      relatedEntityId: 'string (optional)',
+    },
+  },
+  record_plan_update: {
+    description: 'Record a plan or plan update as a durable memory and a journey timeline entry.',
+    params: {
+      title: 'string (required)',
+      content: 'string (required)',
+      relatedGoalId: 'string (optional)',
+    },
+  },
 };
 
 type AnyParams = Record<string, unknown>;
@@ -149,6 +247,16 @@ const HANDLERS: Record<ToolName, (params: AnyParams) => Promise<unknown>> = {
   mark_transaction_recurring: (p) => writes.mark_transaction_recurring(p as Parameters<typeof writes.mark_transaction_recurring>[0]),
   categorize_by_description: (p) => writes.categorize_by_description(p as Parameters<typeof writes.categorize_by_description>[0]),
   create_categorization_rule: (p) => writes.create_categorization_rule(p as Parameters<typeof writes.create_categorization_rule>[0]),
+  get_financial_journey_summary: () => memory.get_financial_journey_summary(),
+  search_financial_memories: (p) => memory.search_financial_memories(p as Parameters<typeof memory.search_financial_memories>[0]),
+  get_relevant_financial_context: (p) => memory.get_relevant_financial_context(p as Parameters<typeof memory.get_relevant_financial_context>[0]),
+  list_open_financial_next_steps: () => memory.list_open_financial_next_steps(),
+  get_goal_memory_context: (p) => memory.get_goal_memory_context(p as Parameters<typeof memory.get_goal_memory_context>[0]),
+  create_financial_memory: (p) => memory.create_financial_memory(p as Parameters<typeof memory.create_financial_memory>[0]),
+  propose_financial_memory: (p) => memory.propose_financial_memory(p as Parameters<typeof memory.propose_financial_memory>[0]),
+  update_financial_memory_status: (p) => memory.update_financial_memory_status(p as Parameters<typeof memory.update_financial_memory_status>[0]),
+  record_financial_decision: (p) => memory.record_financial_decision(p as Parameters<typeof memory.record_financial_decision>[0]),
+  record_plan_update: (p) => memory.record_plan_update(p as Parameters<typeof memory.record_plan_update>[0]),
 };
 
 export function isValidTool(name: string): name is ToolName {

@@ -367,6 +367,111 @@ export function validateScenarioData(data: Record<string, unknown>) {
   }
 }
 
+// Financial memory validation
+const MEMORY_TYPES = ['decision', 'assumption', 'plan', 'goal', 'risk', 'preference', 'next_step', 'conversation_summary'];
+const MEMORY_STATUSES = ['active', 'archived', 'superseded', 'rejected', 'needs_review'];
+const MEMORY_SOURCES = ['chat', 'mcp', 'manual', 'system', 'import'];
+
+export function validateMemoryData(data: Record<string, unknown>, { partial = false }: { partial?: boolean } = {}) {
+  const errors: string[] = [];
+
+  const titleProvided = data.title !== undefined;
+  if (!partial || titleProvided) {
+    if (!data.title || typeof data.title !== 'string' || data.title.trim().length === 0) {
+      errors.push('Memory title is required');
+    } else if (data.title.length > 200) {
+      errors.push('Memory title must be less than 200 characters');
+    }
+  }
+
+  const contentProvided = data.content !== undefined;
+  if (!partial || contentProvided) {
+    if (!data.content || typeof data.content !== 'string' || data.content.trim().length === 0) {
+      errors.push('Memory content is required');
+    }
+  }
+
+  const typeProvided = data.memoryType !== undefined;
+  if (!partial || typeProvided) {
+    if (!data.memoryType || !MEMORY_TYPES.includes(data.memoryType as string)) {
+      errors.push(`Valid memoryType is required (${MEMORY_TYPES.join(', ')})`);
+    }
+  }
+
+  if (data.status !== undefined && data.status !== null && !MEMORY_STATUSES.includes(data.status as string)) {
+    errors.push(`Status must be one of ${MEMORY_STATUSES.join(', ')}`);
+  }
+
+  if (data.source !== undefined && data.source !== null && !MEMORY_SOURCES.includes(data.source as string)) {
+    errors.push(`Source must be one of ${MEMORY_SOURCES.join(', ')}`);
+  }
+
+  if (data.confidence !== undefined && data.confidence !== null && data.confidence !== '') {
+    const c = Number(data.confidence);
+    if (isNaN(c) || c < 0 || c > 1) {
+      errors.push('Confidence must be between 0 and 1');
+    }
+  }
+
+  if (data.priority !== undefined && data.priority !== null && data.priority !== '') {
+    const p = Number(data.priority);
+    if (isNaN(p) || !Number.isInteger(p)) {
+      errors.push('Priority must be an integer');
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new ValidationError(errors.join(', '));
+  }
+}
+
+// Journey entry validation
+const ENTRY_TYPES = [
+  'conversation_summary', 'decision', 'assumption', 'plan', 'recommendation',
+  'rejected_recommendation', 'risk', 'preference', 'next_step', 'status_update',
+];
+const IMPORTANCE_LEVELS = ['low', 'medium', 'high'];
+
+export function validateJourneyEntryData(data: Record<string, unknown>) {
+  const errors: string[] = [];
+
+  if (!data.title || typeof data.title !== 'string' || data.title.trim().length === 0) {
+    errors.push('Entry title is required');
+  } else if (data.title.length > 200) {
+    errors.push('Entry title must be less than 200 characters');
+  }
+
+  if (!data.entryType || !ENTRY_TYPES.includes(data.entryType as string)) {
+    errors.push(`Valid entryType is required (${ENTRY_TYPES.join(', ')})`);
+  }
+
+  if (data.importance !== undefined && data.importance !== null && !IMPORTANCE_LEVELS.includes(data.importance as string)) {
+    errors.push(`Importance must be one of ${IMPORTANCE_LEVELS.join(', ')}`);
+  }
+
+  if (data.confidence !== undefined && data.confidence !== null && data.confidence !== '') {
+    const c = Number(data.confidence);
+    if (isNaN(c) || c < 0 || c > 1) {
+      errors.push('Confidence must be between 0 and 1');
+    }
+  }
+
+  if (data.tags !== undefined && data.tags !== null && !Array.isArray(data.tags)) {
+    errors.push('Tags must be an array');
+  }
+
+  if (data.happenedAt !== undefined && data.happenedAt !== null && data.happenedAt !== '') {
+    const date = new Date(data.happenedAt as string);
+    if (isNaN(date.getTime())) {
+      errors.push('Invalid happenedAt format');
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new ValidationError(errors.join(', '));
+  }
+}
+
 // Query parameter validation
 export function validateQueryParams(params: {
   accountId?: string | null;
