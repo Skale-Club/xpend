@@ -8,6 +8,7 @@ import { formatCurrency } from '@/lib/utils';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 import { computeGoalProgress } from '@/lib/goals/calculations';
 import { computeRiskStatus } from '@/lib/goals/status';
+import { readArrayResponse } from '@/lib/http';
 import type { Goal } from '@/lib/goals/types';
 
 interface AccountOption { id: string; name: string }
@@ -30,9 +31,9 @@ export default function GoalsPage() {
         fetch('/api/accounts'),
         fetch('/api/categories'),
       ]);
-      setGoals(await goalsRes.json());
-      setAccounts(await accountsRes.json());
-      setCategories(await categoriesRes.json());
+      setGoals(await readArrayResponse<Goal>(goalsRes, 'Goals'));
+      setAccounts(await readArrayResponse<AccountOption>(accountsRes, 'Accounts'));
+      setCategories(await readArrayResponse<CategoryOption>(categoriesRes, 'Categories'));
     } catch (error) {
       console.error('Failed to fetch goals:', error);
       toast.error('Failed to load goals. Please try again.');
