@@ -10,6 +10,7 @@ import {
   NextStepsPanel,
   JourneyTimeline,
   MemoryReviewQueue,
+  MemoryInsights,
 } from '@/components/journey';
 import { useToast, Loader, Button, Select } from '@/components/ui';
 import {
@@ -29,6 +30,7 @@ export default function JourneyPage() {
   const [entries, setEntries] = useState<JourneyEntry[]>([]);
   const [memories, setMemories] = useState<FinancialMemory[]>([]);
   const [reviewItems, setReviewItems] = useState<MemoryReviewItem[]>([]);
+  const [reloadKey, setReloadKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editing, setEditing] = useState<FinancialMemory | null>(null);
@@ -48,6 +50,7 @@ export default function JourneyPage() {
       setEntries(journeyData.entries || []);
       setMemories(await memoriesRes.json());
       setReviewItems(await reviewRes.json());
+      setReloadKey((k) => k + 1);
     } catch (error) {
       console.error('Failed to load journey:', error);
       toast.error('Failed to load financial journey');
@@ -184,6 +187,8 @@ export default function JourneyPage() {
       <MemoryReviewQueue items={reviewItems} onChange={fetchAll} />
 
       <NextStepsPanel memories={memories} onComplete={(m) => handleStatusChange(m, 'archived')} />
+
+      <MemoryInsights reloadKey={reloadKey} onChange={fetchAll} />
 
       {/* Memories */}
       <div>
