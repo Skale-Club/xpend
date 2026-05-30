@@ -12,5 +12,6 @@ export { ToastProvider, useToast } from './useToast';
 export { Loader, LoaderOverlay, LoaderInline } from './Loader';
 export { Skeleton, SkeletonText, SkeletonCard, SkeletonTable, SkeletonChart, SkeletonList } from './Skeleton';
 export { ExportButton } from './ExportButton';
+export { PeriodRangeFilter } from './PeriodRangeFilter';
 export { XpendLogo } from './Logo';
 export type { Toast, ToastType, ToastAction } from './Toast';

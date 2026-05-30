@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Plus, Target } from 'lucide-react';
-import { GoalCard, GoalForm, GoalFormData, DebtStrategyPanel } from '@/components/goals';
+import { GoalCard, GoalForm, GoalFormData, DebtStrategyPanel, BudgetsPanel } from '@/components/goals';
 import { useToast, Loader, Button } from '@/components/ui';
 import { formatCurrency } from '@/lib/utils';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
@@ -15,6 +15,7 @@ interface AccountOption { id: string; name: string }
 interface CategoryOption { id: string; name: string }
 
 export default function GoalsPage() {
+  const [activeTab, setActiveTab] = useState<'goals' | 'budgets'>('goals');
   const [goals, setGoals] = useState<Goal[]>([]);
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -88,14 +89,6 @@ export default function GoalsPage() {
     if (risk === 'AT_RISK') atRiskCount += 1;
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-[50vh] w-full items-center justify-center">
-        <Loader size={80} />
-      </div>
-    );
-  }
-
   return (
     <div className="animate-fade-in space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -105,12 +98,62 @@ export default function GoalsPage() {
             Plan and track your financial objectives
           </p>
         </div>
-        <Button onClick={() => setIsFormOpen(true)}>
-          <Plus className="h-4 w-4" />
-          New Goal
-        </Button>
+        {activeTab === 'goals' && (
+          <Button onClick={() => setIsFormOpen(true)}>
+            <Plus className="h-4 w-4" />
+            New Goal
+          </Button>
+        )}
       </div>
 
+      {/* Tabs */}
+      <div className="inline-flex rounded-lg border border-border bg-muted p-1">
+        <button
+          type="button"
+          onClick={() => setActiveTab('goals')}
+          className={`px-4 py-1.5 text-sm rounded-md transition-colors ${activeTab === 'goals'
+            ? 'bg-card text-foreground shadow-sm'
+            : 'text-muted-foreground hover:text-foreground'
+            }`}
+        >
+          Goals
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('budgets')}
+          className={`px-4 py-1.5 text-sm rounded-md transition-colors ${activeTab === 'budgets'
+            ? 'bg-card text-foreground shadow-sm'
+            : 'text-muted-foreground hover:text-foreground'
+            }`}
+        >
+          Budgets
+        </button>
+      </div>
+
+      {activeTab === 'budgets' ? (
+        <BudgetsPanel />
+      ) : isLoading ? (
+        <div className="flex min-h-[40vh] w-full items-center justify-center">
+          <Loader size={80} />
+        </div>
+      ) : (
+        <GoalsTabContent />
+      )}
+
+      <GoalForm
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        onSubmit={handleSubmit}
+        goal={null}
+        accounts={accounts}
+        categories={categories}
+      />
+    </div>
+  );
+
+  function GoalsTabContent() {
+    return (
+      <div className="space-y-6">
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
@@ -170,15 +213,7 @@ export default function GoalsPage() {
       {activeGoals.filter((g) => g.type === 'DEBT_PAYOFF').length >= 2 && (
         <DebtStrategyPanel />
       )}
-
-      <GoalForm
-        isOpen={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
-        onSubmit={handleSubmit}
-        goal={null}
-        accounts={accounts}
-        categories={categories}
-      />
-    </div>
-  );
+      </div>
+    );
+  }
 }

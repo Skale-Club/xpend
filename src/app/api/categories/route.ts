@@ -74,13 +74,22 @@ export const GET = withApiLogging(async (request: Request) => {
     if (searchParams.get('withSpending')) {
       const dateFrom = searchParams.get('dateFrom');
       const dateTo = searchParams.get('dateTo');
+      const spendingType = searchParams.get('type') === 'INCOME' ? 'INCOME' : 'EXPENSE';
+      const accountIds = searchParams
+        .getAll('accountId')
+        .flatMap((value) => value.split(','))
+        .map((value) => value.trim())
+        .filter(Boolean);
 
-      const where: Record<string, unknown> = { type: 'EXPENSE' as const };
+      const where: Record<string, unknown> = { type: spendingType };
       if (dateFrom || dateTo) {
         const dateFilter: Record<string, Date> = {};
         if (dateFrom) dateFilter.gte = new Date(dateFrom);
         if (dateTo) dateFilter.lte = new Date(dateTo);
         where.date = dateFilter;
+      }
+      if (accountIds.length > 0) {
+        where.accountId = { in: accountIds };
       }
 
       const grouped = await prisma.transaction.groupBy({

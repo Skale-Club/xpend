@@ -2,16 +2,17 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
-    Plus, Edit2, Trash2, ChevronRight, ChevronDown, DollarSign, Calendar,
+    Plus, Edit2, Trash2, ChevronRight, ChevronDown, Wallet,
 } from 'lucide-react';
-import { startOfMonth, endOfMonth, subMonths, startOfYear, endOfDay } from 'date-fns';
-import { Card, CardContent, CardHeader, Modal, Input, Button, Loader } from '@/components/ui';
+import { Card, CardContent, CardHeader, Modal, Input, Button, Loader, PeriodRangeFilter, Combobox } from '@/components/ui';
 import { CategoryRules } from '@/components/categories/CategoryRules';
+import { CategorySpendingBarChart } from '@/components/dashboard/Charts';
 import { Category } from '@/types';
 import { CATEGORY_ICONS, getCategoryIcon } from '@/lib/categoryIcons';
 import { formatCurrency } from '@/lib/utils';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 import { readArrayResponse } from '@/lib/http';
+import { computeRange, type RangeId } from '@/lib/dateRange';
 
 interface CategoryWithChildren extends Category {
     children?: CategoryWithChildren[];
@@ -20,41 +21,16 @@ interface CategoryWithChildren extends Category {
     spent?: number;
 }
 
-type RangeId = 'thisMonth' | 'lastMonth' | 'last3Months' | 'last6Months' | 'thisYear' | 'allTime' | 'custom';
-
-const RANGE_PRESETS: { id: Exclude<RangeId, 'custom'>; label: string }[] = [
-    { id: 'thisMonth', label: 'This month' },
-    { id: 'lastMonth', label: 'Last month' },
-    { id: 'last3Months', label: 'Last 3 months' },
-    { id: 'last6Months', label: 'Last 6 months' },
-    { id: 'thisYear', label: 'This year' },
-    { id: 'allTime', label: 'All time' },
-];
-
-function computeRange(id: Exclude<RangeId, 'custom'>, now: Date = new Date()): { from?: Date; to?: Date } {
-    switch (id) {
-        case 'thisMonth': return { from: startOfMonth(now), to: now };
-        case 'lastMonth': { const d = subMonths(now, 1); return { from: startOfMonth(d), to: endOfMonth(d) }; }
-        case 'last3Months': return { from: startOfMonth(subMonths(now, 2)), to: now };
-        case 'last6Months': return { from: startOfMonth(subMonths(now, 5)), to: now };
-        case 'thisYear': return { from: startOfYear(now), to: now };
-        case 'allTime': return { from: undefined, to: undefined };
-    }
-}
-
-// Number of calendar months a finite range spans (inclusive). Used to prorate
-// the monthly budget so the progress bar compares like-for-like.
-function monthsInRange(from?: Date, to?: Date): number | null {
-    if (!from || !to) return null;
-    return (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth()) + 1;
-}
-
 interface CategoryFormData {
     name: string;
     color: string;
     icon: string;
     parentId: string | null;
-    budget: number | null;
+}
+
+interface AccountOption {
+    id: string;
+    name: string;
 }
 
 function findCategoryById(
@@ -98,25 +74,27 @@ export default function CategoriesPage() {
     const [activeScope, setActiveScope] = useState<CategoryScope>('outcome');
     const [rangeId, setRangeId] = useState<RangeId>('thisMonth');
     const [customRange, setCustomRange] = useState<{ from?: Date; to?: Date }>({});
+    const [accounts, setAccounts] = useState<AccountOption[]>([]);
+    const [accountId, setAccountId] = useState<string>('');
     const [formData, setFormData] = useState<CategoryFormData>({
         name: '',
         color: '#6B7280',
         icon: 'Tag',
         parentId: null,
-        budget: null,
     });
 
     const range = useMemo(
         () => (rangeId === 'custom' ? customRange : computeRange(rangeId)),
         [rangeId, customRange]
     );
-    const months = useMemo(() => monthsInRange(range.from, range.to), [range]);
 
     const fetchCategories = useCallback(async () => {
         try {
             const params = new URLSearchParams({ withSpending: '1' });
+            params.set('type', activeScope === 'income' ? 'INCOME' : 'EXPENSE');
             if (range.from) params.set('dateFrom', range.from.toISOString());
             if (range.to) params.set('dateTo', range.to.toISOString());
+            if (accountId) params.set('accountId', accountId);
             const res = await fetch(`/api/categories?${params.toString()}`);
             const data = await readArrayResponse<CategoryWithChildren>(res, 'Categories');
 
@@ -162,11 +140,18 @@ export default function CategoriesPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [range]);
+    }, [range, activeScope, accountId]);
 
     useEffect(() => {
         fetchCategories();
     }, [fetchCategories]);
+
+    useEffect(() => {
+        fetch('/api/accounts')
+            .then((res) => readArrayResponse<AccountOption>(res, 'Accounts'))
+            .then(setAccounts)
+            .catch(() => setAccounts([]));
+    }, []);
 
     const toggleExpand = (categoryId: string) => {
         setExpandedCategories((prev) => {
@@ -201,7 +186,6 @@ export default function CategoriesPage() {
                     color: '#6B7280',
                     icon: 'Tag',
                     parentId: null,
-                    budget: null,
                 });
                 fetchCategories();
             }
@@ -243,7 +227,6 @@ export default function CategoriesPage() {
                 color: parentColor || category.color,
                 icon: category.icon || 'Tag',
                 parentId: category.parentId || null,
-                budget: category.budget || null,
             });
         } else {
             const parentColor = parentId
@@ -255,7 +238,6 @@ export default function CategoriesPage() {
                 color: parentColor || '#6B7280',
                 icon: 'Tag',
                 parentId: parentId || null,
-                budget: null,
             });
         }
     };
@@ -269,16 +251,25 @@ export default function CategoriesPage() {
         return filtered.length > 0 ? filtered : categories;
     }, [categories, activeScope]);
 
+    // Ranked spending per root category — pure actuals, no budget overlay.
+    const chartData = useMemo(
+        () =>
+            visibleRootCategories
+                .map((category) => ({
+                    name: category.name,
+                    value: category.spent ?? 0,
+                    color: category.color,
+                }))
+                .filter((d) => d.value > 0)
+                .sort((a, b) => b.value - a.value),
+        [visibleRootCategories]
+    );
+
     const renderCategory = (category: CategoryWithChildren, level: number = 0) => {
         const hasChildren = category.children && category.children.length > 0;
         const isExpanded = expandedCategories.has(category.id);
 
         const spent = category.spent ?? 0;
-        const hasBudget = category.budget != null && category.budget > 0;
-        const budgetForPeriod =
-            hasBudget && months != null ? (category.budget as number) * months : null;
-        const pct = budgetForPeriod && budgetForPeriod > 0 ? (spent / budgetForPeriod) * 100 : null;
-        const barColor = pct == null ? '#9CA3AF' : pct <= 75 ? '#22C55E' : pct <= 100 ? '#F59E0B' : '#EF4444';
 
         return (
             <div key={category.id}>
@@ -315,36 +306,10 @@ export default function CategoriesPage() {
 
                         <div className="min-w-0">
                             <p className="font-medium text-foreground">{category.name}</p>
-                            {hasBudget ? (
-                                <div className="mt-1.5 w-44 sm:w-56">
-                                    <div className="flex items-center justify-between text-[11px] mb-0.5">
-                                        <span className="text-muted-foreground">
-                                            {formatCurrency(spent, { hideSensitiveValues })}
-                                            {budgetForPeriod != null
-                                                ? ` of ${formatCurrency(budgetForPeriod, { hideSensitiveValues })}`
-                                                : ` · budget ${formatCurrency(category.budget as number, { hideSensitiveValues })}/mo`}
-                                        </span>
-                                        {pct != null && (
-                                            <span className="font-medium" style={{ color: barColor }}>
-                                                {Math.round(pct)}%
-                                            </span>
-                                        )}
-                                    </div>
-                                    {budgetForPeriod != null && (
-                                        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                                            <div
-                                                className="h-full rounded-full transition-all"
-                                                style={{ width: `${Math.min(100, pct ?? 0)}%`, backgroundColor: barColor }}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                spent > 0 && (
-                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                        Spent: {formatCurrency(spent, { hideSensitiveValues })}
-                                    </p>
-                                )
+                            {spent > 0 && (
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    Spent: {formatCurrency(spent, { hideSensitiveValues })}
+                                </p>
                             )}
                         </div>
                     </div>
@@ -407,8 +372,8 @@ export default function CategoriesPage() {
 
             <Card>
                 <CardHeader
-                    title="Category List"
-                    subtitle="Manage your transaction categories"
+                    title={activeScope === 'income' ? 'Income by category' : 'Spending by category'}
+                    subtitle="Actual totals for the selected period"
                     action={
                         <div className="inline-flex rounded-lg border border-border bg-muted p-1 shrink-0">
                             <button
@@ -435,56 +400,47 @@ export default function CategoriesPage() {
                     }
                 />
                 <CardContent className="p-0">
-                    {/* Date range filter for budget spending */}
-                    <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-border">
-                        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mr-1">
-                            <Calendar className="w-3.5 h-3.5" />
-                            Period
-                        </div>
-                        {RANGE_PRESETS.map(({ id, label }) => {
-                            const isActive = rangeId === id;
-                            return (
-                                <button
-                                    key={id}
-                                    type="button"
-                                    onClick={() => setRangeId(id)}
-                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${isActive
-                                        ? 'bg-blue-600 text-white shadow-sm'
-                                        : 'bg-muted text-muted-foreground hover:text-foreground'
-                                        }`}
-                                >
-                                    {label}
-                                </button>
-                            );
-                        })}
-                        <div className="flex items-center gap-1.5 ml-auto">
-                            <input
-                                type="date"
-                                value={customRange.from ? customRange.from.toISOString().split('T')[0] : ''}
-                                onChange={(e) => {
-                                    setRangeId('custom');
-                                    setCustomRange((prev) => ({
-                                        ...prev,
-                                        from: e.target.value ? new Date(e.target.value) : undefined,
-                                    }));
-                                }}
-                                className="px-2.5 py-1.5 text-xs border border-border rounded-lg bg-card text-foreground [color-scheme:light] dark:[color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-ring/20"
-                            />
-                            <span className="text-muted-foreground/50 text-xs">—</span>
-                            <input
-                                type="date"
-                                value={customRange.to ? customRange.to.toISOString().split('T')[0] : ''}
-                                onChange={(e) => {
-                                    setRangeId('custom');
-                                    setCustomRange((prev) => ({
-                                        ...prev,
-                                        to: e.target.value ? endOfDay(new Date(e.target.value)) : undefined,
-                                    }));
-                                }}
-                                className="px-2.5 py-1.5 text-xs border border-border rounded-lg bg-card text-foreground [color-scheme:light] dark:[color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-ring/20"
+                    <div className="flex flex-col gap-3 px-4 py-3 border-b border-border sm:flex-row sm:items-center sm:justify-between">
+                        <PeriodRangeFilter
+                            rangeId={rangeId}
+                            customRange={customRange}
+                            onRangeChange={(id, custom) => {
+                                setRangeId(id);
+                                setCustomRange(custom);
+                            }}
+                        />
+                        <div className="w-full sm:w-56 shrink-0">
+                            <Combobox
+                                value={accountId}
+                                onChange={setAccountId}
+                                icon={<Wallet className="h-4 w-4 text-muted-foreground" />}
+                                placeholder="All accounts"
+                                searchPlaceholder="Search accounts…"
+                                options={[
+                                    { value: '', label: 'All accounts' },
+                                    ...accounts.map((account) => ({ value: account.id, label: account.name })),
+                                ]}
                             />
                         </div>
                     </div>
+                    <div className="p-4">
+                        {chartData.length === 0 ? (
+                            <div className="py-12 text-center text-muted-foreground">
+                                <p>No {activeScope === 'income' ? 'income' : 'spending'} in this period.</p>
+                            </div>
+                        ) : (
+                            <CategorySpendingBarChart data={chartData} />
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader
+                    title="Category List"
+                    subtitle="Manage your transaction categories"
+                />
+                <CardContent className="p-0">
                     <div className="divide-y divide-gray-100">
                         {visibleRootCategories.length === 0 ? (
                             <div className="p-8 text-center text-muted-foreground">
@@ -566,27 +522,6 @@ export default function CategoriesPage() {
                                     </button>
                                 );
                             })}
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1">
-                            Monthly Budget (optional)
-                        </label>
-                        <div className="relative">
-                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
-                            <input
-                                type="number"
-                                value={formData.budget || ''}
-                                onChange={(e) =>
-                                    setFormData({
-                                        ...formData,
-                                        budget: e.target.value ? parseFloat(e.target.value) : null,
-                                    })
-                                }
-                                placeholder="0.00"
-                                className="w-full pl-9 pr-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
-                            />
                         </div>
                     </div>
 

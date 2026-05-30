@@ -12,6 +12,7 @@ import {
   LineChart,
   Line,
   Legend,
+  Cell,
 } from 'recharts';
 import { formatCurrency, formatCurrencyTick } from '@/lib/utils';
 import { MonthlyData } from '@/types';
@@ -119,6 +120,55 @@ export function BalanceTrendChart({ data }: BalanceTrendChartProps) {
           activeDot={{ r: 5 }}
         />
       </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+interface CategorySpendingBarChartProps {
+  data: { name: string; value: number; color: string }[];
+}
+
+export function CategorySpendingBarChart({ data }: CategorySpendingBarChartProps) {
+  const { hideSensitiveValues } = useSensitiveValues();
+
+  // One row per category, ~44px tall, so the chart grows with the data.
+  const height = Math.max(160, data.length * 44 + 24);
+
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart
+        layout="vertical"
+        data={data}
+        margin={{ top: 4, right: 16, left: 8, bottom: 4 }}
+        barCategoryGap="20%"
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} horizontal={false} />
+        <XAxis
+          type="number"
+          tick={{ fill: CHART_TICK_FILL, fontSize: 12 }}
+          tickFormatter={(v) => formatCurrencyTick(Number(v), hideSensitiveValues)}
+          axisLine={false}
+          tickLine={false}
+        />
+        <YAxis
+          type="category"
+          dataKey="name"
+          tick={{ fill: CHART_TICK_FILL, fontSize: 12 }}
+          axisLine={false}
+          tickLine={false}
+          width={120}
+        />
+        <Tooltip
+          formatter={(value) => formatCurrency(Number(value), { hideSensitiveValues })}
+          contentStyle={TOOLTIP_STYLE}
+          cursor={{ fill: 'var(--muted)', opacity: 0.5 }}
+        />
+        <Bar dataKey="value" name="Spent" radius={[0, 4, 4, 0]}>
+          {data.map((entry) => (
+            <Cell key={entry.name} fill={entry.color} />
+          ))}
+        </Bar>
+      </BarChart>
     </ResponsiveContainer>
   );
 }

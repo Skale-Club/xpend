@@ -116,6 +116,31 @@ export const PUT = withApiLogging(async (
     }
 });
 
+export const PATCH = withApiLogging(async (
+    request: Request,
+    { params }: { params: Promise<{ id: string }> }
+) => {
+    try {
+        const { id } = await params;
+        const body = await request.json();
+
+        const existing = await prisma.category.findUnique({ where: { id } });
+        if (!existing) {
+            return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+        }
+
+        const category = await prisma.category.update({
+            where: { id },
+            data: { budget: body.budget ?? null },
+        });
+
+        return NextResponse.json(category);
+    } catch (error) {
+        console.error('Failed to update category budget:', error);
+        return NextResponse.json({ error: 'Failed to update category budget' }, { status: 500 });
+    }
+});
+
 export const DELETE = withApiLogging(async (
     request: Request,
     { params }: { params: Promise<{ id: string }> }

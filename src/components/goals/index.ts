@@ -9,4 +9,5 @@ export { GoalScenarioList } from './GoalScenarioList';
 export { GoalScenarioForm, type ScenarioFormData } from './GoalScenarioForm';
 export { GoalDebtPayoff, formatMonths } from './GoalDebtPayoff';
 export { DebtStrategyPanel } from './DebtStrategyPanel';
+export { BudgetsPanel } from './BudgetsPanel';
 export { riskBadgeVariant, progressBarColor } from './goalDisplay';
