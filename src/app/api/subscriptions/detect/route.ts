@@ -13,7 +13,9 @@ export const POST = withApiLogging(async (request: Request) => {
       // No body or invalid JSON — detect across all accounts
     }
 
-    const result = await detectAndUpsertSubscriptions(accountId);
+    const { searchParams } = new URL(request.url);
+    const dryRun = searchParams.get('dryRun') === '1';
+    const result = await detectAndUpsertSubscriptions(accountId, { dryRun });
 
     return NextResponse.json(result);
   } catch (error) {

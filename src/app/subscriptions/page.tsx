@@ -250,7 +250,7 @@ export default function SubscriptionsPage() {
       const res = await fetch('/api/subscriptions/detect', { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to scan');
-      toast.success(`Scan complete: ${data.created} new, ${data.updated} updated, ${data.markedInactive} deactivated`);
+      toast.success(`Scan complete: ${data.created} new, ${data.updated} updated, ${data.markedInactive} deactivated, ${data.deletedOrphans ?? 0} removed`);
       fetchData();
     } catch (error) {
       console.error('Scan failed:', error);
