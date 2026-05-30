@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
-    Plus, Edit2, Trash2, ChevronRight, ChevronDown, DollarSign,
+    Plus, Edit2, Trash2, ChevronRight, ChevronDown, DollarSign, Calendar,
 } from 'lucide-react';
+import { startOfMonth, endOfMonth, subMonths, startOfYear, endOfDay } from 'date-fns';
 import { Card, CardContent, CardHeader, Modal, Input, Button, Loader } from '@/components/ui';
 import { CategoryRules } from '@/components/categories/CategoryRules';
 import { Category } from '@/types';
@@ -16,6 +17,36 @@ interface CategoryWithChildren extends Category {
     children?: CategoryWithChildren[];
     transactionCount?: number;
     budget?: number | null;
+    spent?: number;
+}
+
+type RangeId = 'thisMonth' | 'lastMonth' | 'last3Months' | 'last6Months' | 'thisYear' | 'allTime' | 'custom';
+
+const RANGE_PRESETS: { id: Exclude<RangeId, 'custom'>; label: string }[] = [
+    { id: 'thisMonth', label: 'This month' },
+    { id: 'lastMonth', label: 'Last month' },
+    { id: 'last3Months', label: 'Last 3 months' },
+    { id: 'last6Months', label: 'Last 6 months' },
+    { id: 'thisYear', label: 'This year' },
+    { id: 'allTime', label: 'All time' },
+];
+
+function computeRange(id: Exclude<RangeId, 'custom'>, now: Date = new Date()): { from?: Date; to?: Date } {
+    switch (id) {
+        case 'thisMonth': return { from: startOfMonth(now), to: now };
+        case 'lastMonth': { const d = subMonths(now, 1); return { from: startOfMonth(d), to: endOfMonth(d) }; }
+        case 'last3Months': return { from: startOfMonth(subMonths(now, 2)), to: now };
+        case 'last6Months': return { from: startOfMonth(subMonths(now, 5)), to: now };
+        case 'thisYear': return { from: startOfYear(now), to: now };
+        case 'allTime': return { from: undefined, to: undefined };
+    }
+}
+
+// Number of calendar months a finite range spans (inclusive). Used to prorate
+// the monthly budget so the progress bar compares like-for-like.
+function monthsInRange(from?: Date, to?: Date): number | null {
+    if (!from || !to) return null;
+    return (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth()) + 1;
 }
 
 interface CategoryFormData {
@@ -65,6 +96,8 @@ export default function CategoriesPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
     const [activeScope, setActiveScope] = useState<CategoryScope>('outcome');
+    const [rangeId, setRangeId] = useState<RangeId>('thisMonth');
+    const [customRange, setCustomRange] = useState<{ from?: Date; to?: Date }>({});
     const [formData, setFormData] = useState<CategoryFormData>({
         name: '',
         color: '#6B7280',
@@ -73,9 +106,18 @@ export default function CategoriesPage() {
         budget: null,
     });
 
+    const range = useMemo(
+        () => (rangeId === 'custom' ? customRange : computeRange(rangeId)),
+        [rangeId, customRange]
+    );
+    const months = useMemo(() => monthsInRange(range.from, range.to), [range]);
+
     const fetchCategories = useCallback(async () => {
         try {
-            const res = await fetch('/api/categories');
+            const params = new URLSearchParams({ withSpending: '1' });
+            if (range.from) params.set('dateFrom', range.from.toISOString());
+            if (range.to) params.set('dateTo', range.to.toISOString());
+            const res = await fetch(`/api/categories?${params.toString()}`);
             const data = await readArrayResponse<CategoryWithChildren>(res, 'Categories');
 
             // Build tree structure
@@ -120,7 +162,7 @@ export default function CategoriesPage() {
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [range]);
 
     useEffect(() => {
         fetchCategories();
@@ -231,14 +273,22 @@ export default function CategoriesPage() {
         const hasChildren = category.children && category.children.length > 0;
         const isExpanded = expandedCategories.has(category.id);
 
+        const spent = category.spent ?? 0;
+        const hasBudget = category.budget != null && category.budget > 0;
+        const budgetForPeriod =
+            hasBudget && months != null ? (category.budget as number) * months : null;
+        const pct = budgetForPeriod && budgetForPeriod > 0 ? (spent / budgetForPeriod) * 100 : null;
+        const barColor = pct == null ? '#9CA3AF' : pct <= 75 ? '#22C55E' : pct <= 100 ? '#F59E0B' : '#EF4444';
+
         return (
             <div key={category.id}>
                 <div
-                    className={`flex items-center justify-between py-3 pr-3 hover:bg-muted transition-colors ${level > 0 ? 'border-l-2 border-border' : ''
+                    className={`py-3 pr-3 hover:bg-muted transition-colors ${level > 0 ? 'border-l-2 border-border' : ''
                         }`}
                     style={{ paddingLeft: `${12 + level * 28}px` }}
                 >
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
                         {hasChildren && (
                             <button
                                 onClick={() => toggleExpand(category.id)}
@@ -254,7 +304,7 @@ export default function CategoriesPage() {
                         {!hasChildren && <div className="w-6" />}
 
                         <div
-                            className="w-8 h-8 rounded-lg flex items-center justify-center"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                             style={{ backgroundColor: `${category.color}20` }}
                         >
                             {(() => {
@@ -263,12 +313,38 @@ export default function CategoriesPage() {
                             })()}
                         </div>
 
-                        <div>
+                        <div className="min-w-0">
                             <p className="font-medium text-foreground">{category.name}</p>
-                            {category.budget && (
-                                <p className="text-xs text-muted-foreground">
-                                    Budget: {formatCurrency(category.budget, { hideSensitiveValues })}/month
-                                </p>
+                            {hasBudget ? (
+                                <div className="mt-1.5 w-44 sm:w-56">
+                                    <div className="flex items-center justify-between text-[11px] mb-0.5">
+                                        <span className="text-muted-foreground">
+                                            {formatCurrency(spent, { hideSensitiveValues })}
+                                            {budgetForPeriod != null
+                                                ? ` of ${formatCurrency(budgetForPeriod, { hideSensitiveValues })}`
+                                                : ` · budget ${formatCurrency(category.budget as number, { hideSensitiveValues })}/mo`}
+                                        </span>
+                                        {pct != null && (
+                                            <span className="font-medium" style={{ color: barColor }}>
+                                                {Math.round(pct)}%
+                                            </span>
+                                        )}
+                                    </div>
+                                    {budgetForPeriod != null && (
+                                        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                                            <div
+                                                className="h-full rounded-full transition-all"
+                                                style={{ width: `${Math.min(100, pct ?? 0)}%`, backgroundColor: barColor }}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                spent > 0 && (
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        Spent: {formatCurrency(spent, { hideSensitiveValues })}
+                                    </p>
+                                )
                             )}
                         </div>
                     </div>
@@ -296,6 +372,7 @@ export default function CategoriesPage() {
                             <Trash2 className="w-4 h-4" />
                         </button>
                     </div>
+                  </div>
                 </div>
 
                 {hasChildren && isExpanded && (
@@ -358,6 +435,56 @@ export default function CategoriesPage() {
                     }
                 />
                 <CardContent className="p-0">
+                    {/* Date range filter for budget spending */}
+                    <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-border">
+                        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mr-1">
+                            <Calendar className="w-3.5 h-3.5" />
+                            Period
+                        </div>
+                        {RANGE_PRESETS.map(({ id, label }) => {
+                            const isActive = rangeId === id;
+                            return (
+                                <button
+                                    key={id}
+                                    type="button"
+                                    onClick={() => setRangeId(id)}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${isActive
+                                        ? 'bg-blue-600 text-white shadow-sm'
+                                        : 'bg-muted text-muted-foreground hover:text-foreground'
+                                        }`}
+                                >
+                                    {label}
+                                </button>
+                            );
+                        })}
+                        <div className="flex items-center gap-1.5 ml-auto">
+                            <input
+                                type="date"
+                                value={customRange.from ? customRange.from.toISOString().split('T')[0] : ''}
+                                onChange={(e) => {
+                                    setRangeId('custom');
+                                    setCustomRange((prev) => ({
+                                        ...prev,
+                                        from: e.target.value ? new Date(e.target.value) : undefined,
+                                    }));
+                                }}
+                                className="px-2.5 py-1.5 text-xs border border-border rounded-lg bg-card text-foreground [color-scheme:light] dark:[color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-ring/20"
+                            />
+                            <span className="text-muted-foreground/50 text-xs">—</span>
+                            <input
+                                type="date"
+                                value={customRange.to ? customRange.to.toISOString().split('T')[0] : ''}
+                                onChange={(e) => {
+                                    setRangeId('custom');
+                                    setCustomRange((prev) => ({
+                                        ...prev,
+                                        to: e.target.value ? endOfDay(new Date(e.target.value)) : undefined,
+                                    }));
+                                }}
+                                className="px-2.5 py-1.5 text-xs border border-border rounded-lg bg-card text-foreground [color-scheme:light] dark:[color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-ring/20"
+                            />
+                        </div>
+                    </div>
                     <div className="divide-y divide-gray-100">
                         {visibleRootCategories.length === 0 ? (
                             <div className="p-8 text-center text-muted-foreground">

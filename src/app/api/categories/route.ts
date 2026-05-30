@@ -58,13 +58,70 @@ async function ensureGamesCategoryExists() {
   });
 }
 
-export const GET = withApiLogging(async (_request: Request) => {
+export const GET = withApiLogging(async (request: Request) => {
   try {
     await ensureGamesCategoryExists();
 
     const categories = await prisma.category.findMany({
       orderBy: { name: 'asc' },
     });
+
+    const { searchParams } = new URL(request.url);
+
+    // Opt-in: attach a rolled-up `spent` figure per category for the given date
+    // range. Gated behind `withSpending` so other consumers of this endpoint
+    // (which just expect the plain category array) are unaffected.
+    if (searchParams.get('withSpending')) {
+      const dateFrom = searchParams.get('dateFrom');
+      const dateTo = searchParams.get('dateTo');
+
+      const where: Record<string, unknown> = { type: 'EXPENSE' as const };
+      if (dateFrom || dateTo) {
+        const dateFilter: Record<string, Date> = {};
+        if (dateFrom) dateFilter.gte = new Date(dateFrom);
+        if (dateTo) dateFilter.lte = new Date(dateTo);
+        where.date = dateFilter;
+      }
+
+      const grouped = await prisma.transaction.groupBy({
+        by: ['categoryId'],
+        where,
+        _sum: { amount: true },
+      });
+
+      const ownSpent = new Map<string, number>();
+      for (const row of grouped) {
+        if (row.categoryId) ownSpent.set(row.categoryId, row._sum.amount ?? 0);
+      }
+
+      const childrenByParent = new Map<string, string[]>();
+      for (const category of categories) {
+        if (!category.parentId) continue;
+        const siblings = childrenByParent.get(category.parentId) ?? [];
+        siblings.push(category.id);
+        childrenByParent.set(category.parentId, siblings);
+      }
+
+      // Roll each category's own spend up with all of its descendants'.
+      const totalSpentCache = new Map<string, number>();
+      const computeSpent = (id: string): number => {
+        const cached = totalSpentCache.get(id);
+        if (cached !== undefined) return cached;
+        let total = ownSpent.get(id) ?? 0;
+        for (const childId of childrenByParent.get(id) ?? []) {
+          total += computeSpent(childId);
+        }
+        totalSpentCache.set(id, total);
+        return total;
+      };
+
+      const withSpending = categories.map((category) => ({
+        ...category,
+        spent: computeSpent(category.id),
+      }));
+      return NextResponse.json(withSpending);
+    }
+
     return NextResponse.json(categories);
   } catch {
     return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 });
