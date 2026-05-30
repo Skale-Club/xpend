@@ -34,6 +34,13 @@ export const INPUT_SCHEMAS: Record<string, JsonSchema> = {
       includeStats: { type: 'boolean', description: 'Include monthly/yearly cost stats' },
     },
   },
+  get_goals: {
+    type: 'object',
+    properties: {
+      status: { type: 'string', description: 'Filter by status', enum: ['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED', 'ARCHIVED'] },
+      type:   { type: 'string', description: 'Filter by type', enum: ['SAVINGS', 'TRAVEL', 'DEBT_PAYOFF', 'PURCHASE', 'EMERGENCY_FUND'] },
+    },
+  },
   get_dashboard_summary: {
     type: 'object',
     properties: {
@@ -103,6 +110,65 @@ export const INPUT_SCHEMAS: Record<string, JsonSchema> = {
       matchType: { type: 'string', description: 'Match type', enum: ['exact', 'contains', 'regex'], default: 'contains' },
     },
     required: ['keywords', 'categoryId'],
+  },
+  create_goal: {
+    type: 'object',
+    properties: {
+      name:             { type: 'string', description: 'Goal name' },
+      type:             { type: 'string', description: 'Goal type', enum: ['SAVINGS', 'TRAVEL', 'DEBT_PAYOFF', 'PURCHASE', 'EMERGENCY_FUND'] },
+      targetAmount:     { type: 'number', description: 'Target/savings amount or balance owed for debt' },
+      currentAmount:    { type: 'number', description: 'Amount already saved/paid (default 0)', default: 0 },
+      status:           { type: 'string', description: 'Goal status (default ACTIVE)', enum: ['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED', 'ARCHIVED'], default: 'ACTIVE' },
+      priority:         { type: 'string', description: 'Goal priority (default MEDIUM)', enum: ['LOW', 'MEDIUM', 'HIGH'], default: 'MEDIUM' },
+      targetDate:       { type: ['string', 'null'], description: 'Deadline (YYYY-MM-DD)', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+      interestRate:     { type: ['number', 'null'], description: 'Annual % interest for DEBT_PAYOFF' },
+      minimumPayment:   { type: ['number', 'null'], description: 'Minimum monthly payment for DEBT_PAYOFF' },
+      monthsOfCoverage: { type: ['number', 'null'], description: 'Months of expenses for EMERGENCY_FUND' },
+      description:      { type: ['string', 'null'], description: 'Optional description' },
+      linkedAccountId:  { type: ['string', 'null'], description: 'Link goal to an account' },
+      linkedCategoryId: { type: ['string', 'null'], description: 'Link goal to a category' },
+    },
+    required: ['name', 'type', 'targetAmount'],
+  },
+
+  update_goal: {
+    type: 'object',
+    properties: {
+      goalId:           { type: 'string', description: 'Goal ID to update' },
+      name:             { type: 'string', description: 'Goal name' },
+      type:             { type: 'string', description: 'Goal type', enum: ['SAVINGS', 'TRAVEL', 'DEBT_PAYOFF', 'PURCHASE', 'EMERGENCY_FUND'] },
+      targetAmount:     { type: 'number', description: 'Target/balance amount' },
+      currentAmount:    { type: 'number', description: 'Absolute saved/paid amount' },
+      status:           { type: 'string', description: 'Goal status', enum: ['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED', 'ARCHIVED'] },
+      priority:         { type: 'string', description: 'Goal priority', enum: ['LOW', 'MEDIUM', 'HIGH'] },
+      targetDate:       { type: ['string', 'null'], description: 'Deadline (YYYY-MM-DD)', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+      interestRate:     { type: ['number', 'null'], description: 'Annual % interest for DEBT_PAYOFF' },
+      minimumPayment:   { type: ['number', 'null'], description: 'Minimum monthly payment for DEBT_PAYOFF' },
+      monthsOfCoverage: { type: ['number', 'null'], description: 'Months of expenses for EMERGENCY_FUND' },
+      description:      { type: ['string', 'null'], description: 'Optional description' },
+      linkedAccountId:  { type: ['string', 'null'], description: 'Link goal to an account' },
+      linkedCategoryId: { type: ['string', 'null'], description: 'Link goal to a category' },
+    },
+    required: ['goalId'],
+  },
+  delete_goal: {
+    type: 'object',
+    properties: {
+      goalId: { type: 'string', description: 'Goal ID to delete' },
+    },
+    required: ['goalId'],
+  },
+  add_goal_contribution: {
+    type: 'object',
+    properties: {
+      goalId:        { type: 'string', description: 'Goal ID to contribute to' },
+      amount:        { type: 'number', description: 'Contribution amount (> 0)' },
+      date:          { type: 'string', description: 'Contribution date (YYYY-MM-DD), default today', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+      accountId:     { type: ['string', 'null'], description: 'Source account ID' },
+      transactionId: { type: ['string', 'null'], description: 'Link to a transaction ID' },
+      note:          { type: ['string', 'null'], description: 'Optional note' },
+    },
+    required: ['goalId', 'amount'],
   },
 
   // ---- Financial Journey Memory tools ----

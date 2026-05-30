@@ -2,6 +2,45 @@ import { prisma } from '@/lib/db';
 import type { Prisma } from '@/generated/prisma';
 import { computeAvailableLimit } from '@/lib/creditCard/limit';
 
+export async function get_goals(params: {
+  status?: string;
+  type?: string;
+}) {
+  const where: Prisma.GoalWhereInput = {};
+  if (params.status) where.status = params.status as Prisma.GoalWhereInput['status'];
+  if (params.type) where.type = params.type as Prisma.GoalWhereInput['type'];
+
+  const goals = await prisma.goal.findMany({
+    where,
+    orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+    include: {
+      linkedAccount: { select: { id: true, name: true } },
+      linkedCategory: { select: { id: true, name: true } },
+    },
+  });
+
+  return {
+    total: goals.length,
+    goals: goals.map((g) => ({
+      id: g.id,
+      name: g.name,
+      type: g.type,
+      status: g.status,
+      priority: g.priority,
+      targetAmount: g.targetAmount,
+      currentAmount: g.currentAmount,
+      remaining: Math.max(g.targetAmount - g.currentAmount, 0),
+      percentComplete: g.targetAmount > 0 ? Math.min(Math.round((g.currentAmount / g.targetAmount) * 100), 100) : 0,
+      targetDate: g.targetDate,
+      interestRate: g.interestRate,
+      minimumPayment: g.minimumPayment,
+      description: g.description,
+      linkedAccount: g.linkedAccount?.name ?? null,
+      linkedCategory: g.linkedCategory?.name ?? null,
+    })),
+  };
+}
+
 export async function get_transactions(params: {
   dateFrom?: string;
   dateTo?: string;

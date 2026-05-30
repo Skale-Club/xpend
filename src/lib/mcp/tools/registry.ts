@@ -7,6 +7,7 @@ export type ToolName =
   | 'get_accounts'
   | 'get_categories'
   | 'get_subscriptions'
+  | 'get_goals'
   | 'get_dashboard_summary'
   | 'get_category_breakdown'
   | 'get_credit_card_invoices'
@@ -16,6 +17,10 @@ export type ToolName =
   | 'mark_transaction_recurring'
   | 'categorize_by_description'
   | 'create_categorization_rule'
+  | 'create_goal'
+  | 'update_goal'
+  | 'delete_goal'
+  | 'add_goal_contribution'
   | 'get_financial_journey_summary'
   | 'search_financial_memories'
   | 'get_relevant_financial_context'
@@ -32,6 +37,7 @@ export const READ_TOOLS: ToolName[] = [
   'get_accounts',
   'get_categories',
   'get_subscriptions',
+  'get_goals',
   'get_dashboard_summary',
   'get_category_breakdown',
   'get_credit_card_invoices',
@@ -49,6 +55,10 @@ export const WRITE_TOOLS: ToolName[] = [
   'mark_transaction_recurring',
   'categorize_by_description',
   'create_categorization_rule',
+  'create_goal',
+  'update_goal',
+  'delete_goal',
+  'add_goal_contribution',
   'create_financial_memory',
   'propose_financial_memory',
   'update_financial_memory_status',
@@ -98,6 +108,13 @@ export const TOOL_DESCRIPTIONS: Record<ToolName, { description: string; params: 
     params: {
       inactive: 'boolean (optional) — filter by active/inactive',
       includeStats: 'boolean (optional) — include monthly/yearly cost stats',
+    },
+  },
+  get_goals: {
+    description: 'List financial goals with progress (currentAmount, remaining, percentComplete). Optionally filter by status or type.',
+    params: {
+      status: '"DRAFT" | "ACTIVE" | "PAUSED" | "COMPLETED" | "ARCHIVED" (optional)',
+      type: '"SAVINGS" | "TRAVEL" | "DEBT_PAYOFF" | "PURCHASE" | "EMERGENCY_FUND" (optional)',
     },
   },
   get_dashboard_summary: {
@@ -150,6 +167,60 @@ export const TOOL_DESCRIPTIONS: Record<ToolName, { description: string; params: 
       keywords: 'string (required)',
       categoryId: 'string (required)',
       matchType: '"exact" | "contains" | "regex" (default "contains")',
+    },
+  },
+  create_goal: {
+    description: 'Create a financial goal (savings, travel, debt payoff, purchase, or emergency fund). For DEBT_PAYOFF goals, set targetAmount to the balance owed and optionally interestRate/minimumPayment. Use get_accounts first if you want to link the goal to an account via linkedAccountId.',
+    params: {
+      name: 'string (required)',
+      type: '"SAVINGS" | "TRAVEL" | "DEBT_PAYOFF" | "PURCHASE" | "EMERGENCY_FUND" (required)',
+      targetAmount: 'number (required) — target/savings amount or balance owed for debt',
+      currentAmount: 'number (optional, default 0) — amount already saved/paid',
+      status: '"DRAFT" | "ACTIVE" | "PAUSED" | "COMPLETED" | "ARCHIVED" (default ACTIVE)',
+      priority: '"LOW" | "MEDIUM" | "HIGH" (default MEDIUM)',
+      targetDate: 'string (YYYY-MM-DD, optional) — deadline',
+      interestRate: 'number (optional) — annual % for DEBT_PAYOFF',
+      minimumPayment: 'number (optional) — minimum monthly payment for DEBT_PAYOFF',
+      monthsOfCoverage: 'number (optional) — months of expenses for EMERGENCY_FUND',
+      description: 'string (optional)',
+      linkedAccountId: 'string (optional) — link to an account',
+      linkedCategoryId: 'string (optional) — link to a category',
+    },
+  },
+  update_goal: {
+    description: 'Update fields of an existing goal. Partial — only the fields you pass are changed. Use get_goals to find the goalId.',
+    params: {
+      goalId: 'string (required)',
+      name: 'string (optional)',
+      type: '"SAVINGS" | "TRAVEL" | "DEBT_PAYOFF" | "PURCHASE" | "EMERGENCY_FUND" (optional)',
+      targetAmount: 'number (optional)',
+      currentAmount: 'number (optional) — sets the absolute saved/paid amount (use add_goal_contribution to log incremental progress)',
+      status: '"DRAFT" | "ACTIVE" | "PAUSED" | "COMPLETED" | "ARCHIVED" (optional)',
+      priority: '"LOW" | "MEDIUM" | "HIGH" (optional)',
+      targetDate: 'string (YYYY-MM-DD) | null (optional)',
+      interestRate: 'number | null (optional)',
+      minimumPayment: 'number | null (optional)',
+      monthsOfCoverage: 'number | null (optional)',
+      description: 'string | null (optional)',
+      linkedAccountId: 'string | null (optional)',
+      linkedCategoryId: 'string | null (optional)',
+    },
+  },
+  delete_goal: {
+    description: 'Permanently delete a goal and its contributions/plans/scenarios. Use get_goals to find the goalId.',
+    params: {
+      goalId: 'string (required)',
+    },
+  },
+  add_goal_contribution: {
+    description: 'Record a contribution/payment toward a goal. Increments the goal currentAmount atomically. For debt-payoff goals this logs a payment made; for savings goals it logs money set aside.',
+    params: {
+      goalId: 'string (required)',
+      amount: 'number (required, > 0)',
+      date: 'string (YYYY-MM-DD, optional, default today)',
+      accountId: 'string (optional) — source account',
+      transactionId: 'string (optional) — link to a transaction',
+      note: 'string (optional)',
     },
   },
   get_financial_journey_summary: {
@@ -238,6 +309,7 @@ const HANDLERS: Record<ToolName, (params: AnyParams) => Promise<unknown>> = {
   get_accounts: (p) => reads.get_accounts(p as never),
   get_categories: (p) => reads.get_categories(p as never),
   get_subscriptions: (p) => reads.get_subscriptions(p as Parameters<typeof reads.get_subscriptions>[0]),
+  get_goals: (p) => reads.get_goals(p as Parameters<typeof reads.get_goals>[0]),
   get_dashboard_summary: (p) => reads.get_dashboard_summary(p as Parameters<typeof reads.get_dashboard_summary>[0]),
   get_category_breakdown: (p) => reads.get_category_breakdown(p as Parameters<typeof reads.get_category_breakdown>[0]),
   get_credit_card_invoices: (p) => reads.get_credit_card_invoices(p as Parameters<typeof reads.get_credit_card_invoices>[0]),
@@ -247,6 +319,10 @@ const HANDLERS: Record<ToolName, (params: AnyParams) => Promise<unknown>> = {
   mark_transaction_recurring: (p) => writes.mark_transaction_recurring(p as Parameters<typeof writes.mark_transaction_recurring>[0]),
   categorize_by_description: (p) => writes.categorize_by_description(p as Parameters<typeof writes.categorize_by_description>[0]),
   create_categorization_rule: (p) => writes.create_categorization_rule(p as Parameters<typeof writes.create_categorization_rule>[0]),
+  create_goal: (p) => writes.create_goal(p as Parameters<typeof writes.create_goal>[0]),
+  update_goal: (p) => writes.update_goal(p as Parameters<typeof writes.update_goal>[0]),
+  delete_goal: (p) => writes.delete_goal(p as Parameters<typeof writes.delete_goal>[0]),
+  add_goal_contribution: (p) => writes.add_goal_contribution(p as Parameters<typeof writes.add_goal_contribution>[0]),
   get_financial_journey_summary: () => memory.get_financial_journey_summary(),
   search_financial_memories: (p) => memory.search_financial_memories(p as Parameters<typeof memory.search_financial_memories>[0]),
   get_relevant_financial_context: (p) => memory.get_relevant_financial_context(p as Parameters<typeof memory.get_relevant_financial_context>[0]),
