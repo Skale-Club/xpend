@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
 import {
+  CalendarClock,
   CheckCircle2,
   ExternalLink,
   FolderOpen,
@@ -13,6 +14,7 @@ import {
   Plus,
   Repeat2,
   ScanSearch,
+  Search,
   Sparkles,
   Trash2,
 } from 'lucide-react';
@@ -20,7 +22,6 @@ import {
   Button,
   Card,
   CardContent,
-  CardHeader,
   Input,
   Loader,
   Modal,
@@ -208,6 +209,7 @@ export default function SubscriptionsPage() {
   const [filterCategory, setFilterCategory] = useState('');
   const [filterSource, setFilterSource] = useState('');
   const [sortBy, setSortBy] = useState('nextPayment');
+  const [searchQuery, setSearchQuery] = useState('');
   const toast = useToast();
 
   const fetchData = useCallback(async () => {
@@ -369,7 +371,25 @@ export default function SubscriptionsPage() {
     }
   };
 
-  const hasCustomFilters = filterInactive !== 'all' || Boolean(filterCategory) || Boolean(filterSource) || sortBy !== 'nextPayment';
+  const hasCustomFilters = filterInactive !== 'all' || Boolean(filterCategory) || Boolean(filterSource) || sortBy !== 'nextPayment' || Boolean(searchQuery);
+
+  const resetFilters = () => {
+    setFilterInactive('all');
+    setFilterCategory('');
+    setFilterSource('');
+    setSortBy('nextPayment');
+    setSearchQuery('');
+  };
+
+  const query = searchQuery.trim().toLowerCase();
+  const visibleSubscriptions = query
+    ? subscriptions.filter((subscription) => subscription.name.toLowerCase().includes(query))
+    : subscriptions;
+
+  const nextDue = subscriptions
+    .filter((subscription) => !subscription.inactive)
+    .slice()
+    .sort((a, b) => new Date(a.nextPayment).getTime() - new Date(b.nextPayment).getTime())[0] ?? null;
 
   const renderSubscriptionCard = (subscription: Subscription) => {
     const dueMeta = getDueMeta(subscription.nextPayment);
@@ -533,105 +553,148 @@ export default function SubscriptionsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <Card className="overflow-hidden border-orange-100 dark:border-orange-900/40 bg-gradient-to-r from-orange-50 via-white to-rose-50 dark:from-orange-950/40 dark:via-card dark:to-rose-950/30">
-          <CardContent className="space-y-4 p-5">
-            <p className="text-sm font-medium text-orange-700 dark:text-orange-400">Subscription spotlight</p>
-            {stats?.mostExpensive ? (
-              <>
-                <h2 className="text-2xl font-semibold text-foreground">{stats.mostExpensive.name}</h2>
-                <p className="text-sm text-muted-foreground">
-                  Highest monthly commitment at <span className="font-semibold text-foreground">{formatCurrency(stats.mostExpensive.monthlyPrice)}</span> per month.
+      <Card className="overflow-hidden">
+        <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+          <div className="flex items-center gap-3 p-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Most expensive</p>
+              {stats?.mostExpensive ? (
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {stats.mostExpensive.name} · {formatCurrency(stats.mostExpensive.monthlyPrice)}/mo
                 </p>
-              </>
-            ) : (
-              <>
-                <h2 className="text-2xl font-semibold text-foreground">No subscriptions yet</h2>
-                <p className="text-sm text-muted-foreground">Create your first subscription to start tracking renewals.</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader title="Filters" subtitle="Refine the list by status, category, or sort order." />
-          <CardContent className="space-y-4">
-            <Select
-              label="Status"
-              value={filterInactive}
-              onChange={(event) => setFilterInactive(event.target.value)}
-              options={[
-                { value: 'all', label: 'All subscriptions' },
-                { value: 'false', label: 'Active only' },
-                { value: 'true', label: 'Inactive only' },
-              ]}
-            />
-            <Select
-              label="Category"
-              value={filterCategory}
-              onChange={(event) => setFilterCategory(event.target.value)}
-              options={[{ value: '', label: 'All categories' }, ...categories.map((category) => ({ value: category.id, label: category.name }))]}
-            />
-            <Select
-              label="Source"
-              value={filterSource}
-              onChange={(event) => setFilterSource(event.target.value)}
-              options={[
-                { value: '', label: 'All sources' },
-                { value: 'manual', label: 'Manual only' },
-                { value: 'detected', label: 'Auto-detected only' },
-              ]}
-            />
-            <Select
-              label="Sort by"
-              value={sortBy}
-              onChange={(event) => setSortBy(event.target.value)}
-              options={[
-                { value: 'nextPayment', label: 'Next payment' },
-                { value: 'price', label: 'Price (high to low)' },
-                { value: 'name', label: 'Name' },
-              ]}
-            />
-            {hasCustomFilters && (
-              <div className="flex justify-end">
-                <Button variant="ghost" onClick={() => { setFilterInactive('all'); setFilterCategory(''); setFilterSource(''); setSortBy('nextPayment'); }}>
-                  Reset view
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No subscriptions yet</p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+              <CalendarClock className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Next renewal</p>
+              {nextDue ? (
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {nextDue.name} · {getDueMeta(nextDue.nextPayment).label}
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">Nothing due</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </Card>
 
       <Card>
-        <CardHeader
-          title="Subscriptions"
-          subtitle={stats ? `${subscriptions.length} shown, ${stats.activeSubscriptions} active, ${stats.inactiveSubscriptions} inactive` : `${subscriptions.length} shown`}
-        />
+        <div className="flex flex-col gap-3 border-b border-border p-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h3 className="font-semibold leading-tight text-foreground">Subscriptions</h3>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {visibleSubscriptions.length} shown{stats ? ` · ${stats.activeSubscriptions} active · ${stats.inactiveSubscriptions} inactive` : ''}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-full sm:w-44">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search by name…"
+                className="h-9 w-full rounded-lg border border-input bg-card pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div className="w-full sm:w-36">
+              <Select
+                className="h-9"
+                value={filterInactive}
+                onChange={(event) => setFilterInactive(event.target.value)}
+                options={[
+                  { value: 'all', label: 'All statuses' },
+                  { value: 'false', label: 'Active only' },
+                  { value: 'true', label: 'Inactive only' },
+                ]}
+              />
+            </div>
+            <div className="w-full sm:w-40">
+              <Select
+                className="h-9"
+                value={filterCategory}
+                onChange={(event) => setFilterCategory(event.target.value)}
+                options={[{ value: '', label: 'All categories' }, ...categories.map((category) => ({ value: category.id, label: category.name }))]}
+              />
+            </div>
+            <div className="w-full sm:w-40">
+              <Select
+                className="h-9"
+                value={filterSource}
+                onChange={(event) => setFilterSource(event.target.value)}
+                options={[
+                  { value: '', label: 'All sources' },
+                  { value: 'manual', label: 'Manual only' },
+                  { value: 'detected', label: 'Auto-detected only' },
+                ]}
+              />
+            </div>
+            <div className="w-full sm:w-44">
+              <Select
+                className="h-9"
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value)}
+                options={[
+                  { value: 'nextPayment', label: 'Sort: Next payment' },
+                  { value: 'price', label: 'Sort: Price (high–low)' },
+                  { value: 'name', label: 'Sort: Name' },
+                ]}
+              />
+            </div>
+            {hasCustomFilters && (
+              <Button variant="ghost" size="sm" onClick={resetFilters}>
+                Reset
+              </Button>
+            )}
+          </div>
+        </div>
         <CardContent className="p-0">
-          {subscriptions.length === 0 ? (
+          {visibleSubscriptions.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
               <div className="rounded-full bg-muted p-4">
                 <Repeat2 className="h-8 w-8 text-muted-foreground/70" />
               </div>
-              <h3 className="mt-4 text-base font-semibold text-foreground">No subscriptions found</h3>
-              <p className="mt-2 max-w-md text-sm text-muted-foreground">Add your first subscription, scan your transactions, or adjust the filters.</p>
+              <h3 className="mt-4 text-base font-semibold text-foreground">
+                {hasCustomFilters ? 'No matching subscriptions' : 'No subscriptions found'}
+              </h3>
+              <p className="mt-2 max-w-md text-sm text-muted-foreground">
+                {hasCustomFilters
+                  ? 'Try a different search term or clear the filters to see everything.'
+                  : 'Add your first subscription or scan your transactions to detect recurring charges automatically.'}
+              </p>
               <div className="mt-6 flex gap-3">
-                <Button variant="outline" onClick={handleScanTransactions} disabled={isScanning}>
-                  <ScanSearch className="mr-2 h-4 w-4" />
-                  {isScanning ? 'Scanning...' : 'Scan Transactions'}
-                </Button>
-                <Button onClick={handleAddSubscription}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Subscription
-                </Button>
+                {hasCustomFilters ? (
+                  <Button variant="outline" onClick={resetFilters}>
+                    Reset filters
+                  </Button>
+                ) : (
+                  <>
+                    <Button variant="outline" onClick={handleScanTransactions} disabled={isScanning}>
+                      <ScanSearch className="mr-2 h-4 w-4" />
+                      {isScanning ? 'Scanning...' : 'Scan Transactions'}
+                    </Button>
+                    <Button onClick={handleAddSubscription}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Subscription
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           ) : (
             <div>
               {(() => {
-                const activeSubscriptions = subscriptions.filter(s => !s.inactive);
-                const inactiveSubscriptions = subscriptions.filter(s => s.inactive);
+                const activeSubscriptions = visibleSubscriptions.filter(s => !s.inactive);
+                const inactiveSubscriptions = visibleSubscriptions.filter(s => s.inactive);
 
                 return (
                   <>
