@@ -1,7 +1,6 @@
 'use client';
 
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Button, Card, CardContent, Input, XpendLogo } from '@/components/ui';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
@@ -87,11 +86,6 @@ export function AuthGate({ children }: AuthGateProps) {
                 <p className="text-xs font-semibold uppercase tracking-widest text-primary">Xpend</p>
                 <h1 className="text-2xl font-bold text-foreground">Welcome back</h1>
               </div>
-            </div>
-
-            <div className="mb-6 flex items-center gap-2 rounded-lg border border-success/20 bg-success/5 px-3 py-2.5 text-sm text-success">
-              <ShieldCheck className="h-4 w-4 flex-shrink-0" />
-              <span className="font-medium">Secured with Supabase Auth</span>
             </div>
 
             <form className="space-y-4" onSubmit={handleSubmit}>

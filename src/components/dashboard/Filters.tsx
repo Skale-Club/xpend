@@ -2,11 +2,97 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Search, Filter, X, ChevronDown, Calendar, ArrowRight, Tag, DollarSign, Wallet } from 'lucide-react';
+import {
+  startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter,
+  startOfYear, endOfYear, subDays, subWeeks, subMonths, subQuarters, subYears,
+} from 'date-fns';
 import { Button, Select, Combobox } from '@/components/ui';
 import { Account, Category, DashboardFilters, TransactionType } from '@/types';
 import { CategoryTreeSelector } from '@/components/categories/CategoryTreeSelector';
 import { formatCurrency } from '@/lib/utils';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
+
+type RangeId =
+  | 'allTime'
+  | 'last7Days' | 'last30Days' | 'last90Days'
+  | 'last3Months' | 'last6Months' | 'last9Months' | 'last12Months'
+  | 'last2Years' | 'last3Years'
+  | 'thisWeek' | 'thisMonth' | 'thisQuarter' | 'thisYear'
+  | 'lastWeek' | 'lastMonth' | 'lastQuarter' | 'lastYear';
+
+const WEEK_OPTS = { weekStartsOn: 1 as const };
+
+function computeRange(id: RangeId, now: Date = new Date()): { from?: Date; to?: Date } {
+  switch (id) {
+    case 'allTime':      return { from: undefined, to: undefined };
+    case 'last7Days':    return { from: subDays(now, 7), to: now };
+    case 'last30Days':   return { from: subDays(now, 30), to: now };
+    case 'last90Days':   return { from: subDays(now, 90), to: now };
+    case 'last3Months':  return { from: subMonths(now, 3), to: now };
+    case 'last6Months':  return { from: subMonths(now, 6), to: now };
+    case 'last9Months':  return { from: subMonths(now, 9), to: now };
+    case 'last12Months': return { from: subMonths(now, 12), to: now };
+    case 'last2Years':   return { from: subYears(now, 2), to: now };
+    case 'last3Years':   return { from: subYears(now, 3), to: now };
+    case 'thisWeek':     return { from: startOfWeek(now, WEEK_OPTS), to: now };
+    case 'thisMonth':    return { from: startOfMonth(now), to: now };
+    case 'thisQuarter':  return { from: startOfQuarter(now), to: now };
+    case 'thisYear':     return { from: startOfYear(now), to: now };
+    case 'lastWeek':     { const d = subWeeks(now, 1); return { from: startOfWeek(d, WEEK_OPTS), to: endOfWeek(d, WEEK_OPTS) }; }
+    case 'lastMonth':    { const d = subMonths(now, 1); return { from: startOfMonth(d), to: endOfMonth(d) }; }
+    case 'lastQuarter':  { const d = subQuarters(now, 1); return { from: startOfQuarter(d), to: endOfQuarter(d) }; }
+    case 'lastYear':     { const d = subYears(now, 1); return { from: startOfYear(d), to: endOfYear(d) }; }
+  }
+}
+
+const RANGE_LABELS: Record<RangeId, string> = {
+  allTime: 'All time',
+  last7Days: 'Last 7 days', last30Days: 'Last 30 days', last90Days: 'Last 90 days',
+  last3Months: 'Last 3 months', last6Months: 'Last 6 months', last9Months: 'Last 9 months', last12Months: 'Last 12 months',
+  last2Years: 'Last 2 years', last3Years: 'Last 3 years',
+  thisWeek: 'This week', thisMonth: 'This month', thisQuarter: 'This quarter', thisYear: 'This year',
+  lastWeek: 'Last week', lastMonth: 'Last month', lastQuarter: 'Last quarter', lastYear: 'Last year',
+};
+
+const RANGE_GROUPS: { heading: string; ids: RangeId[] }[] = [
+  { heading: 'Rolling windows', ids: ['last7Days', 'last30Days', 'last90Days', 'last3Months', 'last6Months', 'last9Months', 'last12Months', 'last2Years', 'last3Years'] },
+  { heading: 'Current period',  ids: ['thisWeek', 'thisMonth', 'thisQuarter', 'thisYear'] },
+  { heading: 'Previous period', ids: ['lastWeek', 'lastMonth', 'lastQuarter', 'lastYear'] },
+];
+
+// Quick-access pills shown inline (short labels).
+const PILLS: { id: RangeId; label: string }[] = [
+  { id: 'allTime', label: 'All Time' },
+  { id: 'last7Days', label: '7D' },
+  { id: 'last30Days', label: '30D' },
+  { id: 'thisMonth', label: 'This Month' },
+  { id: 'lastMonth', label: 'Last Month' },
+  { id: 'thisYear', label: 'This Year' },
+];
+
+// Match order for deriving the active range from raw filter dates.
+const MATCH_ORDER: RangeId[] = [
+  'thisWeek', 'thisMonth', 'thisQuarter', 'thisYear',
+  'lastWeek', 'lastMonth', 'lastQuarter', 'lastYear',
+  'last7Days', 'last30Days', 'last90Days',
+  'last3Months', 'last6Months', 'last9Months', 'last12Months',
+  'last2Years', 'last3Years',
+];
+
+const dayKey = (d?: Date) => (d ? `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` : 'none');
+
+/** Derive which preset (if any) the current filter dates correspond to. */
+function deriveActiveRange(from?: Date, to?: Date): RangeId | 'custom' {
+  if (!from && !to) return 'allTime';
+  const now = new Date();
+  const fk = dayKey(from);
+  const tk = dayKey(to);
+  for (const id of MATCH_ORDER) {
+    const r = computeRange(id, now);
+    if (dayKey(r.from) === fk && dayKey(r.to) === tk) return id;
+  }
+  return 'custom';
+}
 
 interface DashboardFiltersProps {
   accounts: Account[];
@@ -24,12 +110,16 @@ export function DashboardFiltersPanel({
   const { hideSensitiveValues } = useSensitiveValues();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCategoryFilterOpen, setIsCategoryFilterOpen] = useState(false);
-  const [isCustomRangeOpen, setIsCustomRangeOpen] = useState(false);
-  const [activeRange, setActiveRange] = useState<string | null>(null);
+  const [isRangeMenuOpen, setIsRangeMenuOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(filters.searchQuery || '');
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const categoryFilterRef = useRef<HTMLDivElement | null>(null);
-  const customRangeRef = useRef<HTMLDivElement | null>(null);
+  const rangeMenuRef = useRef<HTMLDivElement | null>(null);
+
+  const activeRange = useMemo(
+    () => deriveActiveRange(filters.dateFrom, filters.dateTo),
+    [filters.dateFrom, filters.dateTo]
+  );
 
   const updateFilter = useCallback(<K extends keyof DashboardFilters>(key: K, value: DashboardFilters[K]) => {
     onFiltersChange({ ...filters, [key]: value });
@@ -50,7 +140,6 @@ export function DashboardFiltersPanel({
   const clearFilters = () => {
     onFiltersChange({});
     setLocalSearch('');
-    setActiveRange(null);
   };
 
   const removeFilter = (key: keyof DashboardFilters) => {
@@ -60,46 +149,13 @@ export function DashboardFiltersPanel({
     if (key === 'searchQuery') setLocalSearch('');
   };
 
-  const setQuickRange = (range: 'allTime' | 'thisMonth' | 'lastMonth' | 'thisYear' | 'last30Days' | 'last7Days' | 'last90Days', label?: string) => {
-    setActiveRange(label ?? range);
-    const now = new Date();
-    let from: Date | undefined;
-    let to: Date | undefined = new Date();
-
-    switch (range) {
-      case 'allTime':
-        from = undefined;
-        to = undefined;
-        break;
-      case 'thisMonth':
-        from = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
-      case 'lastMonth':
-        from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        to = new Date(now.getFullYear(), now.getMonth(), 0);
-        break;
-      case 'thisYear':
-        from = new Date(now.getFullYear(), 0, 1);
-        break;
-      case 'last7Days':
-        from = new Date();
-        from.setDate(now.getDate() - 7);
-        break;
-      case 'last30Days':
-        from = new Date();
-        from.setDate(now.getDate() - 30);
-        break;
-      case 'last90Days':
-        from = new Date();
-        from.setDate(now.getDate() - 90);
-        break;
-    }
-
+  const applyRange = (id: RangeId) => {
+    const { from, to } = computeRange(id);
     onFiltersChange({ ...filters, dateFrom: from, dateTo: to });
+    setIsRangeMenuOpen(false);
   };
 
   const setCustomDate = (key: 'dateFrom' | 'dateTo', value: string) => {
-    setActiveRange('Custom');
     updateFilter(key, value ? new Date(value) : undefined);
   };
 
@@ -139,26 +195,24 @@ export function DashboardFiltersPanel({
   }, [isCategoryFilterOpen]);
 
   useEffect(() => {
-    if (!isCustomRangeOpen) return;
+    if (!isRangeMenuOpen) return;
 
     const handlePointerDown = (event: MouseEvent) => {
-      if (!customRangeRef.current) return;
-      if (customRangeRef.current.contains(event.target as Node)) return;
-      setIsCustomRangeOpen(false);
+      if (!rangeMenuRef.current) return;
+      if (rangeMenuRef.current.contains(event.target as Node)) return;
+      setIsRangeMenuOpen(false);
     };
 
     document.addEventListener('mousedown', handlePointerDown);
     return () => document.removeEventListener('mousedown', handlePointerDown);
-  }, [isCustomRangeOpen]);
+  }, [isRangeMenuOpen]);
 
-  const SHORTCUTS = [
-    { label: 'All Time',  range: 'allTime'   as const },
-    { label: '7D',        range: 'last7Days'  as const },
-    { label: '30D',       range: 'last30Days' as const },
-    { label: 'This Month', range: 'thisMonth'  as const },
-    { label: 'Last Month', range: 'lastMonth'  as const },
-    { label: 'This Year', range: 'thisYear'   as const },
-  ];
+  const pillIds = PILLS.map((p) => p.id);
+  const rangeMenuActive = !pillIds.includes(activeRange as RangeId);
+  const rangeMenuLabel =
+    activeRange === 'custom' ? 'Custom' :
+    rangeMenuActive ? RANGE_LABELS[activeRange as RangeId] :
+    'More ranges';
 
   return (
     <div className="space-y-3">
@@ -245,12 +299,12 @@ export function DashboardFiltersPanel({
           <div className="flex items-center gap-2 flex-wrap">
             {/* Shortcuts */}
             <div className="flex items-center gap-1 flex-wrap">
-              {SHORTCUTS.map(({ label, range }) => {
-                const isActive = activeRange === label;
+              {PILLS.map(({ id, label }) => {
+                const isActive = activeRange === id;
                 return (
                   <button
-                    key={range}
-                    onClick={() => setQuickRange(range, label)}
+                    key={id}
+                    onClick={() => applyRange(id)}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
                       isActive
                         ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
@@ -262,56 +316,83 @@ export function DashboardFiltersPanel({
                 );
               })}
 
-              {/* Custom range */}
-              <div className="relative" ref={customRangeRef}>
+              {/* More ranges + custom */}
+              <div className="relative" ref={rangeMenuRef}>
                 <button
-                  onClick={() => setIsCustomRangeOpen((prev) => !prev)}
+                  onClick={() => setIsRangeMenuOpen((prev) => !prev)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
-                    activeRange === 'Custom'
+                    rangeMenuActive
                       ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
                       : 'bg-muted text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                 >
                   <Calendar className="w-3.5 h-3.5" />
-                  Custom
-                  <ChevronDown className={`w-3 h-3 transition-transform ${isCustomRangeOpen ? 'rotate-180' : ''}`} />
+                  {rangeMenuLabel}
+                  <ChevronDown className={`w-3 h-3 transition-transform ${isRangeMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
 
-                {isCustomRangeOpen && (
-                  <div className="absolute left-0 top-full z-30 mt-2 w-[20rem] max-w-[calc(100vw-2rem)] bg-card border border-border rounded-xl shadow-lg p-3 space-y-2">
-                    <p className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider flex items-center gap-1.5">
-                      <Calendar className="w-3 h-3" />
-                      Custom Date Range
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="date"
-                        value={filters.dateFrom ? new Date(filters.dateFrom).toISOString().split('T')[0] : ''}
-                        onChange={(e) => setCustomDate('dateFrom', e.target.value)}
-                        className="flex-1 min-w-0 px-3 py-2 text-sm border border-border rounded-xl bg-card text-foreground [color-scheme:light] dark:[color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary/50 h-10 transition-colors"
-                      />
-                      <ArrowRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
-                      <input
-                        type="date"
-                        value={filters.dateTo ? new Date(filters.dateTo).toISOString().split('T')[0] : ''}
-                        onChange={(e) => setCustomDate('dateTo', e.target.value)}
-                        className="flex-1 min-w-0 px-3 py-2 text-sm border border-border rounded-xl bg-card text-foreground [color-scheme:light] dark:[color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary/50 h-10 transition-colors"
-                      />
+                {isRangeMenuOpen && (
+                  <div className="absolute left-0 top-full z-30 mt-2 w-[22rem] max-w-[calc(100vw-2rem)] bg-card border border-border rounded-xl shadow-lg p-3 space-y-3">
+                    {RANGE_GROUPS.map((group) => (
+                      <div key={group.heading} className="space-y-1.5">
+                        <p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider">
+                          {group.heading}
+                        </p>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {group.ids.map((id) => {
+                            const isActive = activeRange === id;
+                            return (
+                              <button
+                                key={id}
+                                onClick={() => applyRange(id)}
+                                className={`px-2 py-1.5 rounded-lg text-xs font-medium text-center transition-colors ${
+                                  isActive
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                                }`}
+                              >
+                                {RANGE_LABELS[id]}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+
+                    <div className="space-y-2 pt-2 border-t border-border">
+                      <p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider flex items-center gap-1.5">
+                        <Calendar className="w-3 h-3" />
+                        Custom range
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="date"
+                          value={filters.dateFrom ? new Date(filters.dateFrom).toISOString().split('T')[0] : ''}
+                          onChange={(e) => setCustomDate('dateFrom', e.target.value)}
+                          className="flex-1 min-w-0 px-3 py-2 text-sm border border-border rounded-xl bg-card text-foreground [color-scheme:light] dark:[color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary/50 h-10 transition-colors"
+                        />
+                        <ArrowRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+                        <input
+                          type="date"
+                          value={filters.dateTo ? new Date(filters.dateTo).toISOString().split('T')[0] : ''}
+                          onChange={(e) => setCustomDate('dateTo', e.target.value)}
+                          className="flex-1 min-w-0 px-3 py-2 text-sm border border-border rounded-xl bg-card text-foreground [color-scheme:light] dark:[color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary/50 h-10 transition-colors"
+                        />
+                      </div>
+                      {(filters.dateFrom || filters.dateTo) && (
+                        <button
+                          onClick={() => {
+                            const newFilters = { ...filters };
+                            delete newFilters.dateFrom;
+                            delete newFilters.dateTo;
+                            onFiltersChange(newFilters);
+                          }}
+                          className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          Clear range
+                        </button>
+                      )}
                     </div>
-                    {(filters.dateFrom || filters.dateTo) && (
-                      <button
-                        onClick={() => {
-                          const newFilters = { ...filters };
-                          delete newFilters.dateFrom;
-                          delete newFilters.dateTo;
-                          onFiltersChange(newFilters);
-                          setActiveRange(null);
-                        }}
-                        className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        Clear range
-                      </button>
-                    )}
                   </div>
                 )}
               </div>
@@ -422,7 +503,9 @@ export function DashboardFiltersPanel({
           {(filters.dateFrom || filters.dateTo) && (
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 text-orange-700 rounded-full border border-orange-100 text-xs font-medium">
               <Calendar className="w-3 h-3" />
-              {filters.dateFrom ? formatDateLabel(filters.dateFrom) : '...'} - {filters.dateTo ? formatDateLabel(filters.dateTo) : 'Now'}
+              {activeRange !== 'custom'
+                ? RANGE_LABELS[activeRange as RangeId]
+                : `${filters.dateFrom ? formatDateLabel(filters.dateFrom) : '...'} - ${filters.dateTo ? formatDateLabel(filters.dateTo) : 'Now'}`}
               <button
                 onClick={() => {
                   const newFilters = { ...filters };
