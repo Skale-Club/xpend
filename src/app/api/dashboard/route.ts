@@ -132,18 +132,15 @@ export const GET = withApiLogging(async (request: Request) => {
       },
     });
 
-    // Calculate balances efficiently
+    // Calculate balances in a single pass (avoids O(accounts × transactions)).
     const balances: Record<string, number> = {};
     for (const account of accounts) {
-      const accountTxs = allTransactions.filter((t) => t.accountId === account.id);
-      const income = accountTxs
-        .filter((t) => t.type === 'INCOME')
-        .reduce((sum, t) => sum + t.amount, 0);
-      const expenses = accountTxs
-        .filter((t) => t.type === 'EXPENSE')
-        .reduce((sum, t) => sum + t.amount, 0);
-
-      balances[account.id] = account.initialBalance + income - expenses;
+      balances[account.id] = account.initialBalance;
+    }
+    for (const t of allTransactions) {
+      if (!(t.accountId in balances)) continue;
+      if (t.type === 'INCOME') balances[t.accountId] += t.amount;
+      else if (t.type === 'EXPENSE') balances[t.accountId] -= t.amount;
     }
 
     const monthlyData = getMonthlyData(transactionsForAggregation);
@@ -199,8 +196,11 @@ function getMonthlyData(transactions: { date: Date; type: string; amount: number
   const monthlyMap = new Map<string, { income: number; expenses: number }>();
 
   for (const t of transactions) {
+    // UTC accessors everywhere: parsers store dates at UTC midnight, and mixing
+    // local-time bucketing with the UTC-keyed net-worth series shifted
+    // transactions near midnight into different months on non-UTC servers.
     const date = new Date(t.date);
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const key = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
 
     if (!monthlyMap.has(key)) {
       monthlyMap.set(key, { income: 0, expenses: 0 });
@@ -532,7 +532,7 @@ function getBalanceTrend(
 
   for (const t of sortedTransactions) {
     const date = new Date(t.date);
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const key = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
 
     if (t.type === 'INCOME') {
       runningBalance += t.amount;
@@ -575,9 +575,9 @@ function getSpendingPaceData(transactions: { date: Date; type: string; amount: n
     if (transaction.type !== 'EXPENSE') continue;
 
     const transactionDate = new Date(transaction.date);
-    const day = transactionDate.getDate();
-    const year = transactionDate.getFullYear();
-    const month = transactionDate.getMonth();
+    const day = transactionDate.getUTCDate();
+    const year = transactionDate.getUTCFullYear();
+    const month = transactionDate.getUTCMonth();
 
     if (year === currentYear && month === currentMonth) {
       currentDailyTotals[day] += transaction.amount;
@@ -667,8 +667,8 @@ function getCashFlowSummaryData(transactions: { date: Date; type: string; amount
 
   for (const transaction of transactions) {
     const txDate = new Date(transaction.date);
-    const year = txDate.getFullYear();
-    const month = txDate.getMonth();
+    const year = txDate.getUTCFullYear();
+    const month = txDate.getUTCMonth();
 
     if (year === currentYear && month === currentMonth) {
       if (transaction.type === 'INCOME') currentIncome += transaction.amount;

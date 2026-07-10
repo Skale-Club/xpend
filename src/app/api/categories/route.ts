@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { withApiLogging } from '@/lib/apiLogger';
+import { validateCategoryData, ValidationError } from '@/lib/validation';
 
 async function ensureGamesCategoryExists() {
   await prisma.$transaction(async (tx) => {
@@ -141,6 +142,8 @@ export const POST = withApiLogging(async (request: Request) => {
   try {
     const body = await request.json();
 
+    validateCategoryData(body);
+
     let color = body.color || '#6B7280';
     const parentId = body.parentId || null;
 
@@ -160,14 +163,17 @@ export const POST = withApiLogging(async (request: Request) => {
 
     const category = await prisma.category.create({
       data: {
-        name: body.name,
+        name: (body.name as string).trim(),
         color,
         icon: body.icon,
         parentId,
       },
     });
     return NextResponse.json(category);
-  } catch {
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ error: 'Failed to create category' }, { status: 500 });
   }
 });

@@ -49,11 +49,19 @@ async function categorize(transactions: ParsedTransaction[]): Promise<ParsedTran
 }
 
 function parseTransactions(rows: Record<string, string>[]): ParsedTransaction[] {
+  const normalizedRows = rows.map(normalizeRowKeys);
+
+  // Ambiguous numeric dates ("05/02/2024") cannot be disambiguated row by row.
+  // Scan the whole file first: any row where a component exceeds 12 reveals
+  // which side is the day, and a single statement never mixes formats.
+  const dateOrder = inferDateOrder(
+    normalizedRows.map(findDateString).filter((v): v is string => Boolean(v))
+  );
+
   const transactions: ParsedTransaction[] = [];
 
-  for (const row of rows) {
-    const normalizedRow = normalizeRowKeys(row);
-    const transaction = parseTransaction(normalizedRow);
+  for (const normalizedRow of normalizedRows) {
+    const transaction = parseTransaction(normalizedRow, dateOrder);
     if (transaction) {
       transactions.push(transaction);
     }
@@ -73,18 +81,17 @@ function normalizeRowKeys(row: Record<string, string>): Record<string, string> {
   return normalized;
 }
 
-function parseTransaction(row: Record<string, string>): ParsedTransaction | null {
-  // Try to find date field
-  const dateFields = ['date', 'data', 'transaction date', 'posting date', 'value date', 'fecha'];
-  let dateStr: string | undefined;
+const DATE_FIELDS = ['date', 'data', 'transaction date', 'posting date', 'value date', 'fecha'];
 
-  for (const field of dateFields) {
-    if (row[field]) {
-      dateStr = row[field];
-      break;
-    }
+function findDateString(row: Record<string, string>): string | undefined {
+  for (const field of DATE_FIELDS) {
+    if (row[field]) return row[field];
   }
+  return undefined;
+}
 
+function parseTransaction(row: Record<string, string>, dateOrder: DateOrder): ParsedTransaction | null {
+  const dateStr = findDateString(row);
   if (!dateStr) {
     return null;
   }
@@ -160,7 +167,7 @@ function parseTransaction(row: Record<string, string>): ParsedTransaction | null
     return null;
   }
 
-  const date = parseDate(dateStr);
+  const date = parseDate(dateStr, dateOrder);
   if (!date) {
     return null;
   }
@@ -173,14 +180,19 @@ function parseTransaction(row: Record<string, string>): ParsedTransaction | null
   };
 }
 
-function parseAmount(value: string): number {
-  // Remove currency symbols and whitespace
-  let cleaned = value.replace(/[$€£R$\s]/g, '');
+export function parseAmount(value: string): number {
+  // Strip currency symbols, codes and whitespace — keep only digits,
+  // separators, parentheses and signs.
+  let cleaned = value.replace(/[^\d.,()\-+]/g, '');
 
-  // Handle European format (comma as decimal separator)
+  // Both separators present: the decimal separator is whichever appears last
+  // ("1,234.56" is US, "1.234,56" is European).
   if (cleaned.includes(',') && cleaned.includes('.')) {
-    // If both exist, assume . is thousands separator and , is decimal
-    cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+    if (cleaned.lastIndexOf('.') > cleaned.lastIndexOf(',')) {
+      cleaned = cleaned.replace(/,/g, '');
+    } else {
+      cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+    }
   } else if (cleaned.includes(',')) {
     // If only comma, it might be decimal separator
     const parts = cleaned.split(',');
@@ -202,42 +214,93 @@ function parseAmount(value: string): number {
     cleaned = '-' + cleaned.slice(0, -1);
   }
 
-  return parseFloat(cleaned) || 0;
+  // NaN is intentional for unparseable values so callers can skip the row —
+  // collapsing it to 0 would silently import a wrong amount.
+  return parseFloat(cleaned);
 }
 
-function parseDate(value: string): Date | null {
+export type DateOrder = 'DMY' | 'MDY';
+
+const NUMERIC_DATE = /^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2}|\d{4})$/;
+
+/**
+ * Decide whether a file's numeric dates are day-first or month-first by
+ * looking for any component that can only be a day (> 12). Defaults to MDY
+ * when every date is ambiguous, matching this parser's historical behavior
+ * (`new Date("05/02/2024")` parsed as US month-first).
+ */
+export function inferDateOrder(dateStrings: string[]): DateOrder {
+  for (const value of dateStrings) {
+    const match = value.trim().match(NUMERIC_DATE);
+    if (!match) continue;
+    const first = parseInt(match[1], 10);
+    const second = parseInt(match[2], 10);
+    if (first > 12 && second <= 12) return 'DMY';
+    if (second > 12 && first <= 12) return 'MDY';
+  }
+  return 'MDY';
+}
+
+/**
+ * All dates are normalized to UTC midnight. Mixing UTC (ISO branch) with
+ * server-local time (numeric branches) used to break the upload dedup, which
+ * compares exact timestamps.
+ */
+export function parseDate(value: string, dateOrder: DateOrder = 'MDY'): Date | null {
   const trimmed = value.trim();
 
-  // Try ISO format first (YYYY-MM-DD)
-  const isoDate = new Date(trimmed);
-  if (!isNaN(isoDate.getTime())) {
-    return isoDate;
+  // ISO format (YYYY-MM-DD, optionally with a time part)
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s].*)?$/);
+  if (isoMatch) {
+    return buildUtcDate(
+      parseInt(isoMatch[1], 10),
+      parseInt(isoMatch[2], 10),
+      parseInt(isoMatch[3], 10)
+    );
   }
 
-  // Try DD/MM/YYYY or DD-MM-YYYY
-  const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-  if (dmyMatch) {
-    const [, day, month, year] = dmyMatch;
-    return new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
+  // Numeric dates with / - or . separators (DD/MM/YYYY, MM/DD/YYYY, DD/MM/YY)
+  const numericMatch = trimmed.match(NUMERIC_DATE);
+  if (numericMatch) {
+    const first = parseInt(numericMatch[1], 10);
+    const second = parseInt(numericMatch[2], 10);
+    let year = parseInt(numericMatch[3], 10);
+    if (numericMatch[3].length === 2) {
+      year = year > 50 ? 1900 + year : 2000 + year;
+    }
+
+    // A component > 12 can only be the day, regardless of the file-level order.
+    let day: number;
+    let month: number;
+    if (first > 12) {
+      day = first;
+      month = second;
+    } else if (second > 12) {
+      month = first;
+      day = second;
+    } else if (dateOrder === 'DMY') {
+      day = first;
+      month = second;
+    } else {
+      month = first;
+      day = second;
+    }
+
+    return buildUtcDate(year, month, day);
   }
 
-  // Try MM/DD/YYYY or MM-DD-YYYY (US format)
-  const mdyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-  if (mdyMatch) {
-    const [, month, day, year] = mdyMatch;
-    return new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
-  }
+  // Last resort for verbose formats ("15 Jan 2024"). Slash/dash numeric dates
+  // never reach this: the engine's parsing of those is locale-ambiguous.
+  const fallback = new Date(trimmed);
+  return isNaN(fallback.getTime()) ? null : fallback;
+}
 
-  // Try DD/MM/YY or DD-MM-YY
-  const dmyShortMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})$/);
-  if (dmyShortMatch) {
-    const [, day, month, yearShort] = dmyShortMatch;
-    const year = parseInt(yearShort, 10);
-    const fullYear = year > 50 ? 1900 + year : 2000 + year;
-    return new Date(fullYear, parseInt(month, 10) - 1, parseInt(day, 10));
-  }
-
-  return null;
+function buildUtcDate(year: number, month: number, day: number): Date | null {
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  // Reject silent overflow like 31/02 → 02/03.
+  if (date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return date;
 }
 
 // ---------------------------------------------------------------------------

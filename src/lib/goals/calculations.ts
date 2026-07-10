@@ -22,11 +22,11 @@ export function daysUntil(target: Date, from: Date = new Date()): number {
 /**
  * Core progress + savings-requirement calculation shared by all goal types.
  *
- * For debt payoff goals the "amount remaining" is the balance still owed
- * (currentAmount is treated as the outstanding balance, targetAmount as 0),
- * but the savings-style goals treat currentAmount as money saved toward
- * targetAmount. The caller passes the already-normalized remaining amount via
- * the goal fields, so this function works uniformly: remaining = target - current.
+ * Every goal type — including debt payoff — stores targetAmount as the total to
+ * reach (for debts, the full amount owed) and currentAmount as what has been
+ * accumulated/paid so far, so remaining = target - current works uniformly.
+ * (See debt-strategy route and debtPayoffSummary, which compute the balance
+ * still owed as targetAmount - currentAmount.)
  */
 export function computeGoalProgress(goal: Goal, now: Date = new Date()): GoalCalculation {
   const target = Number(goal.targetAmount) || 0;

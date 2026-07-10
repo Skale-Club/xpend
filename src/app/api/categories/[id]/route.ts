@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { withApiLogging } from '@/lib/apiLogger';
+import { validateCategoryData, ValidationError } from '@/lib/validation';
 
 async function getDescendantIds(categoryId: string): Promise<string[]> {
     const descendants: string[] = [];
@@ -56,6 +57,9 @@ export const PUT = withApiLogging(async (
     try {
         const { id } = await params;
         const body = await request.json();
+
+        validateCategoryData(body);
+
         const { name, color, icon, parentId, budget } = body;
         const nextParentId = parentId || null;
 
@@ -68,9 +72,19 @@ export const PUT = withApiLogging(async (
             return NextResponse.json({ error: 'Category not found' }, { status: 404 });
         }
 
-        // Check for circular reference (category can't be its own parent)
+        // Check for circular reference: a category cannot be its own parent nor
+        // be re-parented under one of its own descendants.
         if (nextParentId === id) {
             return NextResponse.json({ error: 'Category cannot be its own parent' }, { status: 400 });
+        }
+
+        const descendantIds = await getDescendantIds(id);
+
+        if (nextParentId && descendantIds.includes(nextParentId)) {
+            return NextResponse.json(
+                { error: 'Category cannot be moved under one of its own subcategories' },
+                { status: 400 }
+            );
         }
 
         let resolvedColor = color || existing.color;
@@ -89,28 +103,34 @@ export const PUT = withApiLogging(async (
             resolvedColor = parent.color;
         }
 
-        const category = await prisma.category.update({
-            where: { id },
-            data: {
-                name,
-                color: resolvedColor,
-                icon,
-                parentId: nextParentId,
-                budget: budget || null,
-            },
-        });
-
-        // Keep descendants in sync with the category color.
-        const descendantIds = await getDescendantIds(id);
-        if (descendantIds.length > 0) {
-            await prisma.category.updateMany({
-                where: { id: { in: descendantIds } },
-                data: { color: resolvedColor },
+        // Update the category and sync descendant colors atomically.
+        const category = await prisma.$transaction(async (tx) => {
+            const updated = await tx.category.update({
+                where: { id },
+                data: {
+                    name,
+                    color: resolvedColor,
+                    icon,
+                    parentId: nextParentId,
+                    budget: budget || null,
+                },
             });
-        }
+
+            if (descendantIds.length > 0) {
+                await tx.category.updateMany({
+                    where: { id: { in: descendantIds } },
+                    data: { color: resolvedColor },
+                });
+            }
+
+            return updated;
+        });
 
         return NextResponse.json(category);
     } catch (error) {
+        if (error instanceof ValidationError) {
+            return NextResponse.json({ error: error.message }, { status: 400 });
+        }
         console.error('Failed to update category:', error);
         return NextResponse.json({ error: 'Failed to update category' }, { status: 500 });
     }
@@ -160,22 +180,24 @@ export const DELETE = withApiLogging(async (
             return NextResponse.json({ error: 'Category not found' }, { status: 404 });
         }
 
-        // Delete child categories first
-        if (existing.children.length > 0) {
-            await prisma.category.deleteMany({
-                where: { parentId: id },
+        // Delete children, uncategorize transactions and remove the category
+        // atomically — a partial failure must not leave orphaned children or
+        // transactions pointing at a deleted category.
+        await prisma.$transaction(async (tx) => {
+            if (existing.children.length > 0) {
+                await tx.category.deleteMany({
+                    where: { parentId: id },
+                });
+            }
+
+            await tx.transaction.updateMany({
+                where: { categoryId: id },
+                data: { categoryId: null },
             });
-        }
 
-        // Uncategorize transactions in this category
-        await prisma.transaction.updateMany({
-            where: { categoryId: id },
-            data: { categoryId: null },
-        });
-
-        // Delete the category
-        await prisma.category.delete({
-            where: { id },
+            await tx.category.delete({
+                where: { id },
+            });
         });
 
         return NextResponse.json({ success: true });

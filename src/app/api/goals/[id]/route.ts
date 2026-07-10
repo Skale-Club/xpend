@@ -45,7 +45,7 @@ export async function PUT(
 
     const goal = await prisma.goal.update({
       where: { id },
-      data: buildGoalData(body),
+      data: buildGoalData(body, 'update'),
       include: {
         linkedAccount: { select: { id: true, name: true, color: true } },
         linkedCategory: { select: { id: true, name: true, color: true } },

@@ -16,6 +16,7 @@ import { buildSystemPrompt } from '@/lib/chat/systemPrompt';
 import { buildFinancialContext, renderContextText } from '@/lib/memory/contextBuilder';
 import {
   DEFAULT_CHAT_MODEL,
+  normalizeChatModel,
 } from '@/lib/chat/models';
 import { ChatApiError } from '@/lib/chat/errors';
 import { checkChatRateLimit } from '@/lib/chat/rateLimit';
@@ -37,24 +38,12 @@ async function getChatConfig(): Promise<{ apiKey: string | null; chatModel: stri
   try {
     const settings = await prisma.settings.findUnique({
       where: { id: 'default' },
-      select: { geminiApiKey: true },
+      select: { geminiApiKey: true, geminiChatModel: true },
     });
-
-    const rows = await prisma.$queryRaw<Array<{ geminiChatModel: string }>>`
-      SELECT "geminiChatModel"
-      FROM "Settings"
-      WHERE "id" = 'default'
-      LIMIT 1
-    `;
-
-    const storedModel = rows[0]?.geminiChatModel;
-    const chatModel = storedModel && storedModel.trim() !== ''
-      ? storedModel
-      : DEFAULT_CHAT_MODEL;
 
     return {
       apiKey: settings?.geminiApiKey || null,
-      chatModel,
+      chatModel: normalizeChatModel(settings?.geminiChatModel),
     };
   } catch (error) {
     console.error('Error fetching chat config:', error);

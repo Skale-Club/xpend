@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { buildFinancialContext, renderContextText } from '@/lib/memory/contextBuilder';
+import { withApiLogging } from '@/lib/apiLogger';
 
-export async function GET(request: Request) {
+export const GET = withApiLogging(async (request: Request) => {
   try {
     const { searchParams } = new URL(request.url);
     const context = await buildFinancialContext({
@@ -14,4 +15,4 @@ export async function GET(request: Request) {
     console.error('Failed to build financial context:', error);
     return NextResponse.json({ error: 'Failed to build financial context' }, { status: 500 });
   }
-}
+});

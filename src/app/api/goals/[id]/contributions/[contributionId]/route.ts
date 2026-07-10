@@ -18,12 +18,19 @@ export async function DELETE(
     }
 
     // Remove the contribution and roll back its effect on goal progress
-    // atomically. currentAmount is floored at 0 to avoid going negative.
+    // atomically. The decrement mirrors the increment used on create, so
+    // concurrent contributions cannot clobber each other; the clamp covers a
+    // manual baseline lower than the deleted contribution.
     await prisma.$transaction(async (tx) => {
       await tx.goalContribution.delete({ where: { id: contributionId } });
-      const goal = await tx.goal.findUnique({ where: { id }, select: { currentAmount: true } });
-      const next = Math.max(0, (goal?.currentAmount ?? 0) - contribution.amount);
-      await tx.goal.update({ where: { id }, data: { currentAmount: next } });
+      await tx.goal.update({
+        where: { id },
+        data: { currentAmount: { decrement: contribution.amount } },
+      });
+      await tx.goal.updateMany({
+        where: { id, currentAmount: { lt: 0 } },
+        data: { currentAmount: 0 },
+      });
     });
 
     return NextResponse.json({ success: true });

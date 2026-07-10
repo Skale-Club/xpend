@@ -9,6 +9,9 @@ export const POST = withApiLogging(async (request: Request) => {
     const keyword = typeof body.keyword === 'string' ? body.keyword.trim() : '';
     const categoryId = body.categoryId || null;
     const transactionId = typeof body.transactionId === 'string' ? body.transactionId : null;
+    // Optional scope: restrict the bulk match to one account. Without it a
+    // short/generic keyword re-categorizes matches across every account.
+    const accountId = typeof body.accountId === 'string' && body.accountId ? body.accountId : null;
 
     if (!keyword || keyword.length < 2) {
       return NextResponse.json({ error: 'Keyword must be at least 2 characters' }, { status: 400 });
@@ -41,6 +44,7 @@ export const POST = withApiLogging(async (request: Request) => {
     const updated = await prisma.transaction.updateMany({
       where: {
         type: sourceTransaction.type,
+        ...(accountId ? { accountId } : {}),
         OR: [
           { id: sourceTransaction.id },
           { description: { contains: keyword, mode: 'insensitive' } },
