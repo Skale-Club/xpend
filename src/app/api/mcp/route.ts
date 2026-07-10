@@ -10,6 +10,7 @@ import {
   WRITE_TOOLS,
 } from '@/lib/mcp/tools/registry';
 import { withApiLogging } from '@/lib/apiLogger';
+import { safeToolErrorMessage } from '@/lib/mcp/errors';
 
 function errorResponse(code: string, message: string, status: number) {
   return NextResponse.json({ ok: false, error: { code, message } }, { status });
@@ -90,7 +91,7 @@ export const POST = withApiLogging(async (request: Request) => {
     });
   } catch (error) {
     const durationMs = Date.now() - startedAt;
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = safeToolErrorMessage(error);
 
     await writeAuditLog({
       tokenId: mcpToken.id,

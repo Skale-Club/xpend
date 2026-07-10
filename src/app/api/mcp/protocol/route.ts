@@ -4,6 +4,10 @@ import { withApiLogging } from '@/lib/apiLogger';
 
 export const dynamic = 'force-dynamic';
 
+// Prefer the Authorization header. The ?token= query param is kept only
+// because hosted MCP clients (e.g. claude.ai connectors) cannot set custom
+// headers — query strings leak into proxy logs and Referer, so any client
+// that can send headers should.
 function getToken(request: Request): string | null {
   const auth = request.headers.get('Authorization');
   if (auth?.startsWith('Bearer ')) return `Bearer ${auth.slice(7).trim()}`;

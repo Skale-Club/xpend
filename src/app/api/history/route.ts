@@ -68,8 +68,17 @@ export const GET = withApiLogging(async (request: Request) => {
   }
 });
 
-export const DELETE = withApiLogging(async (_request: Request) => {
+export const DELETE = withApiLogging(async (request: Request) => {
   try {
+    // Deleting the entire chat history is irreversible — require an explicit
+    // confirmation flag so a stray DELETE can never wipe it.
+    const { searchParams } = new URL(request.url);
+    if (searchParams.get('confirm') !== 'true') {
+      return Response.json(
+        { error: 'Pass ?confirm=true to delete the entire chat history.' },
+        { status: 400 }
+      );
+    }
     const result = await prisma.chatSession.deleteMany({});
     return Response.json({ deletedCount: result.count }, { status: 200 });
   } catch (error) {

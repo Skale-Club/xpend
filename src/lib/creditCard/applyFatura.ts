@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db';
+import type { Prisma } from '@/generated/prisma';
 import type { FaturaMeta } from '@/lib/pdfParser';
 
 interface ApplyFaturaParams {
@@ -9,6 +10,8 @@ interface ApplyFaturaParams {
   faturaMeta: FaturaMeta | null;
 }
 
+type DbClient = Prisma.TransactionClient | typeof prisma;
+
 /**
  * Materializes a credit-card fatura into a CreditCardInvoice and propagates the
  * extracted metadata to the Account snapshot. Idempotent: safe to re-run on a
@@ -18,13 +21,16 @@ interface ApplyFaturaParams {
  * here — those are owned by the user "mark as paid" action, so re-uploading an
  * extracted fatura can never reset a PAID invoice back to OPEN.
  */
-export async function applyFaturaToInvoice({
-  accountId,
-  statementId,
-  referenceMonth,
-  referenceYear,
-  faturaMeta,
-}: ApplyFaturaParams): Promise<void> {
+export async function applyFaturaToInvoice(
+  {
+    accountId,
+    statementId,
+    referenceMonth,
+    referenceYear,
+    faturaMeta,
+  }: ApplyFaturaParams,
+  db: DbClient = prisma
+): Promise<void> {
   const meta = faturaMeta ?? null;
 
   // Only carry non-null extracted values so a sparse extraction (or a CSV upload
@@ -40,7 +46,7 @@ export async function applyFaturaToInvoice({
     availableLimitSnapshot: meta?.availableLimit ?? undefined,
   };
 
-  const invoice = await prisma.creditCardInvoice.upsert({
+  const invoice = await db.creditCardInvoice.upsert({
     where: {
       accountId_referenceMonth_referenceYear: { accountId, referenceMonth, referenceYear },
     },
@@ -59,7 +65,7 @@ export async function applyFaturaToInvoice({
 
   // Link this statement's transactions to the invoice. Re-running re-sets the
   // same FK, so this is idempotent.
-  await prisma.transaction.updateMany({
+  await db.transaction.updateMany({
     where: { statementId },
     data: { invoiceId: invoice.id },
   });
@@ -74,12 +80,12 @@ export async function applyFaturaToInvoice({
   if (meta?.brand) accountUpdate.brand = meta.brand;
   if (Object.keys(accountUpdate).length > 0) {
     accountUpdate.creditLimitUpdatedAt = new Date();
-    await prisma.account.update({ where: { id: accountId }, data: accountUpdate });
+    await db.account.update({ where: { id: accountId }, data: accountUpdate });
   }
 
   // Cache the raw extracted metadata on the Statement for re-upload idempotency.
   if (meta) {
-    await prisma.statement.update({
+    await db.statement.update({
       where: { id: statementId },
       data: { extractedJson: meta as unknown as object },
     });

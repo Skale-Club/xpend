@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { withApiLogging } from '@/lib/apiLogger';
 import type { Prisma } from '@/generated/prisma';
+import { requireSuperAdmin } from '@/lib/auth/requireSession';
 
-// Super-admin access is enforced in middleware (isAdminPath + isSuperAdmin).
-
+// Super-admin access is enforced in middleware (isAdminPath + isSuperAdmin) and
+// revalidated here as defense in depth.
 export const GET = withApiLogging(async (request: Request) => {
+    const denied = requireSuperAdmin(request);
+    if (denied) return denied;
     try {
         const { searchParams } = new URL(request.url);
 

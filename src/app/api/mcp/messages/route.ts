@@ -7,10 +7,15 @@ export const dynamic = 'force-dynamic';
 
 export const POST = withApiLogging(async (request: Request) => {
   const { searchParams } = new URL(request.url);
-  const tokenParam = searchParams.get('token');
   const sessionId = searchParams.get('sessionId') ?? '';
 
-  const mcpToken = await validateMcpToken(tokenParam ? `Bearer ${tokenParam}` : null);
+  // Auth: the sessionId was issued to an authenticated SSE stream and is bound
+  // to its token server-side. When the session is not on this instance
+  // (serverless multi-instance), fall back to the Authorization header —
+  // tokens are never accepted via query string.
+  const session = getSession(sessionId);
+  const mcpToken = session?.token
+    ?? await validateMcpToken(request.headers.get('Authorization'));
   if (!mcpToken) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
@@ -26,8 +31,6 @@ export const POST = withApiLogging(async (request: Request) => {
   }
 
   const response = await handleJsonRpc(body, mcpToken);
-
-  const session = getSession(sessionId);
 
   if (response !== null && session) {
     // Send response on the SSE stream

@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { withApiLogging } from '@/lib/apiLogger';
+import { requireSession } from '@/lib/auth/requireSession';
 
 export const DELETE = withApiLogging(async (
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) => {
+  const unauthorized = requireSession(request);
+  if (unauthorized) return unauthorized;
   try {
     const { id } = await params;
 

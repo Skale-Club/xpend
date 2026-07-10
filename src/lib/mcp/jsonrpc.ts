@@ -3,6 +3,7 @@ import { hasPermission } from './auth';
 import { isValidTool, executeTool, TOOL_DESCRIPTIONS, READ_TOOLS, WRITE_TOOLS } from './tools/registry';
 import { INPUT_SCHEMAS } from './schemas';
 import { writeAuditLog } from './audit';
+import { safeToolErrorMessage } from './errors';
 
 export interface JsonRpcRequest {
   jsonrpc: '2.0';
@@ -93,7 +94,7 @@ export async function handleJsonRpc(
         });
       } catch (error) {
         const durationMs = Date.now() - startedAt;
-        const message = error instanceof Error ? error.message : 'Internal error';
+        const message = safeToolErrorMessage(error);
 
         if (!isNotification) {
           await writeAuditLog({ tokenId: mcpToken.id, tool: toolName, params: args, outcome: 'error', errorCode: 'INTERNAL_ERROR', durationMs });

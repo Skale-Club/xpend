@@ -1,7 +1,8 @@
+import type { McpToken } from '@/generated/prisma';
+
 interface McpSession {
   controller: ReadableStreamDefaultController<Uint8Array>;
-  tokenId: string;
-  permissions: string[];
+  token: McpToken;
 }
 
 // Module-level store — persists across requests on the same serverless instance.

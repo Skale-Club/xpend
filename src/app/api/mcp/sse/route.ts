@@ -8,23 +8,27 @@ export const dynamic = 'force-dynamic';
 
 export const GET = withApiLogging(async (request: Request) => {
   const { searchParams, origin } = new URL(request.url);
-  const tokenParam = searchParams.get('token');
 
-  const mcpToken = await validateMcpToken(tokenParam ? `Bearer ${tokenParam}` : null);
+  // Prefer the Authorization header. The ?token= query param is kept only as a
+  // legacy fallback for EventSource clients, which cannot set headers — query
+  // strings leak into proxy logs and Referer, so header auth should be used.
+  const authHeader = request.headers.get('Authorization');
+  const tokenParam = searchParams.get('token');
+  const mcpToken = await validateMcpToken(
+    authHeader ?? (tokenParam ? `Bearer ${tokenParam}` : null)
+  );
   if (!mcpToken) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const sessionId = crypto.randomUUID();
-  const messagesUrl = `${origin}/api/mcp/messages?sessionId=${sessionId}&token=${tokenParam}`;
+  // The session is bound to the validated token server-side; the token itself
+  // must never be embedded in the messages URL.
+  const messagesUrl = `${origin}/api/mcp/messages?sessionId=${sessionId}`;
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      addSession(sessionId, {
-        controller,
-        tokenId: mcpToken.id,
-        permissions: mcpToken.permissions,
-      });
+      addSession(sessionId, { controller, token: mcpToken });
 
       // Send the endpoint event — client uses this URL to POST messages
       sendSse(controller, 'endpoint', messagesUrl);

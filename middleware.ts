@@ -23,10 +23,19 @@ function isAdminPath(pathname: string): boolean {
   return pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/api/admin');
 }
 
+// Only the MCP *protocol* endpoints authenticate with their own Bearer token
+// (validated inside the handlers). Management routes such as /api/mcp/tokens
+// must NOT be listed here — they require a Supabase session like any other API.
+const MCP_PROTOCOL_PATHS = ['/api/mcp', '/api/mcp/protocol', '/api/mcp/sse', '/api/mcp/messages'];
+
+function isMcpProtocolPath(pathname: string): boolean {
+  return MCP_PROTOCOL_PATHS.includes(pathname);
+}
+
 export async function middleware(request: NextRequest) {
   if (!supabaseUrl || !supabaseAnonKey) {
-    // MCP routes use Bearer token auth — always pass through
-    if (request.nextUrl.pathname.startsWith('/api/mcp')) {
+    // MCP protocol routes use Bearer token auth — always pass through
+    if (isMcpProtocolPath(request.nextUrl.pathname)) {
       return NextResponse.next({ request });
     }
     // For API routes return JSON error; for page routes do a best-effort pass-through.
@@ -72,8 +81,8 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (!user) {
-    // MCP routes use Bearer token auth — bypass Supabase session check
-    if (pathname.startsWith('/api/mcp')) {
+    // MCP protocol routes use Bearer token auth — bypass Supabase session check
+    if (isMcpProtocolPath(pathname)) {
       return response;
     }
 

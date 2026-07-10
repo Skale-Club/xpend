@@ -12,6 +12,19 @@ import { faturaDedupWindow } from '@/lib/creditCard/invoiceCycle';
 import { parseInstallment } from '@/lib/creditCard/installment';
 import { installmentGroupId } from '@/lib/creditCard/installmentGroup';
 
+// Bank statements are small; this cap mostly guards against abusive uploads
+// since the whole file is buffered in memory for parsing.
+const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
+
+// The original file name is user-controlled and interpolated into the storage
+// path — strip anything that could escape the prefix (slashes, "..") and keep
+// the path short.
+function sanitizeFileName(name: string): string {
+  const base = name.split(/[/\\]/).pop() ?? '';
+  const safe = base.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/\.{2,}/g, '.');
+  return (safe || 'statement').slice(-100);
+}
+
 export const POST = withApiLogging(async (request: Request) => {
   try {
     const formData = await request.formData();
@@ -22,6 +35,13 @@ export const POST = withApiLogging(async (request: Request) => {
 
     // Validate input
     validateStatementUpload({ file, accountId, month, year });
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      return NextResponse.json(
+        { error: `File is too large. Maximum size is ${MAX_FILE_SIZE_BYTES / (1024 * 1024)} MB.` },
+        { status: 413 }
+      );
+    }
 
     // Load the account — credit-card faturas need type + closingDay for cycle logic.
     const account = await prisma.account.findUnique({ where: { id: accountId } });
@@ -52,7 +72,7 @@ export const POST = withApiLogging(async (request: Request) => {
 
         // Create a unique file path: statements/{accountId}/{year}-{month}/{timestamp}_{filename}
         const timestamp = Date.now();
-        const filePath = `${accountId}/${year}-${month.toString().padStart(2, '0')}/${timestamp}_${file.name}`;
+        const filePath = `${accountId}/${year}-${month.toString().padStart(2, '0')}/${timestamp}_${sanitizeFileName(file.name)}`;
 
         // Convert File to ArrayBuffer then to Buffer for upload
         const fileBuffer = await file.arrayBuffer();
@@ -60,7 +80,8 @@ export const POST = withApiLogging(async (request: Request) => {
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('statements')
           .upload(filePath, fileBuffer, {
-            contentType: file.type || (isCSV ? 'text/csv' : 'application/pdf'),
+            // Derived from the validated extension — file.type is client-controlled.
+            contentType: isCSV ? 'text/csv' : 'application/pdf',
             upsert: false,
           });
 
@@ -110,22 +131,8 @@ export const POST = withApiLogging(async (request: Request) => {
       }
     }
 
-    const statement = await prisma.statement.upsert({
-      where: {
-        accountId_month_year: { accountId, month, year },
-      },
-      create: {
-        accountId,
-        month,
-        year,
-        fileName: file.name,
-        fileUrl: fileUrl,
-      },
-      update: {
-        fileName: file.name,
-        fileUrl: fileUrl,
-      },
-    });
+    let uniqueTransactions: typeof transactions = [];
+    let duplicateCount = 0;
 
     if (transactions.length > 0) {
       // Check for potential duplicates across all statements (not just this one).
@@ -159,7 +166,7 @@ export const POST = withApiLogging(async (request: Request) => {
       // share the same date and amount AND either their raw descriptions match or
       // their normalized descriptions match (catches minor bank-side description
       // variations like trailing card numbers, settle-date suffixes, etc.).
-      const uniqueTransactions = transactions.filter((newTx) => {
+      uniqueTransactions = transactions.filter((newTx) => {
         const newNorm = normalizeDescription(newTx.description);
         return !existingTransactions.some(
           (existingTx) => {
@@ -173,23 +180,52 @@ export const POST = withApiLogging(async (request: Request) => {
         );
       });
 
-      const duplicateCount = transactions.length - uniqueTransactions.length;
+      duplicateCount = transactions.length - uniqueTransactions.length;
+      if (duplicateCount > 0) {
+        parseMessage = parseMessage
+          ? `${parseMessage} ${duplicateCount} duplicate transaction(s) were skipped.`
+          : `${duplicateCount} duplicate transaction(s) were skipped.`;
+      }
+    }
 
-      if (uniqueTransactions.length > 0) {
-        // Auto-categorize transactions using rules and AI
-        const categorizationResults = await batchCategorize(
+    // Auto-categorize outside the transaction — it only reads rules.
+    const categorizationResults = uniqueTransactions.length > 0
+      ? await batchCategorize(
           uniqueTransactions.map(t => ({
             description: t.description,
             amount: t.amount,
           }))
-        );
+        )
+      : new Map<number, { categoryId: string | null }>();
 
+    // Persist atomically: statement upsert, transaction insert and fatura
+    // materialization either all land or none do — a partial failure must not
+    // leave a statement without its transactions or invoice.
+    const statement = await prisma.$transaction(async (tx) => {
+      const stmt = await tx.statement.upsert({
+        where: {
+          accountId_month_year: { accountId, month, year },
+        },
+        create: {
+          accountId,
+          month,
+          year,
+          fileName: file.name,
+          fileUrl: fileUrl,
+        },
+        update: {
+          fileName: file.name,
+          fileUrl: fileUrl,
+        },
+      });
+
+      if (uniqueTransactions.length > 0) {
         // Apply categorization results (+ installment metadata for credit cards).
         const transactionsWithCategories = uniqueTransactions.map((t, index) => {
           const result = categorizationResults.get(index);
           const base = {
             accountId,
-            statementId: statement.id,
+            statementId: stmt.id,
             date: t.date,
             description: t.description,
             amount: t.amount,
@@ -208,35 +244,30 @@ export const POST = withApiLogging(async (request: Request) => {
           };
         });
 
-        await prisma.transaction.createMany({
+        await tx.transaction.createMany({
           data: transactionsWithCategories,
         });
       }
 
-      if (duplicateCount > 0) {
-        parseMessage = parseMessage
-          ? `${parseMessage} ${duplicateCount} duplicate transaction(s) were skipped.`
-          : `${duplicateCount} duplicate transaction(s) were skipped.`;
+      // Credit-card faturas: materialize the invoice, link its transactions, and
+      // refresh the account's limit/closing/due snapshot from the extracted meta.
+      // Runs even with zero transactions so a metadata-only fatura still updates
+      // the limit. Idempotent on re-upload.
+      if (isCreditCard) {
+        await applyFaturaToInvoice(
+          {
+            accountId,
+            statementId: stmt.id,
+            referenceMonth: month,
+            referenceYear: year,
+            faturaMeta,
+          },
+          tx
+        );
       }
-    }
 
-    // Credit-card faturas: materialize the invoice, link its transactions, and
-    // refresh the account's limit/closing/due snapshot from the extracted meta.
-    // Runs even with zero transactions so a metadata-only fatura still updates
-    // the limit. Idempotent on re-upload.
-    if (isCreditCard) {
-      try {
-        await applyFaturaToInvoice({
-          accountId,
-          statementId: statement.id,
-          referenceMonth: month,
-          referenceYear: year,
-          faturaMeta,
-        });
-      } catch (faturaError) {
-        console.error('Failed to apply fatura to invoice:', faturaError);
-      }
-    }
+      return stmt;
+    }, { timeout: 15_000 });
 
     // Get actual count of created transactions
     const createdCount = await prisma.transaction.count({

@@ -3,8 +3,11 @@ import { prisma } from '@/lib/db';
 import { generateToken } from '@/lib/mcp/auth';
 import { ALL_TOOLS } from '@/lib/mcp/tools/registry';
 import { withApiLogging } from '@/lib/apiLogger';
+import { requireSession } from '@/lib/auth/requireSession';
 
-export const GET = withApiLogging(async (_request: Request) => {
+export const GET = withApiLogging(async (request: Request) => {
+  const unauthorized = requireSession(request);
+  if (unauthorized) return unauthorized;
   try {
     const tokens = await prisma.mcpToken.findMany({
       where: { isActive: true },
@@ -27,6 +30,8 @@ export const GET = withApiLogging(async (_request: Request) => {
 });
 
 export const POST = withApiLogging(async (request: Request) => {
+  const unauthorized = requireSession(request);
+  if (unauthorized) return unauthorized;
   try {
     const body = await request.json();
     const { name, permissions } = body as { name?: string; permissions?: string[] };
