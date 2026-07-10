@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Button, Card, CardContent } from '@/components/ui';
 import {
   CheckCircle,
@@ -76,9 +76,13 @@ function ToolLabel({ name }: { name: string }) {
 }
 
 function useOrigin() {
-  const [origin, setOrigin] = useState('');
-  useEffect(() => { setOrigin(window.location.origin); }, []);
-  return origin;
+  // useSyncExternalStore keeps SSR ('' ) and client (window origin) in sync
+  // without the setState-in-effect pattern.
+  return useSyncExternalStore(
+    () => () => {},
+    () => window.location.origin,
+    () => ''
+  );
 }
 
 export default function McpSettings() {

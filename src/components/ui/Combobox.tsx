@@ -46,6 +46,13 @@ export function Combobox({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [coords, setCoords] = useState<DropdownCoords | null>(null);
+  // Reset the search when the dropdown opens — state-during-render pattern
+  // instead of an effect, so the cleared query is visible on the same render.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) setQuery('');
+  }
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -109,7 +116,6 @@ export function Combobox({
 
   useEffect(() => {
     if (open) {
-      setQuery('');
       requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [open]);

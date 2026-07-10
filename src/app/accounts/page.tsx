@@ -6,6 +6,7 @@ import { AccountList, AccountForm, AccountFormData } from '@/components/accounts
 import { Account, CreditCardSummary } from '@/types';
 import { useToast, Loader, Button } from '@/components/ui';
 import { formatCurrency } from '@/lib/utils';
+import { readArrayResponse, readObjectResponse } from '@/lib/http';
 import { useSensitiveValues } from '@/components/layout/SensitiveValuesProvider';
 
 export default function AccountsPage() {
@@ -22,20 +23,20 @@ export default function AccountsPage() {
     setIsLoading(true);
     try {
       const res = await fetch('/api/accounts');
-      const data = await res.json();
-      setAccounts(data);
+      setAccounts(await readArrayResponse<Account>(res, 'accounts'));
 
       const balancesRes = await fetch('/api/dashboard');
-      const balancesData = await balancesRes.json();
-      setBalances(balancesData.balances || {});
+      const balancesData = await readObjectResponse<{ balances?: Record<string, number> }>(
+        balancesRes,
+        'dashboard'
+      );
+      setBalances(balancesData?.balances || {});
 
       const creditRes = await fetch('/api/credit-cards');
-      if (creditRes.ok) {
-        const creditData: CreditCardSummary[] = await creditRes.json();
-        setCreditSummaries(
-          Object.fromEntries(creditData.map((s) => [s.accountId, s])),
-        );
-      }
+      const creditData = await readArrayResponse<CreditCardSummary>(creditRes, 'credit-cards');
+      setCreditSummaries(
+        Object.fromEntries(creditData.map((s) => [s.accountId, s])),
+      );
     } catch (error) {
       console.error('Failed to fetch accounts:', error);
       toast.error('Failed to load accounts. Please try again.');

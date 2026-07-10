@@ -5,6 +5,7 @@ import { Card, CardContent, Combobox, Loader } from '@/components/ui';
 import { TimelineUpload, TimelineYearSelector } from '@/components/statements';
 import { Account } from '@/types';
 import { getCurrentMonthYear } from '@/lib/utils';
+import { readArrayResponse } from '@/lib/http';
 
 export default function StatementsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -34,7 +35,7 @@ export default function StatementsPage() {
   const fetchAccounts = useCallback(async () => {
     try {
       const res = await fetch('/api/accounts');
-      const data = await res.json();
+      const data = await readArrayResponse<Account>(res, 'accounts');
       setAccounts(data);
       if (data.length > 0 && !selectedAccountId) {
         setSelectedAccountId(data[0].id);
@@ -51,8 +52,8 @@ export default function StatementsPage() {
     setIsStatementsLoading(true);
     try {
       const res = await fetch(`/api/statements?accountId=${selectedAccountId}&year=${selectedYear}`);
-      const data = await res.json();
-      setStatements(data.map((s: { id: string; month: number; year: number; uploadedAt?: string; fileName?: string; hasTransactions?: boolean; uncategorizedCount?: number; aiCategorized?: boolean }) => ({
+      const data = await readArrayResponse<{ id: string; month: number; year: number; uploadedAt?: string; fileName?: string; hasTransactions?: boolean; uncategorizedCount?: number; aiCategorized?: boolean }>(res, 'statements');
+      setStatements(data.map((s) => ({
         id: s.id,
         month: s.month,
         year: s.year,
