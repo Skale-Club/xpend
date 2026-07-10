@@ -43,15 +43,12 @@ NEXT_PUBLIC_SUPABASE_URL=http://localhost:8000
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
 ```
 
-### 5. Update API Routes
+### 5. API Routes
 
-Change your fetch calls to use Supabase endpoints:
-```typescript
-// In your pages, change:
-fetch('/api/accounts')
-// To:
-fetch('/api/supabase/accounts')
-```
+No code changes are needed: the app's `/api/*` routes talk to PostgreSQL via
+Prisma using `DATABASE_URL`, and to Supabase Auth/Storage via the
+`NEXT_PUBLIC_SUPABASE_*` variables. Point those at your self-hosted stack
+(Kong gateway on port 8000) and everything works as-is.
 
 ## Security (Production)
 

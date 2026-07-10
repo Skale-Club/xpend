@@ -2,6 +2,65 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-07-10
+
+Security, correctness and quality pass following a full system audit
+(see [ANALISE_SISTEMA.md](ANALISE_SISTEMA.md)).
+
+### Security
+- **MCP token management endpoints (`/api/mcp/tokens*`) now require an
+  authenticated Supabase session.** Previously the middleware bypassed auth for
+  everything under `/api/mcp`, allowing unauthenticated token creation with any
+  permission. The bypass is now restricted to the protocol endpoints
+  (`/api/mcp`, `/protocol`, `/sse`, `/messages`), which use Bearer-token auth.
+- SSE sessions are bound to their token server-side; the token is no longer
+  embedded in the `messages` endpoint URL.
+- Admin routes revalidate super-admin status in the handler (defense in depth,
+  no longer relying solely on the middleware matcher).
+- Statement upload: file names are sanitized before being used as storage
+  paths, uploads are capped at 15 MB, and the stored content type is derived
+  from the validated extension instead of trusting the client.
+- MCP tool errors no longer echo raw database driver messages to clients.
+- `DELETE /api/history` (wipes all chat sessions) now requires `?confirm=true`.
+
+### Fixed
+- **Goal progress no longer resets when editing a goal**: partial update
+  payloads without `currentAmount` preserve the accumulated value.
+- Deleting a goal contribution uses an atomic decrement (no read-modify-write
+  race).
+- CSV date parsing: removed the ambiguous `new Date(string)` fallback for
+  numeric dates, added file-level DD/MM vs MM/DD inference, normalized all
+  parsed dates to UTC midnight (fixes re-upload dedup duplicates), and
+  impossible dates (31/02) are rejected instead of overflowing.
+- CSV amount parsing: US amounts with thousands separators ("1,234.56") were
+  mis-parsed as European format; the decimal separator is now whichever
+  appears last. Unparseable amounts skip the row instead of importing 0.
+- Chat/memory model ids stored without a provider prefix (legacy
+  "gemini-2.5-flash") are normalized to OpenRouter ids ("google/…").
+- Dashboard aggregations use UTC accessors consistently and compute account
+  balances in a single pass.
+- Category update validates payloads (`validateCategoryData`), blocks
+  re-parenting a category under its own descendant, and syncs descendant
+  colors atomically; category delete is transactional.
+- Statement upload persists statement + transactions + invoice in a single
+  database transaction.
+
+### Added
+- Unit tests (Vitest) for the CSV parser, installment parser, goal
+  calculations and chat model normalization; `npm test` / `npm run typecheck`.
+- GitHub Actions CI: lint + typecheck + tests on every PR.
+- Global error boundary (`error.tsx`) and 404 page (`not-found.tsx`).
+- Optional `accountId` scope for bulk categorize-by-keyword.
+
+### Removed
+- Unused `@vercel/analytics` dependency.
+
+### Notable features shipped since 1.1.0 (previously unlisted)
+Goals (plans, scenarios, milestones, debt strategies, AI planner), credit-card
+invoices with installment tracking, subscription detection overhaul, chat
+assistant with tools, financial memory + journey system, MCP server with token
+permissions and audit log, admin API logs panel, PWA, dark mode.
+
 ## [1.1.0] - 2026-03-02
 
 ### Added

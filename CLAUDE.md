@@ -26,7 +26,7 @@ A Next.js-based spending tracker that allows users to:
 - **ORM**: Prisma 7.4.2 with `@prisma/adapter-pg` (PrismaPg adapter)
 - **API Routes**: Next.js App Router API routes
 - **File Parsing**: PapaParse (CSV), custom PDF parser
-- **AI**: Google Generative AI (Gemini) for categorization
+- **AI**: OpenRouter via Vercel AI SDK (default model `google/gemini-2.5-flash`) — chat, categorization, PDF extraction, memory extraction. Note: legacy column/variable names still say "gemini" (`geminiApiKey`, `geminiChatModel`) but the key stored is an OpenRouter key (ids normalized by `normalizeChatModel`).
 
 ### Supabase Services Used
 - **Auth**: Supabase Auth (email/password) — enforced via middleware on all `/api/*` routes
@@ -201,6 +201,7 @@ Runs automatically after each statement upload. Minimum 3 occurrences required t
 
 - Supabase Auth (email/password)
 - Middleware at `middleware.ts` protects all `/api/*` routes
+- Exception: the MCP **protocol** endpoints (`/api/mcp`, `/api/mcp/protocol`, `/api/mcp/sse`, `/api/mcp/messages`) bypass the session check and use their own Bearer-token auth. MCP token **management** (`/api/mcp/tokens*`) requires a session, revalidated in the handler via `requireSession` (`src/lib/auth/requireSession.ts`)
 - Client-side `AuthGate.tsx` wraps the app UI
 - No multi-tenant row-level isolation yet (single-user app)
 
@@ -215,9 +216,19 @@ npm install
 # Generate Prisma client (required after clone or schema changes)
 npx prisma generate
 
-# Start dev server
+# Start dev server (port 6112)
 npm run dev
 ```
+
+### Quality Checks
+
+```bash
+npm run lint       # ESLint
+npm run typecheck  # tsc --noEmit
+npm test           # Vitest unit tests (csvParser, installment, goals, chat models)
+```
+
+CI (`.github/workflows/ci.yml`) runs all three on every PR.
 
 ### Database Changes
 
@@ -393,6 +404,6 @@ Potential areas for improvement:
 
 ---
 
-**Last Updated**: 2026-05-17
+**Last Updated**: 2026-07-10
 **Project Status**: Active Development
 **Primary Language**: TypeScript

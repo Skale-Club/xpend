@@ -3,6 +3,17 @@
 > **Data da análise**: 2026-07-10
 > **Escopo**: código-fonte completo (~31.000 linhas de TypeScript, 76 commits, mar–mai/2026), schema de banco (24 modelos Prisma), infraestrutura, documentação e segurança.
 
+## ✅ Status das correções (2026-07-10)
+
+Aplicadas nesta branch (ver CHANGELOG 1.2.0 para detalhes):
+
+- **Corrigido (P0)**: auth nas rotas `/api/mcp/tokens*` (item 3.1); sessão SSE vinculada ao token no servidor (token fora da URL de `messages`); revalidação de super-admin nos handlers; sanitização de nome + limite de 15 MB + contentType server-side no upload; erros do MCP sem vazamento de mensagens do Prisma; `DELETE /api/history` exige `?confirm=true`.
+- **Corrigido (P1)**: `PUT /goals/[id]` preserva `currentAmount` em payloads parciais; decrement atômico no delete de contribuição; parser de datas do CSV reescrito (inferência DD/MM vs MM/DD por arquivo, UTC, rejeição de datas impossíveis); `parseAmount` corrige formato US com milhar e rejeita valores ilegíveis; `$transaction` no upload de statements e nas operações multi-passo de categorias; acessores UTC consistentes e saldo em passada única no dashboard; validação nas rotas de categorias + bloqueio de ciclo na hierarquia; normalização de model id legado (`gemini-*` → `google/gemini-*`).
+- **Adicionado (P2/P3)**: Vitest com 28 testes (csvParser, installment, goals, chat models); CI com lint+typecheck+test; `error.tsx`/`not-found.tsx`; guards `readArrayResponse` nas páginas accounts/statements; escopo opcional por conta no categorize-by-keyword; remoção de `@vercel/analytics`; README/CHANGELOG/SELF_HOSTED/CLAUDE.md atualizados.
+- **Não confirmado**: o item 4.3 (balance trend misturando filtros) não se reproduz — `getBalanceTrend`/net worth já usavam o conjunto não filtrado.
+- **Mantido por compatibilidade**: `?token=` continua aceito nos endpoints do protocolo MCP (`/protocol` e `/sse`) porque conectores hospedados (claude.ai/OpenAI) não permitem header `Authorization` customizado; o header é preferido quando presente.
+- **Adiado (exige migração/refator amplo)**: `Float`→`Decimal` nos campos monetários; multi-tenancy (`userId` + RLS); agregações via `groupBy` no banco; React Query; quebra dos componentes gigantes; renomeação `gemini*`→`ai*` no schema.
+
 ---
 
 ## 1. Sumário Executivo
